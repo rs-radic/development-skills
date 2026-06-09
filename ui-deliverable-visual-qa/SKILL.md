@@ -2,13 +2,11 @@
 name: ui-deliverable-visual-qa
 description: Use when building, editing, or reviewing any UI deliverable. Requires baseline screenshots for existing UI before edits, explicit visible outcome claims, rendered browser/screenshot comparison, responsive viewport checks, and rejection of overflow, clipping, misaligned controls, broken layouts, or disrupted UX flow.
 version: 1.0.0
-author: Hermes Agent
+author: rs-radic
 license: MIT
 platforms: [linux, macos, windows]
-metadata:
-  hermes:
-    tags: [ui, frontend, visual-qa, deliverable, screenshots, responsive, overflow, layout]
-    related_skills: [dogfood, requesting-code-review, systematic-debugging, test-driven-development]
+tags: [ui, frontend, visual-qa, deliverable, screenshots, responsive, overflow, layout]
+related_skills: [dogfood, requesting-code-review, systematic-debugging, test-driven-development]
 ---
 
 # UI Deliverable Visual QA
