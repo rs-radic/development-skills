@@ -1,7 +1,7 @@
 ---
 name: mockup-driven-ui-implementation
-description: Use when converting a screenshot, mockup, design target, or visual reference into standalone pixel-accurate HTML/CSS first. Produces a self-contained static implementation, infers exact layout/spacing/type/color/assets from the image, iterates in the browser until the standalone result matches, and only treats later app integration as a separate handoff step.
-version: 1.1.0
+description: Use when converting a screenshot, mockup, design target, or visual reference into standalone pixel-accurate HTML/CSS. Produces a self-contained static implementation, infers exact layout/spacing/type/color/assets from the image, uses image editing or generation when needed for visual fidelity, and iterates in the browser until the standalone result matches.
+version: 1.2.0
 author: rs-radic
 license: MIT
 platforms: [linux, macos, windows]
@@ -13,9 +13,9 @@ related_skills: [ui-deliverable-visual-qa]
 
 ## Overview
 
-Use this skill when the goal is to create a standalone HTML/CSS implementation that matches a screenshot, mockup, generated design, visual comp, or reference image as closely as possible. The standalone artifact is the deliverable. Integration into an existing application is intentionally out of scope until the static version is visually correct.
+Use this skill when the goal is to create standalone HTML/CSS that matches a screenshot, mockup, generated design, visual comp, or reference image as closely as possible. The standalone artifact is the deliverable.
 
-The purpose is to get to near-perfect HTML first. Once the standalone version matches the mockup, it is much easier to merge into a real app, component system, template, or CMS later. Do not start by modifying existing app features, data flows, routes, or templates unless the user explicitly changes the task from standalone mockup build to integration.
+The purpose is to get to near-perfect HTML/CSS from the image. The mockup is the visual source of truth. Do not treat it as inspiration, simplify difficult regions, or substitute unrelated design ideas unless the user explicitly accepts that visual deviation.
 
 Always render the standalone result in a browser and compare it against the target image before calling it done.
 
@@ -25,25 +25,24 @@ Use when the request includes any of these:
 
 - "turn this mockup into HTML"
 - "create standalone HTML from this screenshot"
-- "make this as close as possible first"
+- "make this as close as possible"
 - "pixel-perfect HTML/CSS"
-- "build the mockup before we merge it"
+- "build the mockup"
 - "convert this image/design to markup"
 - "the standalone result does not match the mockup"
 - visual corrections about spacing, type, cards, images, art, checkmarks, bullets, colors, clipping, or proportions
 
 Do not use this skill for:
 
-- direct integration into an existing production page, app route, CMS template, data-bound component, or checkout/order flow; do the standalone build first unless the user explicitly asks to integrate now
 - backend-only work
 - broad design ideation without a concrete visual target
-- final UI regression QA for an already-integrated page; use `ui-deliverable-visual-qa`
+- final visual QA after a standalone artifact already exists; use `ui-deliverable-visual-qa`
 
 ## Core Principle
 
-> Build the mockup as standalone HTML/CSS first. Match the visual target first. Merge later.
+> Build standalone HTML/CSS that matches the visual target.
 
-The mockup is the visual source of truth. Treat it as a target to reproduce, not inspiration. Do not simplify hard regions, invent alternate layouts, or replace difficult artwork with unrelated approximations unless the user accepts the deviation.
+Default to self-contained, browser-openable files. The work is not complete after the first generated file; completion requires rendered comparison and iteration.
 
 ## 1. Confirm the Standalone Contract
 
@@ -92,7 +91,34 @@ Completion criteria:
 - Type/color/effect tokens are extracted.
 - Asset requirements are identified before the first build pass.
 
-## 3. Generate Standalone HTML/CSS Only by Default
+## 3. Set Canvas and Viewport Deliberately
+
+Distinguish the design canvas from the browser viewport.
+
+- **Design canvas** is the size represented by the mockup image, such as 1440x900.
+- **Browser viewport** is the screenshot size used to render/check the standalone file, such as 1440x900 or 1920x1080.
+- If the target is fixed-width, explicitly set the page/canvas width and center it so the render does not stretch.
+- If the target is responsive, still match the reference canvas first, then add responsive rules after the reference view is close.
+- Include `<meta name="viewport" content="width=device-width, initial-scale=1.0">` unless the user explicitly asks for a fixed exported canvas without mobile scaling.
+
+Useful starting reset:
+
+```css
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+```
+
+Completion criteria:
+
+- The reference canvas dimensions are recorded in the HTML/CSS notes.
+- The browser screenshot viewport is recorded separately.
+- The render is not squished, stretched, unexpectedly centered, or unexpectedly full-width.
+
+## 4. Generate Standalone HTML/CSS Only by Default
 
 Default output is self-contained vanilla HTML and CSS that can be opened directly in a browser.
 
@@ -100,7 +126,7 @@ Rules:
 
 - Use semantic HTML: `header`, `main`, `section`, `article`, `nav`, `aside`, `footer`, lists, headings, buttons, and forms where visually appropriate.
 - Use plain CSS. No Tailwind, Bootstrap, Material, React, Vue, Svelte, Angular, Sass, build tools, or package installs unless the user requests them.
-- Prefer one `index.html` with embedded CSS for fastest visual iteration unless the user/project asks for separate files.
+- Prefer one `index.html` with embedded CSS for fastest visual iteration unless the user asks for separate files.
 - Use CSS custom properties for extracted colors, spacing, radii, shadows, and type scale when useful.
 - Include a design-notes comment with the reference viewport and key extracted values.
 - Use one-to-one visible region mapping: the markup structure should mirror the visual regions in the mockup.
@@ -114,7 +140,7 @@ Completion criteria:
 - CSS values are concrete and derived from the image.
 - There are no unapproved placeholders or framework dependencies.
 
-## 4. Pixel-Accuracy Discipline
+## 5. Pixel-Accuracy Discipline
 
 Implement with measurement and visual matching first, not generic design taste.
 
@@ -142,9 +168,20 @@ Completion criteria:
 - The largest visible differences are known and prioritized.
 - Every correction changes an observed visual mismatch.
 
-## 5. Asset and Image Handling
+## 6. Asset and Image Handling
 
 Use the asset path that gets closest to the mockup.
+
+Asset separation decision matrix:
+
+| Visible asset type | Prefer | Use when |
+|---|---|---|
+| simple geometric icon | CSS or inline SVG | one-color or few-color shapes, checkmarks, dots, arrows |
+| complex icon/logo | SVG file or inline SVG | vector detail must stay crisp at any scale |
+| photo/product image | image file | photographic or screenshot-like content |
+| simple background | CSS color/gradient | solid fills, linear/radial gradients, simple overlays |
+| texture/noise/complex illustration | image file or generated/edited image | CSS/SVG would be slower or less faithful |
+| tiny repeated mark | CSS pseudo-element or inline SVG | bullets, checkmarks, separators, repeated ornaments |
 
 Preferred options:
 
@@ -168,7 +205,7 @@ Completion criteria:
 - Generated/edited assets are verified in the rendered page.
 - No accidental text artifacts, watermarks, or clipped source images remain.
 
-## 6. Render and Compare in a Browser
+## 7. Render and Compare in a Browser
 
 The task is not complete after writing HTML/CSS. Open the artifact in a browser or browser automation and compare it to the mockup.
 
@@ -178,6 +215,7 @@ Capture:
 - the target/mockup image or crop
 - side-by-side comparison or clearly paired screenshots
 - additional viewport screenshots if responsive behavior is in scope
+- browser console errors if the preview environment exposes them
 
 Compare:
 
@@ -191,15 +229,24 @@ Compare:
 - color contrast and readability
 - page height and scroll behavior
 
+Fix visual errors in priority order:
+
+1. **Critical:** layout structure, major positioning, canvas size, section order.
+2. **High:** typography size/weight/line-height, major spacing, image scale/crop.
+3. **Medium:** colors, borders, shadows, radius, gradients, opacity.
+4. **Low:** tiny alignment differences, subtle anti-aliasing, minor gradient nuance.
+
+Screenshot early and often. A full-page screenshot can hide viewport-only problems, so capture viewport-sized evidence when viewport fidelity matters.
+
 Completion criteria:
 
 - The rendered standalone page has been visually compared to the target.
 - The comparison uses fresh screenshots after the latest edits.
 - Remaining mismatches are listed, fixed, or explicitly accepted.
 
-## 7. Iterate Until the Standalone Matches
+## 8. Iterate Until the Standalone Matches
 
-Use a tight visual loop. Do not switch to app integration while the standalone artifact still visibly drifts from the mockup.
+Use a tight visual loop. Do not move on while the standalone artifact still visibly drifts from the mockup.
 
 Correction order:
 
@@ -217,9 +264,9 @@ Completion criteria:
 
 - User-called-out mismatches have pass/fail status.
 - Corrections are based on screenshot evidence, not vague preference.
-- The final standalone artifact is close enough to be a reliable source for later integration.
+- The final standalone artifact is visually close to the target.
 
-## 8. Responsive Translation
+## 9. Responsive Translation
 
 If the mockup only shows one viewport, match that viewport first. Do not invent multiple responsive layouts before the reference is correct.
 
@@ -244,28 +291,6 @@ Completion criteria:
 - Responsive adaptations are checked with screenshots.
 - No unintended horizontal overflow or clipped content remains.
 
-## 9. Later Integration Handoff
-
-Only after the standalone version matches should you prepare for merging into an existing app. Do not perform the merge as part of this skill unless the user explicitly asks for it after approving the standalone result.
-
-Helpful handoff notes:
-
-- extracted design tokens
-- final standalone HTML/CSS paths
-- final asset paths
-- reference viewport and comparison screenshots
-- regions/components likely to become app components
-- any static copy/data that must become dynamic later
-- known accepted deviations from the mockup
-
-If the user asks to merge after the standalone is accepted, switch to the appropriate project workflow and use `ui-deliverable-visual-qa` after integration.
-
-Completion criteria:
-
-- Standalone artifact remains the completed source of truth.
-- Integration notes are separate from the standalone implementation.
-- No production/app files are changed unless explicitly requested.
-
 ## Final Response Requirements
 
 For a completed standalone mockup build, include:
@@ -276,28 +301,27 @@ Standalone mockup build:
 - Output: <index.html/styles/assets paths>
 - Reference viewport: <width>x<height>
 - Rendered screenshots: <paths>
-- Live-vs-mockup comparison: <paths>
+- Standalone-vs-mockup comparison: <paths>
 - User-called-out details:
   - PASS/FAIL: <detail>
   - PASS/FAIL: <detail>
 - Remaining drift/accepted deviations: <none or list>
-- Integration status: not merged; standalone artifact ready for later integration
 ```
 
-Do not say the work is ready to merge unless the standalone visual comparison passes.
+Do not bury visual drift in a generic success message. If anything remains off, say so.
 
 ## Common Pitfalls
 
-1. **Jumping into the existing app too early.** The goal is standalone HTML/CSS first; app merge comes later.
-2. **Treating the mockup as inspiration.** Match the image closely unless the user approves a deviation.
-3. **Asking for measurements instead of inferring them.** Infer viewport, spacing, colors, and typography from the image.
-4. **Using frameworks by default.** Vanilla HTML/CSS is the default unless requested otherwise.
-5. **Stopping after first generation.** Render, compare, and iterate.
-6. **Using placeholder visuals.** TODO colors, lorem ipsum, fake icons, and temporary assets are not acceptable final output.
-7. **Ignoring asset defects.** Clipped/generated/watermarked/wrong-perspective art must be replaced or edited.
-8. **Comparing stale screenshots.** Use fresh screenshots after every meaningful change.
-9. **Overbuilding responsiveness before matching the reference viewport.** Match the source first, then translate.
-10. **Calling later integration complete.** This skill produces the standalone source; integration is a separate task.
+1. **Treating the mockup as inspiration.** Match the image closely unless the user approves a deviation.
+2. **Asking for measurements instead of inferring them.** Infer viewport, spacing, colors, and typography from the image.
+3. **Using frameworks by default.** Vanilla HTML/CSS is the default unless requested otherwise.
+4. **Stopping after first generation.** Render, compare, and iterate.
+5. **Using placeholder visuals.** TODO colors, lorem ipsum, fake icons, and temporary assets are not acceptable final output.
+6. **Ignoring asset defects.** Clipped/generated/watermarked/wrong-perspective art must be replaced or edited.
+7. **Comparing stale screenshots.** Use fresh screenshots after every meaningful change.
+8. **Overbuilding responsiveness before matching the reference viewport.** Match the source first, then translate.
+9. **Letting generated assets drive the design.** The target image drives the design; generated assets must conform to it.
+10. **Claiming visual match without browser evidence.** Code inspection is not proof; use rendered screenshots.
 
 ## Verification Checklist
 
@@ -305,7 +329,6 @@ Before finalizing, confirm:
 
 - [ ] Target image/mockup was inspected visually.
 - [ ] Output is standalone HTML/CSS unless the user requested otherwise.
-- [ ] No existing app/page/template was modified unless explicitly requested.
 - [ ] Reference viewport is recorded.
 - [ ] Design extraction includes grid, spacing, typography, colors, effects, and assets.
 - [ ] HTML structure maps to visible mockup regions.
@@ -318,4 +341,3 @@ Before finalizing, confirm:
 - [ ] User-called-out mismatches were fixed or explicitly accepted.
 - [ ] Responsive screenshots were captured if responsive behavior is in scope.
 - [ ] Remaining drift is documented honestly.
-- [ ] Integration is clearly marked as separate/not done unless the user separately requested it.
