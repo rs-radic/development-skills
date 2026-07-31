@@ -5,10 +5,7 @@ version: 1.0.0
 author: rs-radic
 license: MIT
 platforms: [linux, macos, windows]
-metadata:
-  hermes:
-    tags: [implementation, code-review, simplicity, yagni, security, evidence]
-    related_skills: []
+tags: [implementation, code-review, simplicity, yagni, security, evidence]
 ---
 
 # Pragmatic Code
