@@ -1,7 +1,7 @@
 ---
 name: just-keep-swimming
 description: Keep a project moving autonomously and durably when the user says "Just Keep Swimming" or asks for continuous progress toward a goal. Use for owner-loop project execution across turns, compactions, restarts, and idle periods with durable goal/state files, recurring cron driver ticks, bounded subagents, verification, blockers, and periodic progress reports.
-version: 1.0.0
+version: 1.1.0
 author: rs-radic
 license: MIT
 platforms: [linux, macos, windows]
@@ -30,7 +30,8 @@ Pattern: **one durable goal file + one state file + one recurring driver cron + 
 Create these files in the project root unless the user requests another location:
 
 - `GOAL.md` — durable human-readable goal, guardrails, queue, and owner rules.
-- `goal-state.json` — machine-readable state for driver/reporter.
+- `goal-state.json` — machine-readable progress/state for the driver and reporter.
+- `driver-health.json` — machine-readable runner liveness, decisions, launch proof, failures, and meaningful-progress time. Keep it separate so reporting cannot renew ownership.
 - Optional project notes such as `STATE.md` if the project already uses them.
 
 If critical inputs are missing, ask one concise question. Otherwise infer sensible defaults and proceed.
@@ -110,16 +111,32 @@ The recurring goal driver owns progress and state. It should:
 
 Slice statuses: `pending`, `next`, `active`, `verification-needed`, `completed`, `blocked`.
 
+## Worker liveness and ownership
+
+Never infer a live owner from a generic state timestamp, file modification time, or the existence of a child/delegation ID. These signals caused false leases where the hourly reporter refreshed `updatedAt` while no worker existed.
+
+Use evidence-based liveness:
+
+- A child is active only while its matching live transcript/process is nonterminal and progressing. Inspect it on each driver tick. A terminal completed/failed/blocked/interrupted result is not active and must be reconciled immediately.
+- A child ID without a live handle is a launch failure, not an active worker. After every launch, verify and record the returned ID plus transcript/process handle.
+- If foreground work needs a no-race lease, use a dedicated owner plus explicit short heartbeat field. Never use `updatedAt` or reporter timestamps as the lease.
+- Store runner health separately in `driver-health.json`: `lastCheckAt`, `lastDecision`, `workerState`, concrete `workerEvidence`, active handle, `lastProgressAt`, `idleSince`, launch attempt/verification times, and failure.
+- `lastProgressAt` changes only for meaningful work: verification, reconciliation, implementation, commit, or verified launch. Checks and reports are not progress.
+- If no evidenced worker or true blocker exists and authorized work remains, a successful no-op is forbidden. Advance one bounded gate on that tick.
+- Reporters may update only their dedicated reporting timestamp. They must not modify ownership, progress, liveness, `updatedAt`, owner heartbeat, or driver-health fields.
+
 ## Driver cron
 
 Create one recurring goal-driver cron, usually every 15 minutes.
+
+Cron agent turns have a hard three-minute interrupt budget. Keep each tick well inside that limit; do not assume a larger configured script timeout also extends the LLM/agent turn. For quiet delivered LLM jobs, a healthy/no-action tick must respond with exactly `[SILENT]`; never request an empty response, because empty Codex completions can be retried and reported as incomplete. `[SILENT]` suppresses successful delivery while preserving local audit output. Failed runs still deliver.
 
 Preferred properties:
 
 - `sessionTarget`: `session:<goal-id>`
 - `payload.kind`: `agentTurn`
 - `delivery.mode`: `none`
-- `timeoutSeconds`: bounded, usually 600 seconds
+- One bounded advancement per tick, comfortably under three minutes
 - Failure alert: same channel/user as reports
 
 Driver prompt template:
@@ -132,22 +149,25 @@ You are the durable owner loop for finishing this project. Cron is only a dead-m
 Files:
 - `<project>/GOAL.md`
 - `<project>/goal-state.json`
+- `<project>/driver-health.json`
 - `<project>/STATE.md` if present
 
 Rules:
-1. Every tick must either advance state, run one bounded verification/implementation action, spawn exactly one bounded child, or write a concrete blocker.
-2. A tick that only observes an active/verification-needed state and exits is a failure.
-3. If `activeSlice.status` is `verification-needed`, run the narrow verification now or mark an explicit blocker.
-4. If `activeSlice.status` is `active` for too long with no observable progress, treat it as stale: inspect available artifacts, verify, steer, or mark stale in state.
-5. Do not use child subagents for verification-only work when verification is three focused commands or fewer.
-6. If no active slice exists and no blocker exists, start the next queued slice.
-7. For longer implementation/research, spawn one bounded child and immediately record child session/run/status in `goal-state.json`.
-8. Do not wait/poll loops. One action, state update, exit.
-9. Do not run heavy full suites/browser/DB/external work unless the current slice explicitly authorizes it and includes safety gates.
-10. Preserve all guardrails from `GOAL.md` and `goal-state.json`.
-11. On Linux, use `timeout <seconds> <command>`, `rg` with explicit roots/excludes, and capped output.
+1. Classify worker liveness from concrete transcript/process/explicit-heartbeat evidence; never from `updatedAt`, reporter timestamps, file mtime, or a child ID alone.
+2. Every tick must either advance one bounded gate, confirm an evidenced active worker, or write a concrete blocker/failure. If no worker/blocker exists and authorized work remains, a no-op is failure.
+3. Inspect any recorded child transcript. Reconcile terminal results immediately; do not wait for an arbitrary stale-state timeout.
+4. If `activeSlice.status` is `verification-needed`, run the narrow verification now or mark an explicit blocker.
+5. If a child/process is genuinely active, do not duplicate it; update `driver-health.json` with the exact evidence without changing `lastProgressAt`.
+6. Do not use child subagents for verification-only work when verification is three focused commands or fewer.
+7. If no active slice exists and no blocker exists, start the next queued slice.
+8. For longer implementation/research, spawn one bounded child, verify the returned ID/transcript/process handle, and record launch attempt plus launch verification. Missing handle is `launch-failed`, not success.
+9. Update `driver-health.json` every tick. Update `goal-state.json` only for meaningful state progress; reporter writes never establish ownership.
+10. Do not wait/poll loops. One action, state update, exit.
+11. Do not run heavy full suites/browser/DB/external work unless the current slice explicitly authorizes it and includes safety gates.
+12. Preserve all guardrails from `GOAL.md` and `goal-state.json`.
+13. On Linux, use `timeout <seconds> <command>`, `rg` with explicit roots/excludes, and capped output.
 
-Exit only after updating `goal-state.json`.
+Exit only after recording the exact driver decision and liveness evidence.
 ```
 
 ## Reporter cron
@@ -166,16 +186,18 @@ Reporter prompt template:
 ```text
 <Project> HOURLY PROGRESS UPDATE.
 
-Read `<project>/GOAL.md`, `<project>/goal-state.json`, and `<project>/STATE.md` if present. Do not run heavy tests/builds/browser/DB/external work in this reporting turn.
+Read `<project>/GOAL.md`, `<project>/goal-state.json`, `<project>/driver-health.json`, and `<project>/STATE.md` if present. Do not run heavy tests/builds/browser/DB/external work in this reporting turn.
 
 Send a concise user-facing update to the configured destination. Include:
 - rough full-project percent
 - current active slice or next slice
 - what was verified/completed since the last update
-- blockers, if any
+- actual worker state and concrete liveness evidence
+- effective idle duration from `driver-health.lastProgressAt` when no worker is active
+- blockers/runner failures, if any
 - what will happen next
 
-Be honest if no verified progress happened. Do not expose secrets or internal session metadata. After reporting, update `goal-state.json.lastHourlyUpdateAt` and `updatedAt`.
+Be honest if no verified progress happened. A child ID alone is not an active worker. If no worker exists and more than one driver cadence has elapsed without meaningful progress while work remains, report a runner alert. Do not expose secrets or internal session metadata. After reporting, update only `goal-state.json.lastHourlyUpdateAt`; do not change `updatedAt`, owner/heartbeat, progress/liveness, or any `driver-health.json` field.
 ```
 
 ## Child slice prompts
