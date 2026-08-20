@@ -1,11 +1,12 @@
 ---
 name: pragmatic-code
 description: Use when implementing or reviewing code pragmatically.
-version: 1.1.0
+version: 1.2.0
 author: rs-radic
 license: MIT
 platforms: [linux, macos, windows]
 tags: [implementation, code-review, simplicity, yagni, security, evidence]
+related_skills: [requesting-code-review, subagent-driven-development]
 ---
 
 # Pragmatic Code
@@ -27,6 +28,21 @@ Use for:
 - simplifying a solution that has grown beyond its requirement.
 
 Do not use it to narrow an explicitly requested architecture study, compatibility project, threat model, or exhaustive security audit. Even then, keep findings grounded, fixes proportionate, and implementation within the user's approved scope.
+
+## Review Independence and Authority
+
+Loading or following this skill does not replace an independent reviewer. When independent review is required by the user, project rules, or the active workflow, dispatch a fresh read-only reviewer using `requesting-code-review` or the project's approved equivalent.
+
+Review authority and implementation authority are separate:
+
+- A reviewer may inspect the diff, baseline, authoritative requirements, approval sources, and directly relevant execution context.
+- A reviewer may challenge the parent agent's scope claims and report any grounded finding encountered during the authorized review, including a pre-existing or adjacent defect.
+- Reporting a finding is not scope expansion. Do not suppress a grounded finding merely because its fix lacks implementation authority.
+- Review remains bounded to the requested change and the context needed to validate it; this does not create a repository-wide audit.
+- A reviewer is read-only unless the user separately authorizes edits. A reviewer verdict, blocker label, or proposed fix never authorizes implementation.
+- An implementation or fix agent may act only on `approved_requirement` or `introduced_regression`. It must escalate `needs_approval` and must not act on `out_of_scope` work.
+
+In this skill, **stop that change** means stop editing, writing tests for the proposed new behavior, or otherwise implementing it. It does not mean stop reviewing, hide the finding, or omit it from the report.
 
 ## Shared Rules
 
@@ -103,7 +119,7 @@ For each proposed behavior change, ask:
 4. Was the defect introduced by the current work or merely discovered nearby?
 5. Does the change alter observable behavior beyond the approved outcome?
 
-If a reviewer discovers a real pre-existing defect, report it with impact and the minimal fix, mark it `needs_approval`, and stop that change. Do not implement it, add a regression test for the proposed new behavior, or rewrite the review brief to call it approved.
+If a reviewer discovers a real pre-existing defect, report it with impact and the minimal fix, mark it `needs_approval`, continue the authorized review, and stop implementation of that change. Do not implement it, add a regression test for the proposed new behavior, or rewrite the review brief to call it approved.
 
 If the current implementation introduced the defect, correct it only to restore the approved behavior or required baseline. Do not use the correction as an opening for broader cleanup.
 
@@ -210,7 +226,7 @@ Assess realistic consequence independently: critical, high, medium, or low. Cert
 - **Blocker** — a proven, current, material defect introduced or materially worsened by the change, or a direct violation of an approved requirement.
 - **Non-blocking** — a grounded but minor issue that does not justify delaying the change.
 - **Verify** — a material unanswered question whose answer can change the verdict.
-- **Omit** — speculative, refuted, duplicate, purely stylistic, outside review scope, or unactionable.
+- **Omit** — speculative, refuted, duplicate, purely stylistic, unrelated to the reviewed flow, or unactionable. Missing implementation authority is not a reason to omit a grounded finding.
 
 **Implementation authority**
 
@@ -247,7 +263,7 @@ Once the changed flow is understood, relevant tests pass, no grounded blocker re
 
 > Approve the change. Stop searching for something to object to.
 
-Do not invent a replacement suggestion so the review appears productive. `No actionable findings.` is a successful result.
+This ends further searching; it does not cancel an independent review required by the active workflow or suppress grounded findings already discovered. Do not invent a replacement suggestion so the review appears productive. `No actionable findings.` is a successful result.
 
 ## Output Contract
 
@@ -273,7 +289,7 @@ Minimal fix: smallest adequate correction
 Implementation authority: Authorized | Needs approval | Prohibited
 ```
 
-Omit hypothetical and refuted items unless the user explicitly asks for rejected reasoning. If nothing survives the gate, respond with `No actionable findings.` and stop.
+Omit hypothetical and refuted items unless the user explicitly asks for rejected reasoning. Report grounded `needs_approval` findings separately even though they cannot be implemented. If nothing survives the gate, respond with `No actionable findings.` and stop.
 
 ## Common Pitfalls
 
@@ -292,6 +308,7 @@ Omit hypothetical and refuted items unless the user explicitly asks for rejected
 ## Verification Checklist
 
 - [ ] The current requirement, baseline, exclusions, and affected flow are understood.
+- [ ] Any independent review required by the user, project, or workflow was performed by a fresh read-only reviewer; self-review did not replace it.
 - [ ] Every semantic behavior change has a scope class and exact approval provenance.
 - [ ] A changed-file allowlist was not mistaken for behavior authorization.
 - [ ] Pre-existing and adjacent defects were separated from current-work regressions.
@@ -301,6 +318,7 @@ Omit hypothetical and refuted items unless the user explicitly asks for rejected
 - [ ] Existing controls and deployment constraints were checked.
 - [ ] Evidence confidence, impact, disposition, and implementation authority were assessed independently.
 - [ ] Genuine security and data-integrity defects were reported without self-authorizing out-of-scope fixes.
+- [ ] No grounded finding was suppressed merely because its implementation needs approval.
 - [ ] The proposed fix is the smallest adequate authorized correction.
 - [ ] Relevant tests/checks were actually run.
 - [ ] The final semantic scope audit accounts for every behavior change.
