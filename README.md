@@ -7,3 +7,7 @@ Short index of skills in this repository:
 - [mockup-driven-ui-implementation](https://github.com/rs-radic/development-skills/blob/main/mockup-driven-ui-implementation/SKILL.md) — create standalone pixel-accurate HTML/CSS from mockups.
 - [pragmatic-code](https://github.com/rs-radic/development-skills/blob/main/pragmatic-code/SKILL.md) — smallest-correct implementation and evidence-gated code review without speculative blockers.
 - [ui-deliverable-visual-qa](https://github.com/rs-radic/development-skills/blob/main/ui-deliverable-visual-qa/SKILL.md) — screenshot-backed visual QA for UI deliverables.
+
+Hermes-specific workflows:
+
+- [Hermes approval-gated Kanban development](workflows/hermes-approval-gated-kanban/README.md) — reusable Hermes profiles, verified model routes, planning/review and delivery gates, templates, and a sanitized project example.
