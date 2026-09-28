@@ -13,7 +13,7 @@ metadata:
 
 # Approval-gated Hermes Kanban development
 
-Use Hermes's bundled Kanban worker/orchestrator mechanics. This skill defines the **reusable governance**, not a project's product specification. Force-load a separate project-invariant skill on cards when necessary. Review the installed Hermes commands after upgrades; do not replace a richer, established local copy without comparing it.
+Hermes injects `KANBAN_GUIDANCE` into dispatcher-owned workers when `kanban_show` is available; the former bundled `kanban-worker` and `kanban-orchestrator` skills are retired and must not be installed or forced. This skill defines **reusable governance**, not a project's product specification. Force-load a separate project-invariant skill on cards when necessary. Review the installed Hermes commands after upgrades; do not replace a richer, established local copy without comparing it.
 
 ## Plan before execution
 
