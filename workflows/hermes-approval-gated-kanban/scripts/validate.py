@@ -14,7 +14,7 @@ EXPECTED = {
 GENERIC_SKILLS = {"approval-gated-kanban-development", "plan-review-gate"}
 BUNDLED_SKILLS = {"sdlc-review"}
 REQUIRED = {
-    "README.md", "profiles.json", "templates/planner-card.md",
+    "README.md", "skill-routing.md", "profiles.json", "templates/planner-card.md",
     "templates/orchestrator-card.md", "examples/partner-network-api/README.md",
     "skills/approval-gated-kanban-development/SKILL.md",
     "skills/plan-review-gate/SKILL.md", "scripts/validate.py",
