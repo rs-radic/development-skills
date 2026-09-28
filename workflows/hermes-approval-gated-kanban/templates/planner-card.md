@@ -4,6 +4,7 @@
 **Assignee:** `planner`
 **Workspace:** `scratch`
 **Forced skills:** `plan-review-gate`, `<project-invariant-skill>` if applicable
+**Model/context/fallbacks:** inherit the `planner` profile's primary route, explicit context/compression settings, and ordered `fallback_providers` from [`../profiles.json`](../profiles.json); a card-level model/provider override requires fresh effective-context verification.
 **Source/authority:** `<exact source document paths or attached IDs, versions and hashes>`
 **Current board exclusion set:** `<completed, approved-but-queued, in-flight, and unapproved-proposed scopes>`
 **Request:** `<neutral scope question; do not preselect substantive answer>`

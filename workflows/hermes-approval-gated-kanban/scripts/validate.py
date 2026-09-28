@@ -5,6 +5,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from urllib.parse import parse_qsl, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = {
@@ -37,16 +38,51 @@ def check() -> None:
     actual = {p.relative_to(ROOT).as_posix() for p in ROOT.rglob("*") if p.is_file()}
     require(actual == REQUIRED, ("unexpected or missing files", sorted(actual ^ REQUIRED)))
     data = json.loads((ROOT / "profiles.json").read_text(encoding="utf-8"))
+    require(data["schema_version"] == 2, "schema version")
     require(data["system"] == "Hermes Agent", "wrong system")
     require(set(data["profiles"]) == EXPECTED, "unexpected profiles")
     settings = data["global_settings_observed"]
+    explicit = data["global_settings_explicit"]
+    require(isinstance(explicit, dict) and all(k in settings and settings[k] == v for k, v in explicit.items()), "global explicit/effective mismatch")
+    require("kanban.dispatch_profiles" not in explicit, "dispatch_profiles must be omitted, not null")
     require(settings["kanban.auto_decompose"] is False, "auto-decompose snapshot changed")
     require(settings["kanban.review_dispatch"] is True, "review dispatch unavailable")
     require(settings["kanban.dispatch_in_gateway"] is True, "dispatcher unavailable")
     require("kanban.dispatch_profiles" not in settings, "dispatch_profiles must be omitted, not null")
     require(data["settings_intentionally_absent"] == ["kanban.dispatch_profiles"], "missing omission guidance")
+    def check_runtime(label: str, model_cfg: object, compression: object, fallbacks: object, *, primary: tuple[str, str]) -> None:
+        require(isinstance(model_cfg, dict) and set(model_cfg) <= {"default", "provider", "context_length", "base_url", "api_mode"}, ("unsafe model config", label))
+        require((model_cfg.get("default"), model_cfg.get("provider")) == primary, ("model route mismatch", label))
+        if "base_url" in model_cfg:
+            require(isinstance(model_cfg["base_url"], str), ("invalid model URL", label))
+            parsed = urlsplit(model_cfg["base_url"])
+            require(not parsed.username and not parsed.password, ("credential-bearing model URL", label))
+            sensitive_key = re.compile(r"(?:^|[_-])(?:api[_-]?key|key|access[_-]?token|refresh[_-]?token|token|password|secret|credential|authorization|auth|signature|sig|session|code)(?:$|[_-])", re.I)
+            require(not any(sensitive_key.search(key) for key, _ in parse_qsl(parsed.query, keep_blank_values=True)), ("credential-bearing model URL query", label))
+        ctx = model_cfg.get("context_length")
+        require(type(ctx) is int and ctx > 0, ("context window missing", label))
+        require(isinstance(compression, dict), ("compression missing", label))
+        cap = compression.get("threshold_tokens")
+        require(type(cap) is int and cap > 0, ("compression cap missing", label))
+        if "threshold" in compression:
+            ratio = compression["threshold"]
+            require(type(ratio) in (int, float) and 0 < ratio <= 1, ("compression ratio", label))
+        allowed_compression = {"enabled", "threshold", "threshold_tokens", "target_ratio", "protect_last_n", "hygiene_hard_message_limit", "protect_first_n", "abort_on_summary_failure", "codex_gpt55_autoraise", "codex_responses_native", "progress_notices"}
+        require(set(compression) <= allowed_compression and all(type(v) in (int, float, bool) for v in compression.values()), ("unsafe compression config", label))
+        require(isinstance(fallbacks, list), ("fallback routes missing", label))
+        for entry in fallbacks:
+            require(isinstance(entry, dict) and set(entry) == {"provider", "model"}, ("unsafe fallback entry", label))
+            require(all(isinstance(v, str) and v.strip() for v in entry.values()), ("empty fallback", label))
+            require((entry["model"], entry["provider"]) != primary, ("fallback repeats primary", label))
+        require(len({(e["provider"], e["model"]) for e in fallbacks}) == len(fallbacks), ("duplicate fallback", label))
+    default = data["default_profile_observed"]
+    require(default["reasoning_effort"] in {"medium", "high", "xhigh"}, "default reasoning")
+    check_runtime("default", default["model_config_explicit"], default["compression_config_explicit"], default["fallback_providers"], primary=(default["model_config_explicit"]["default"], default["model_config_explicit"]["provider"]))
+    require(not default["fallback_providers"], "default fallback unexpectedly configured")
     for name, route in data["profiles"].items():
         require(bool(route["model"] and route["provider"]), ("missing model", name))
+        check_runtime(name, route["model_config_explicit"], route["compression_config_explicit"], route["fallback_providers"], primary=(route["model"], route["provider"]))
+        require(bool(route["fallback_providers"]), ("worker fallback missing", name))
         require(route["reasoning_effort"] in {"medium", "high", "xhigh"}, ("reasoning", name))
         require(bool(route["role"].strip()), ("empty role", name))
         require(set(route["skills"]) <= GENERIC_SKILLS | BUNDLED_SKILLS, ("unknown skill", name))

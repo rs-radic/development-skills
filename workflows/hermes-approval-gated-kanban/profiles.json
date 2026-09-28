@@ -1,8 +1,8 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "system": "Hermes Agent",
-  "observed_at_utc": "2026-09-26",
-  "purpose": "Example routes verified against the local Hermes profile configs; recheck before reuse",
+  "observed_at_utc": "2026-09-28",
+  "purpose": "Verified Hermes role/model, explicit context/compression settings, and ordered fallback routes; recheck before reuse",
   "global_settings_observed": {
     "kanban.dispatch_in_gateway": true,
     "kanban.review_dispatch": true,
@@ -18,44 +18,293 @@
   ],
   "profiles": {
     "planner": {
-      "model": "claude-opus-5-5", "provider": "anthropic", "reasoning_effort": "high",
+      "model": "claude-opus-5-5",
+      "provider": "anthropic",
+      "reasoning_effort": "high",
       "role": "Select and plan scope; inspect sources read-only; attach immutable plan; request independent native review; do not implement",
-      "skills": ["approval-gated-kanban-development", "plan-review-gate"]
+      "skills": [
+        "approval-gated-kanban-development",
+        "plan-review-gate"
+      ],
+      "model_config_explicit": {
+        "default": "claude-opus-5-5",
+        "provider": "anthropic",
+        "context_length": 900000
+      },
+      "compression_config_explicit": {
+        "enabled": true,
+        "threshold": 0.65,
+        "threshold_tokens": 372000,
+        "target_ratio": 0.2,
+        "protect_last_n": 20,
+        "hygiene_hard_message_limit": 5000,
+        "protect_first_n": 3,
+        "abort_on_summary_failure": false,
+        "codex_gpt55_autoraise": true,
+        "codex_responses_native": false,
+        "progress_notices": true
+      },
+      "fallback_providers": [
+        {
+          "provider": "openai-codex",
+          "model": "gpt-6-sol"
+        }
+      ]
     },
     "plan-reviewer": {
-      "model": "gpt-6-sol", "provider": "openai-codex", "reasoning_effort": "xhigh",
+      "model": "gpt-6-sol",
+      "provider": "openai-codex",
+      "reasoning_effort": "xhigh",
       "role": "Independently review the planner's exact artifact on the same card; never grant product approval or edit implementation",
-      "skills": ["plan-review-gate", "sdlc-review"]
+      "skills": [
+        "plan-review-gate",
+        "sdlc-review"
+      ],
+      "model_config_explicit": {
+        "default": "gpt-6-sol",
+        "provider": "openai-codex",
+        "context_length": 900000,
+        "base_url": "https://chatgpt.com/backend-api/codex",
+        "api_mode": "codex_responses"
+      },
+      "compression_config_explicit": {
+        "threshold_tokens": 372000
+      },
+      "fallback_providers": [
+        {
+          "provider": "anthropic",
+          "model": "claude-opus-5-5"
+        }
+      ]
     },
     "orchestrator": {
-      "model": "claude-opus-5-5", "provider": "anthropic", "reasoning_effort": "high",
+      "model": "claude-opus-5-5",
+      "provider": "anthropic",
+      "reasoning_effort": "high",
       "role": "After owner approval create and verify gated card graph; no implementation, review, release, or product decisions",
-      "skills": ["approval-gated-kanban-development"]
+      "skills": [
+        "approval-gated-kanban-development"
+      ],
+      "model_config_explicit": {
+        "default": "claude-opus-5-5",
+        "provider": "anthropic",
+        "context_length": 900000
+      },
+      "compression_config_explicit": {
+        "enabled": true,
+        "threshold": 0.65,
+        "threshold_tokens": 372000,
+        "target_ratio": 0.2,
+        "protect_last_n": 20,
+        "hygiene_hard_message_limit": 5000,
+        "protect_first_n": 3,
+        "abort_on_summary_failure": false,
+        "codex_gpt55_autoraise": true,
+        "codex_responses_native": false,
+        "progress_notices": true
+      },
+      "fallback_providers": [
+        {
+          "provider": "openai-codex",
+          "model": "gpt-6-sol"
+        }
+      ]
     },
     "implementor": {
-      "model": "claude-opus-5-5", "provider": "anthropic", "reasoning_effort": "medium",
+      "model": "claude-opus-5-5",
+      "provider": "anthropic",
+      "reasoning_effort": "medium",
       "role": "Implement one approved lane in an isolated branch/worktree; commit only that branch; request native spec review",
-      "skills": ["approval-gated-kanban-development"]
+      "skills": [
+        "approval-gated-kanban-development"
+      ],
+      "model_config_explicit": {
+        "default": "claude-opus-5-5",
+        "provider": "anthropic",
+        "context_length": 900000
+      },
+      "compression_config_explicit": {
+        "enabled": true,
+        "threshold": 0.65,
+        "threshold_tokens": 372000,
+        "target_ratio": 0.2,
+        "protect_last_n": 20,
+        "hygiene_hard_message_limit": 5000,
+        "protect_first_n": 3,
+        "abort_on_summary_failure": false,
+        "codex_gpt55_autoraise": true,
+        "codex_responses_native": false,
+        "progress_notices": true
+      },
+      "fallback_providers": [
+        {
+          "provider": "openai-codex",
+          "model": "gpt-6-sol"
+        }
+      ]
     },
     "spec-reviewer": {
-      "model": "gpt-6-sol", "provider": "openai-codex", "reasoning_effort": "xhigh",
+      "model": "gpt-6-sol",
+      "provider": "openai-codex",
+      "reasoning_effort": "xhigh",
       "role": "Native same-card read-only spec and project-invariant review; approve or request changes; do not modify code",
-      "skills": ["approval-gated-kanban-development", "sdlc-review"]
+      "skills": [
+        "approval-gated-kanban-development",
+        "sdlc-review"
+      ],
+      "model_config_explicit": {
+        "default": "gpt-6-sol",
+        "provider": "openai-codex",
+        "context_length": 900000
+      },
+      "compression_config_explicit": {
+        "enabled": true,
+        "threshold": 0.65,
+        "threshold_tokens": 372000,
+        "target_ratio": 0.2,
+        "protect_last_n": 20,
+        "hygiene_hard_message_limit": 5000,
+        "protect_first_n": 3,
+        "abort_on_summary_failure": false,
+        "codex_gpt55_autoraise": true,
+        "codex_responses_native": false,
+        "progress_notices": true
+      },
+      "fallback_providers": [
+        {
+          "provider": "anthropic",
+          "model": "claude-opus-5-5"
+        }
+      ]
     },
     "quality-security-reviewer": {
-      "model": "gpt-6-sol", "provider": "openai-codex", "reasoning_effort": "xhigh",
+      "model": "gpt-6-sol",
+      "provider": "openai-codex",
+      "reasoning_effort": "xhigh",
       "role": "Independent downstream correctness/security review; do not modify code or release a failed gate",
-      "skills": ["approval-gated-kanban-development"]
+      "skills": [
+        "approval-gated-kanban-development"
+      ],
+      "model_config_explicit": {
+        "default": "gpt-6-sol",
+        "provider": "openai-codex",
+        "context_length": 900000
+      },
+      "compression_config_explicit": {
+        "enabled": true,
+        "threshold": 0.65,
+        "threshold_tokens": 372000,
+        "target_ratio": 0.2,
+        "protect_last_n": 20,
+        "hygiene_hard_message_limit": 5000,
+        "protect_first_n": 3,
+        "abort_on_summary_failure": false,
+        "codex_gpt55_autoraise": true,
+        "codex_responses_native": false,
+        "progress_notices": true
+      },
+      "fallback_providers": [
+        {
+          "provider": "anthropic",
+          "model": "claude-opus-5-5"
+        }
+      ]
     },
     "integrator": {
-      "model": "claude-opus-5-5", "provider": "anthropic", "reasoning_effort": "high",
+      "model": "claude-opus-5-5",
+      "provider": "anthropic",
+      "reasoning_effort": "high",
       "role": "Prepare prospective integration candidate, then promote only E2E-proven SHA to dev; never main",
-      "skills": ["approval-gated-kanban-development"]
+      "skills": [
+        "approval-gated-kanban-development"
+      ],
+      "model_config_explicit": {
+        "default": "claude-opus-5-5",
+        "provider": "anthropic",
+        "context_length": 900000
+      },
+      "compression_config_explicit": {
+        "enabled": true,
+        "threshold": 0.65,
+        "threshold_tokens": 372000,
+        "target_ratio": 0.2,
+        "protect_last_n": 20,
+        "hygiene_hard_message_limit": 5000,
+        "protect_first_n": 3,
+        "abort_on_summary_failure": false,
+        "codex_gpt55_autoraise": true,
+        "codex_responses_native": false,
+        "progress_notices": true
+      },
+      "fallback_providers": [
+        {
+          "provider": "openai-codex",
+          "model": "gpt-6-sol"
+        }
+      ]
     },
     "e2e-tester": {
-      "model": "gpt-6-sol", "provider": "openai-codex", "reasoning_effort": "xhigh",
+      "model": "gpt-6-sol",
+      "provider": "openai-codex",
+      "reasoning_effort": "xhigh",
       "role": "Run exact-candidate E2E and record evidence/cleanup; do not fix code or promote branches",
-      "skills": ["approval-gated-kanban-development"]
+      "skills": [
+        "approval-gated-kanban-development"
+      ],
+      "model_config_explicit": {
+        "default": "gpt-6-sol",
+        "provider": "openai-codex",
+        "context_length": 900000
+      },
+      "compression_config_explicit": {
+        "enabled": true,
+        "threshold": 0.65,
+        "threshold_tokens": 372000,
+        "target_ratio": 0.2,
+        "protect_last_n": 20,
+        "hygiene_hard_message_limit": 5000,
+        "protect_first_n": 3,
+        "abort_on_summary_failure": false,
+        "codex_gpt55_autoraise": true,
+        "codex_responses_native": false,
+        "progress_notices": true
+      },
+      "fallback_providers": [
+        {
+          "provider": "anthropic",
+          "model": "claude-opus-5-5"
+        }
+      ]
     }
+  },
+  "default_profile_observed": {
+    "reasoning_effort": "high",
+    "model_config_explicit": {
+      "default": "gpt-6-sol",
+      "provider": "openai-codex",
+      "context_length": 900000,
+      "base_url": "https://chatgpt.com/backend-api/codex",
+      "api_mode": "codex_responses"
+    },
+    "compression_config_explicit": {
+      "enabled": true,
+      "threshold": 0.65,
+      "threshold_tokens": 372000,
+      "target_ratio": 0.2,
+      "protect_last_n": 20,
+      "hygiene_hard_message_limit": 5000,
+      "protect_first_n": 3,
+      "abort_on_summary_failure": false,
+      "codex_gpt55_autoraise": true,
+      "codex_responses_native": false,
+      "progress_notices": true
+    },
+    "fallback_providers": []
+  },
+  "global_settings_explicit": {
+    "kanban.dispatch_in_gateway": true,
+    "gateway.multiplex_profiles": true,
+    "kanban.auto_decompose": false,
+    "kanban.orchestrator_profile": ""
   }
 }

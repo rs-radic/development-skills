@@ -33,7 +33,7 @@ Hermes injects `KANBAN_GUIDANCE` into dispatcher-owned workers when `kanban_show
 
 No standing release card or worker writes `main`. Require a fresh, authenticated owner instruction naming the intended release state; recheck remote refs and evidence at release time. Project-specific venue and approval scope may be narrower than this generic rule.
 
-Before real code: verify each profile's canonical provider/model and effective reasoning, force-loaded skill versions, planning/reviewer no-op handoff, complete no-op DAG/notifications/gates, safe worktree base, no implicit fallback to the main-chat profile, and no path to `main`. Never describe a dry-run as real application E2E.
+Before real code: verify each profile's canonical primary and ordered fallback provider/model routes, effective reasoning, explicit primary `model.context_length`, compression ratio/cap (including omitted keys), effective context and compaction after a fallback, force-loaded skill versions, planning/reviewer no-op handoff, complete no-op DAG/notifications/gates, safe worktree base, no implicit fallback to the main-chat profile, and no path to `main`. Preserve these non-secret settings in a reusable profile snapshot; omit credentials and project-specific skill contents, not context defaults or fallback models. Never describe a dry-run as real application E2E.
 
 ## Do not
 

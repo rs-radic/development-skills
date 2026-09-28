@@ -8,6 +8,7 @@
 **Approval provenance:** `<verified owner identity, source chat/message ID, date, venue rule, settled decisions>`
 **Scope/exclusions:** `<exact approved work; no invented endpoints>`
 **Forced skills:** `approval-gated-kanban-development`, `<project-invariant-skill>`
+**Model/context/fallbacks:** inherit the `orchestrator` profile's primary route, explicit context/compression settings, and ordered `fallback_providers` from [`../profiles.json`](../profiles.json). For child cards, use **each child's own assignee profile**; never copy the orchestrator's context window or fallback route into all children.
 
 This card may be created **only after** the exact currently reviewed plan has separate owner approval and no matching graph already exists. Verify the board/repo/profile roster and fresh `origin/dev` before creating dependent cards. Orchestrate; do not implement or reinterpret product behavior.
 
