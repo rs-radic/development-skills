@@ -2,6 +2,10 @@
 
 **Hermes Agent only.** This is not a generic Kanban board, an OpenClaw template, or an installable profile distribution. It documents a reusable setup for Hermes profiles, Kanban boards, native same-card reviews, forced skills, and a human-controlled release gate. The files in this folder are templates and a verified configuration snapshot; they do not modify a running Hermes installation.
 
+![Hermes approval-gated Kanban flow: planning and human approval, orchestrated implementation with independent review and testing, guarded dev promotion, and separate release authority](assets/hermes-approval-gated-kanban-flow.png)
+
+[Open the full-size flow diagram](assets/hermes-approval-gated-kanban-flow.png). The diagram illustrates the workflow and observed settings; the steps and configuration snapshot below provide the detailed contract. In particular, plan approval and `dev` promotion do not authorize a `main` release.
+
 ## Components and authority
 
 - A **board** isolates project cards, dependencies, evidence, and workspaces. A profile is a reusable role across boards; a project-specific skill supplies only that project's approved invariants. A chat subscription delivers status but does not approve work.
@@ -12,6 +16,7 @@
 
 ## Files
 
+- [`assets/hermes-approval-gated-kanban-flow.png`](assets/hermes-approval-gated-kanban-flow.png): visual overview of the planning, approval, execution, review, and release gates.
 - [`profiles.json`](profiles.json): live-observed role/model/provider/reasoning, **explicit context/compression settings**, ordered fallback providers, and minimum reusable skills. It includes the default/main profile for comparison; installing a skill does not automatically force it onto every card.
 - [`skill-routing.md`](skill-routing.md): explicit role-and-stage map of Hermes runtime guidance, native-review skill loading, reusable workflow skills, optional helper skills, and project-specific invariant skills.
 - [`skills/approval-gated-kanban-development/SKILL.md`](skills/approval-gated-kanban-development/SKILL.md): concise generic delivery procedure.

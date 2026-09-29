@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import zlib
 from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
 
@@ -15,7 +16,7 @@ EXPECTED = {
 GENERIC_SKILLS = {"approval-gated-kanban-development", "plan-review-gate"}
 BUNDLED_SKILLS = {"sdlc-review"}
 REQUIRED = {
-    "README.md", "skill-routing.md", "profiles.json", "templates/planner-card.md",
+    "README.md", "assets/hermes-approval-gated-kanban-flow.png", "skill-routing.md", "profiles.json", "templates/planner-card.md",
     "templates/orchestrator-card.md", "examples/partner-network-api/README.md",
     "skills/approval-gated-kanban-development/SKILL.md",
     "skills/plan-review-gate/SKILL.md", "scripts/validate.py",
@@ -34,9 +35,48 @@ def require(condition: bool, message: object) -> None:
         raise ValueError(message)
 
 
+def check_flow_png(payload: bytes) -> None:
+    """Decode the supplied, metadata-free 8-bit RGB PNG using only the standard library."""
+    require(payload.startswith(b"\x89PNG\r\n\x1a\n"), "invalid flow PNG signature")
+    chunks: list[tuple[bytes, bytes]] = []
+    offset = 8
+    while offset < len(payload):
+        require(offset + 12 <= len(payload), "truncated flow PNG chunk")
+        length = int.from_bytes(payload[offset:offset + 4], "big")
+        end = offset + 12 + length
+        require(end <= len(payload), "truncated flow PNG data")
+        kind = payload[offset + 4:offset + 8]
+        data = payload[offset + 8:offset + 8 + length]
+        checksum = int.from_bytes(payload[end - 4:end], "big")
+        require(zlib.crc32(kind + data) == checksum, "flow PNG chunk CRC mismatch")
+        chunks.append((kind, data))
+        offset = end
+    kinds = [kind for kind, _ in chunks]
+    require(len(kinds) >= 3 and kinds[0] == b"IHDR" and kinds[-1] == b"IEND"
+            and all(kind == b"IDAT" for kind in kinds[1:-1]), "unexpected flow PNG chunks")
+    require(chunks[0][1] == b"\x00\x00\x06\x00\x00\x00\x04\x00\x08\x02\x00\x00\x00"
+            and chunks[-1][1] == b"", "unexpected flow PNG format")
+    decoder = zlib.decompressobj()
+    row_size = 1 + 1536 * 3
+    expected_size = 1024 * row_size
+    try:
+        pixels = decoder.decompress(b"".join(data for _, data in chunks[1:-1]), expected_size + 1)
+    except zlib.error:
+        raise ValueError("flow PNG image data invalid") from None
+    require(decoder.eof and not decoder.unused_data and not decoder.unconsumed_tail
+            and len(pixels) == expected_size, "flow PNG image data invalid")
+    require(all(pixels[row * row_size] in range(5) for row in range(1024)),
+            "flow PNG scanline filter invalid")
+
+
 def check() -> None:
     actual = {p.relative_to(ROOT).as_posix() for p in ROOT.rglob("*") if p.is_file()}
     require(actual == REQUIRED, ("unexpected or missing files", sorted(actual ^ REQUIRED)))
+    image_path = "assets/hermes-approval-gated-kanban-flow.png"
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    embedded = re.search(r"!\[([^\]\n]+)\]\(assets/hermes-approval-gated-kanban-flow\.png\)", readme)
+    require(embedded is not None and bool(embedded.group(1).strip()), "flow image and alt text missing from README")
+    check_flow_png((ROOT / image_path).read_bytes())
     data = json.loads((ROOT / "profiles.json").read_text(encoding="utf-8"))
     require(data["schema_version"] == 2, "schema version")
     require(data["system"] == "Hermes Agent", "wrong system")
