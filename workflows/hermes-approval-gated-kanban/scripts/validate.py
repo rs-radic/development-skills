@@ -5,6 +5,7 @@ import json
 import re
 import sys
 import zlib
+from datetime import date
 from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
 
@@ -81,6 +82,23 @@ def check() -> None:
     require(data["schema_version"] == 2, "schema version")
     require(data["system"] == "Hermes Agent", "wrong system")
     require(set(data["profiles"]) == EXPECTED, "unexpected profiles")
+    delegation = data["delegation_snapshot"]
+    require(isinstance(delegation, dict) and set(delegation) == {"observed_at_utc", "scope", "profiles"}, "delegation snapshot shape")
+    require(isinstance(delegation["observed_at_utc"], str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", delegation["observed_at_utc"]), "delegation observation date")
+    date.fromisoformat(delegation["observed_at_utc"])
+    require(isinstance(delegation["scope"], str) and bool(delegation["scope"].strip()), "delegation scope")
+    require(isinstance(delegation["profiles"], dict) and set(delegation["profiles"]) == EXPECTED | {"default"}, "delegation profile roster")
+    limit_keys = {"oneshot_max_children", "max_concurrent_children", "max_spawn_depth"}
+    for label, row in delegation["profiles"].items():
+        require(isinstance(row, dict) and set(row) == {"config_explicit", "limits_effective"}, ("delegation row shape", label))
+        configured = row["config_explicit"]
+        effective = row["limits_effective"]
+        require(isinstance(configured, dict) and set(configured) <= limit_keys | {"max_iterations"}, ("unsafe delegation config", label))
+        require(isinstance(effective, dict) and set(effective) == limit_keys, ("delegation effective limits", label))
+        for values in (configured, effective):
+            require(all(type(value) is int and value >= (0 if key == "oneshot_max_children" else 1)
+                        for key, value in values.items()), ("invalid delegation limit", label))
+        require(all(configured[key] == effective[key] for key in limit_keys & configured.keys()), ("delegation explicit/effective mismatch", label))
     settings = data["global_settings_observed"]
     explicit = data["global_settings_explicit"]
     require(isinstance(explicit, dict) and all(k in settings and settings[k] == v for k, v in explicit.items()), "global explicit/effective mismatch")

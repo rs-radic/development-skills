@@ -1,7 +1,7 @@
 ---
 name: approval-gated-kanban-development
 description: Use when running approval-gated Hermes Kanban work.
-version: 1.0.0
+version: 1.1.0
 author: rs-radic
 platforms: [linux, macos, windows]
 environments: [kanban]
@@ -34,6 +34,12 @@ Hermes injects `KANBAN_GUIDANCE` into dispatcher-owned workers when `kanban_show
 No standing release card or worker writes `main`. Require a fresh, authenticated owner instruction naming the intended release state; recheck remote refs and evidence at release time. Project-specific venue and approval scope may be narrower than this generic rule.
 
 Before real code: verify each profile's canonical primary and ordered fallback provider/model routes, effective reasoning, explicit primary `model.context_length`, compression ratio/cap (including omitted keys), effective context and compaction after a fallback, force-loaded skill versions, planning/reviewer no-op handoff, complete no-op DAG/notifications/gates, safe worktree base, no implicit fallback to the main-chat profile, and no path to `main`. Preserve these non-secret settings in a reusable profile snapshot; omit credentials and project-specific skill contents, not context defaults or fallback models. Never describe a dry-run as real application E2E.
+
+## Shared-profile maintenance and helper budgets
+
+Before dispatch, compare canonical workflow skill bytes and required references across affected profiles, including native reviewers. Follow the bounded [shared-skill repair procedure](../../skill-routing.md#maintain-shared-workflow-skills): use separate standing maintenance authority, explicit file/profile allowlists, private backups, and installed-loader verification; preserve unknown local edits and running workers. Repair known drift on encounter without creating scheduler infrastructure or an all-project-idle gate. Stored-file propagation does not rewrite an already-loaded conversation or grant new product/release authority. Continue only the existing graph and independently verify any resumed claim.
+
+Read the dated `delegation_snapshot` in `profiles.json` independently of model/context settings. `oneshot_max_children` is each parent agent's cumulative direct-child budget in a one-shot run; completed children do not replenish it. In the observed build, `max_concurrent_children` limits tasks and parallelism per delegation call and is also reused for background call/batch-slot admission across the process, not a hard aggregate per-parent or whole-tree child ceiling. Multiple admitted background batches can collectively exceed that child count, although a worker's separate finite one-shot budget still applies. `max_spawn_depth` controls permitted nesting; nested parents have separate cumulative counters and may increase aggregate descendant counts. These profile-scoped helper limits do not replace Kanban card-concurrency caps, dependencies, independent reviews, or approval gates. A shared-profile change affects other boards; fresh resolver evidence does not prove adoption by an existing worker.
 
 ## Do not
 

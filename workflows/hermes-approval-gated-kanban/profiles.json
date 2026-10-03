@@ -3,6 +3,119 @@
   "system": "Hermes Agent",
   "observed_at_utc": "2026-09-28",
   "purpose": "Verified Hermes role/model, explicit context/compression settings, and ordered fallback routes; recheck before reuse",
+  "delegation_snapshot": {
+    "observed_at_utc": "2026-10-03",
+    "scope": "Delegation helper limits; independent of Kanban card dispatch and the earlier model/context snapshot",
+    "profiles": {
+      "default": {
+        "config_explicit": {
+          "max_iterations": 500,
+          "max_concurrent_children": 10,
+          "max_spawn_depth": 2
+        },
+        "limits_effective": {
+          "oneshot_max_children": 2,
+          "max_concurrent_children": 10,
+          "max_spawn_depth": 2
+        }
+      },
+      "planner": {
+        "config_explicit": {
+          "max_iterations": 500,
+          "max_concurrent_children": 10,
+          "max_spawn_depth": 2
+        },
+        "limits_effective": {
+          "oneshot_max_children": 2,
+          "max_concurrent_children": 10,
+          "max_spawn_depth": 2
+        }
+      },
+      "plan-reviewer": {
+        "config_explicit": {},
+        "limits_effective": {
+          "oneshot_max_children": 2,
+          "max_concurrent_children": 10,
+          "max_spawn_depth": 1
+        }
+      },
+      "orchestrator": {
+        "config_explicit": {
+          "max_iterations": 500,
+          "max_concurrent_children": 10,
+          "max_spawn_depth": 2
+        },
+        "limits_effective": {
+          "oneshot_max_children": 2,
+          "max_concurrent_children": 10,
+          "max_spawn_depth": 2
+        }
+      },
+      "implementor": {
+        "config_explicit": {
+          "max_iterations": 500,
+          "max_concurrent_children": 20,
+          "max_spawn_depth": 2,
+          "oneshot_max_children": 10
+        },
+        "limits_effective": {
+          "oneshot_max_children": 10,
+          "max_concurrent_children": 20,
+          "max_spawn_depth": 2
+        }
+      },
+      "spec-reviewer": {
+        "config_explicit": {
+          "max_iterations": 500,
+          "max_concurrent_children": 20,
+          "max_spawn_depth": 2,
+          "oneshot_max_children": 10
+        },
+        "limits_effective": {
+          "oneshot_max_children": 10,
+          "max_concurrent_children": 20,
+          "max_spawn_depth": 2
+        }
+      },
+      "quality-security-reviewer": {
+        "config_explicit": {
+          "max_iterations": 500,
+          "max_concurrent_children": 20,
+          "max_spawn_depth": 2,
+          "oneshot_max_children": 10
+        },
+        "limits_effective": {
+          "oneshot_max_children": 10,
+          "max_concurrent_children": 20,
+          "max_spawn_depth": 2
+        }
+      },
+      "integrator": {
+        "config_explicit": {
+          "max_iterations": 500,
+          "max_concurrent_children": 10,
+          "max_spawn_depth": 2
+        },
+        "limits_effective": {
+          "oneshot_max_children": 2,
+          "max_concurrent_children": 10,
+          "max_spawn_depth": 2
+        }
+      },
+      "e2e-tester": {
+        "config_explicit": {
+          "max_iterations": 500,
+          "max_concurrent_children": 10,
+          "max_spawn_depth": 2
+        },
+        "limits_effective": {
+          "oneshot_max_children": 2,
+          "max_concurrent_children": 10,
+          "max_spawn_depth": 2
+        }
+      }
+    }
+  },
   "global_settings_observed": {
     "kanban.dispatch_in_gateway": true,
     "kanban.review_dispatch": true,
