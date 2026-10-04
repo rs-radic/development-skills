@@ -14,6 +14,14 @@
 - **Delivery:** only after approval, `orchestrator` creates and verifies an idempotent card graph. For each lane: implementation + native same-card `spec-reviewer` handoff → separate quality/security review → prospective integration candidate → E2E of the **exact candidate SHA** → verified `dev` promotion → separate guarded local worktree cleanup. Remediation returns to the original implementor and invalidated gates rerun; neither failed E2E nor reviewer-requested changes advances `dev`.
 - **Release:** never make automatic cards that write `main`. A fresh, verified owner instruction is required for a release; `dev` promotion, board completion, and planning approval are not that instruction.
 
+## Planning and plan-review instructions
+
+The planner and plan-reviewer profile instructions were updated on **October 4, 2026** to favor the simplest correct implementation and minimum sufficient testing. The [complete planning and review policy](skills/plan-review-gate/SKILL.md#simplicity-and-sufficient-testing) records those additions: reuse existing code and test infrastructure, avoid speculative machinery and excessive decomposition, and request changes only for material defects, missing required coverage, or clearly avoidable complexity—not architectural preference. A correct, sufficiently tested, proportionate plan receives PASS without added recommendations.
+
+Generic templates do not justify extra granularity or duplicate coverage by themselves. Explicit owner decisions, project requirements, existing tests, security controls, and mandatory independent-review and real E2E gates remain binding. PASS still means ready for separate owner approval, never implementation or release authority.
+
+To reproduce the profile-level instructions, compare the existing `SOUL.md` in each independent profile, then—only with authority to change that profile—add the corresponding planner or plan-reviewer policy plus the shared template-precedence rule. Preserve its other instructions and role boundaries; do not replace a full profile or assume updating the default skill updates either worker. The policy is also included in the public `plan-review-gate` skill for force-loaded planning cards. Publishing this folder does not edit live profiles, reload running workers, or retrofit existing cards.
+
 ## Files
 
 - [`assets/hermes-approval-gated-kanban-flow.png`](assets/hermes-approval-gated-kanban-flow.png): visual overview of the planning, approval, execution, review, and release gates.

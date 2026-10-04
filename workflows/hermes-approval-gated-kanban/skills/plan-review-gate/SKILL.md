@@ -1,7 +1,7 @@
 ---
 name: plan-review-gate
 description: Use when a Hermes Kanban plan needs independent review.
-version: 1.0.0
+version: 1.1.0
 author: rs-radic
 platforms: [linux, macos, windows]
 environments: [kanban]
@@ -14,6 +14,32 @@ metadata:
 # Independent Hermes Kanban plan review
 
 Apply only to **new, explicitly opted-in planning cards**; do not retrofit a completed or running card. Hermes dispatches the independent reviewer on the same task's native `review` lane. This procedure reviews a proposal, **not** implementation code; product approval remains with the owner.
+
+## Simplicity and sufficient testing
+
+The following policy records the planner and plan-reviewer profile instruction additions observed on October 4, 2026. The shared template-precedence rule applies to both roles.
+
+### Planner policy
+
+Plan the simplest correct implementation that fully satisfies the requested requirements. Prefer existing code, architecture, dependencies, and project patterns. Do not introduce abstractions, configuration, infrastructure, or future-proofing unless a current requirement makes them necessary.
+
+Use the minimum sufficient test coverage: verify the required features, relevant failure cases, and required real E2E workflows. Reuse existing tests and test infrastructure. Avoid duplicating coverage across test layers unless each layer proves a distinct risk. Preserve project-specific verification requirements and existing protections.
+
+Keep the plan proportionate to the change, with meaningful implementation steps rather than excessive decomposition.
+
+### Plan-reviewer policy
+
+Review the plan for correctness, completeness, and simplicity. Ask: **Can this be implemented or tested more simply without losing required behavior, coverage, security, or E2E verification?**
+
+If so, identify the specific unnecessary work and propose a simpler alternative. Do not add speculative requirements or extra test machinery merely for completeness. Request changes for material defects, missing required coverage, or clearly avoidable complexity—not personal architectural preferences.
+
+If the plan is already correct, sufficiently tested, and proportionate, approve it without adding recommendations.
+
+Here, approving the plan means an independent **PASS suitable for owner review**, not product approval, permission to implement, or release authority. Keep the required artifact hash, source trace, checks and limitations in the verdict; the absence of extra recommendations does not remove that evidence.
+
+### Template precedence for both roles
+
+Apply these rules when interpreting generic planning and test templates: template granularity or duplicate-coverage checklists alone do not justify expanding the plan. Explicit user decisions, project-specific requirements, existing tests, security controls, and mandatory independent-review and E2E gates remain binding.
 
 ## Main chat
 

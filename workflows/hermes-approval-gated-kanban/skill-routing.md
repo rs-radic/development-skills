@@ -23,6 +23,8 @@ Hermes removed the bundled `kanban-worker` and `kanban-orchestrator` skills in f
 - **Integrator (`integrator`, candidate/promotion/cleanup cards):** force the workflow and relevant project skill. Use a Git/GitHub or conflict-resolution skill only when that operation actually occurs. Prepare a prospective candidate first; promote only the E2E-proven SHA to `dev`; local cleanup is a separate guarded card. No automatic `main` permission.
 - **E2E tester (`e2e-tester`, exact candidate card):** force the workflow and applicable project skill; load `rest-graphql-debug` only for REST/GraphQL diagnostics, or a UI visual-QA skill only for UI evidence. These domain skills are optional tools, not a substitute for real exact-candidate E2E or an approval gate.
 
+For `planner` and `plan-reviewer`, the [simplicity and sufficient-testing policy](skills/plan-review-gate/SKILL.md#simplicity-and-sufficient-testing) also belongs in their corresponding profile instructions. Use its role-specific section and shared template-precedence rule when setting up an authorized new profile; compare before editing an existing `SOUL.md`. The force-loaded skill carries the same policy through planning and native plan review. It does not waive required verification or the separate owner-approval gate.
+
 ## Example card skill routing
 
 ```text
