@@ -1,7 +1,7 @@
 ---
 name: plan-review-gate
 description: Use when a Hermes Kanban plan needs independent review.
-version: 1.1.0
+version: 1.2.0
 author: rs-radic
 platforms: [linux, macos, windows]
 environments: [kanban]
@@ -40,6 +40,16 @@ Here, approving the plan means an independent **PASS suitable for owner review**
 ### Template precedence for both roles
 
 Apply these rules when interpreting generic planning and test templates: template granularity or duplicate-coverage checklists alone do not justify expanding the plan. Explicit user decisions, project-specific requirements, existing tests, security controls, and mandatory independent-review and E2E gates remain binding.
+
+## Practical slices and independent scheduling review
+
+The [current role instructions](../../role-instructions.md) extend the October 4 simplicity policy with practical workloads, faster completion, and mandatory final cleanup. Plan the complete requested scope as cohesive code-plus-focused-verification slices, not one catch-all assignment or fragments per file/method. Each slice identifies exclusions, prerequisite inputs, shared-change ownership, verification, and completed-result handoff; account for investigation and test effort rather than arbitrary quotas. Establish shared prerequisites once, actively identify safe concurrent work, and justify material serial dependencies with concrete ownership or input constraints.
+
+Optimize end-to-end tested delivery—including setup, coordination, reviews, integration and likely rework—not the fewest cards or most workers. Stable code/schema/fixture/output/shared-state ownership is necessary for concurrency. Modest scope-preserving coordination may save time; avoid major architecture or test machinery just to enable parallelism. A common final integration/E2E/promotion/cleanup gate is not a reason to serialize independent coding. Reuse shared setup and acceptance gates where approved, without dropping mandatory verification or creating a complete duplicate pipeline per small slice.
+
+The independent plan reviewer checks workload and scheduling as well as correctness and simplicity. Challenge oversized cards, substantial work hidden in internal phases, excessive fragments, missing ownership, unassigned behavior/verification, unsafe concurrency, and unjustified serial bottlenecks. Propose specific minimal packaging corrections, not scope reduction, weaker tests, invented architecture, or another acceptance pipeline. PASS requires a complete, proportionate, executable plan and remains suitable for owner review only.
+
+Every proposed delivery group names its separate final cleanup gate, exact retired paths/refs, evidence placement outside disposable worktrees, and cleanup ownership. Check that active consumers and unique/unpublished work stay protected. Intermediate retention may be necessary; **final retention is not cleanup completion**. Genuine obstacles must keep the same cleanup gate unfinished until verified removal. The planning reviewer checks this contract without deleting assets or rewriting an existing graph.
 
 ## Main chat
 

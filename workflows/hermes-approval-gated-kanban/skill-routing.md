@@ -25,6 +25,8 @@ Hermes removed the bundled `kanban-worker` and `kanban-orchestrator` skills in f
 
 For `planner` and `plan-reviewer`, the [simplicity and sufficient-testing policy](skills/plan-review-gate/SKILL.md#simplicity-and-sufficient-testing) also belongs in their corresponding profile instructions. Use its role-specific section and shared template-precedence rule when setting up an authorized new profile; compare before editing an existing `SOUL.md`. The force-loaded skill carries the same policy through planning and native plan review. It does not waive required verification or the separate owner-approval gate.
 
+The [all-eight-role instruction snapshot](role-instructions.md) also records current workload/scheduling and implementor policies. Planner proposes practical slices and safe parallelism; plan reviewer independently checks that breakdown; orchestrator preserves the reviewed boundaries and releases ready independent work without invented serialization. Implementor makes the smallest adequate in-scope change and review fix, retaining required tests and real verification. The common mandatory final-cleanup policy applies to **all eight profiles**, including `spec-reviewer`, `quality-security-reviewer`, `integrator` and `e2e-tester`; it does not give every role deletion authority. Specify/check a separate final gate from the outset, preserve assets needed by actual intermediate consumers, and keep that same final gate unfinished on genuine obstacles until exact path/registration/ref absence is independently verified. Safely retained assets are not final cleanup completion.
+
 ## Example card skill routing
 
 ```text
