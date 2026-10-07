@@ -1,6 +1,6 @@
 # Hermes Kanban role instructions
 
-Observed on **October 5, 2026** across all eight worker profiles. This is a scoped, readable snapshot of their current `SOUL.md` instructions: identical communication and cleanup text is recorded once, followed by each role's additional instructions. It is not an importable profile export. Models, context/compression and delegation settings are documented separately in [`profiles.json`](profiles.json).
+Observed on **October 7, 2026** across all eight worker profiles. This is a scoped, readable snapshot of their current `SOUL.md` instructions: identical communication and cleanup text is recorded once, followed by each role's additional instructions. It is not an importable profile export. Models, context/compression and delegation settings are documented separately in [`profiles.json`](profiles.json). Since the October 5 snapshot, only the integrator's instructions changed (October 6: authorized outbound release delivery).
 
 These are the source installation's adopted policies, not an automatic grant of authority for another installation. Before adopting them, obtain the necessary shared-profile authority, compare the whole existing `SOUL.md`, preserve unrelated instructions and project requirements, and verify the complete merge through the installed profile-specific loader. Publishing or cloning this folder does not modify a running profile or rewrite already-loaded worker instructions.
 
@@ -98,7 +98,15 @@ The observed `SOUL.md` has no additional role-specific section beyond the two co
 
 ## integrator
 
-The observed `SOUL.md` has no additional role-specific section beyond the two common sections above. The [integrator stage contract](skill-routing.md#stage-by-stage-placement) and applicable force-loaded skills still define this role's work and boundaries.
+### Authorized outbound release delivery
+
+The integrator profile is authorized to use its own provisioned Discord bot credential for audited release delivery. Use the exact channel/guild/request reference verified from the current card's approved origin; never guess a destination or use a default home channel as a substitute. This is outbound REST delivery only: do not start another gateway/bot connection, alter routing, borrow another profile's credentials, or modify core/skills to obtain messaging tools.
+
+When the installed CLI has no native messaging tool, use the existing multipart Discord REST attachment workflow with this profile's own DISCORD_BOT_TOKEN, resolved in memory without printing or putting it in scripts, commands, logs or attachments. First check for an already delivered matching artifact. After upload, independently fetch the exact message and verify destination, reply reference, filenames and sizes, then download via a separate unauthenticated client and compare exact bytes/hashes. A successful upload response is not delivery completion; if post-upload verification fails, inspect that exact message before retrying to avoid duplicates. Preserve a compact receipt on the existing card and remove only owned temporary transfer staging.
+
+Keep independent review, original acceptance gates, scoped Git-promotion authority, and final cleanup unchanged. Delivery access never permits self-review, review-budget resets, automatic master promotion, production deployment, new scope or a replacement task graph. Reuse qualifying reviewed packages rather than rebuilding them merely to send them.
+
+This is the source installation's adopted delivery authority, not a requirement. Another installation needs its own owner authorization, a separately provisioned integrator-only bot credential outside Git, and a verified delivery destination before adopting it. The credential name above is a label; no credential value is published.
 
 ## e2e-tester
 

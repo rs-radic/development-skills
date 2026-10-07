@@ -5,13 +5,15 @@
 **Delivery-group base:** verified `origin/dev` SHA `<sha>`
 **Dependent slice inputs:** `<approved clean committed predecessor SHA and verified handoff receipt, where applicable>`
 **Approved planning card:** `<id>`, status `done`, reviewer PASS
-**Approved artifact:** `<stored attachment path, revision chain, SHA-256 for each effective file>`
+**Approved artifact:** `<stored attachment path on THIS card, byte size, revision chain, SHA-256 for each effective file>`
 **Approval provenance:** `<verified owner identity, source chat/message ID, date, venue rule, settled decisions>`
 **Scope/exclusions:** `<exact approved work; no invented endpoints>`
 **Forced skills:** `approval-gated-kanban-development`, `<project-invariant-skill>`
 **Model/context/fallbacks:** inherit the `orchestrator` profile's primary route, explicit context/compression settings, and ordered `fallback_providers` from [`../profiles.json`](../profiles.json). For child cards, use **each child's own assignee profile**; never copy the orchestrator's context window or fallback route into all children.
 
 This card may be created **only after** the exact currently reviewed plan has separate owner approval and no matching graph already exists. Verify the board/repo/profile roster and fresh `origin/dev` before creating dependent cards. Orchestrate; do not implement or reinterpret product behavior.
+
+**Governing inputs by reference:** keep the approved plan, approval note and other governing inputs attached to **this** orchestrator card only. Each child body lists their exact paths on this card, byte sizes and SHA-256 values and instructs the child to read and verify them before any effect, blocking its own card on mismatch or absence. Do not require per-child attachment copies—workers cannot attach to other cards. Complete after the graph, edges, input references and subscriptions read back.
 
 Preserve the reviewed, approved cohesive slice boundaries. One complete delivery is not a reason for a catch-all implementor assignment; internal phases do not fix an impractical workload. Check each slice's scope/exclusions, actual prerequisite inputs, shared-change ownership, focused verification and completed-result handoff before dispatch. Follow the [current orchestrator instructions](../role-instructions.md#orchestrator).
 

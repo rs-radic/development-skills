@@ -94,7 +94,7 @@ def check() -> None:
     require(embedded is not None and bool(embedded.group(1).strip()), "flow image and alt text missing from README")
     check_flow_png((ROOT / image_path).read_bytes())
     data = json.loads((ROOT / "profiles.json").read_text(encoding="utf-8"))
-    require(data["schema_version"] == 3, "schema version")
+    require(data["schema_version"] == 4, "schema version")
     require(data["system"] == "Hermes Agent", "wrong system")
     require(set(data["profiles"]) == EXPECTED, "unexpected profiles")
     instructions = (ROOT / "role-instructions.md").read_text(encoding="utf-8")
@@ -184,22 +184,39 @@ def check() -> None:
         require(set(compression) <= allowed_compression and all(type(v) in (int, float, bool) for v in compression.values()), ("unsafe compression config", label))
         require(isinstance(fallbacks, list), ("fallback routes missing", label))
         for entry in fallbacks:
-            require(isinstance(entry, dict) and set(entry) == {"provider", "model"}, ("unsafe fallback entry", label))
+            require(isinstance(entry, dict) and {"provider", "model"} <= set(entry) <= {"provider", "model", "api_mode", "base_url"},
+                    ("unsafe fallback entry", label))
             require(all(isinstance(v, str) and v.strip() for v in entry.values()), ("empty fallback", label))
+            if "base_url" in entry:
+                check_public_url(entry["base_url"], label)
+            require(re.fullmatch(r"[a-z][a-z0-9_-]*", entry.get("api_mode", "chat")) is not None, ("invalid fallback api_mode", label))
             require((entry["model"], entry["provider"]) != primary, ("fallback repeats primary", label))
         require(len({(e["provider"], e["model"]) for e in fallbacks}) == len(fallbacks), ("duplicate fallback", label))
     default = data["default_profile_observed"]
     require(default["reasoning_effort"] in {"medium", "high", "xhigh"}, "default reasoning")
     check_runtime("default", default["model_config_explicit"], default["compression_config_explicit"], default["fallback_providers"], primary=(default["model_config_explicit"]["default"], default["model_config_explicit"]["provider"]))
-    require(not default["fallback_providers"], "default fallback unexpectedly configured")
+    efforts = {"none", "minimal", "low", "medium", "high", "xhigh"}
     for label, snapshot in {"default": default, **data["profiles"]}.items():
         context = snapshot["context_config_explicit"]
         require(isinstance(context, dict) and set(context) <= {"engine"}, ("unsafe context config", label))
         require(not context or context["engine"] == "compressor", ("unexpected context engine", label))
         agent = snapshot["agent_config_explicit"]
-        require(isinstance(agent, dict) and set(agent) <= {"reasoning_effort", "max_turns", "max_tokens", "temperature", "top_p"}, ("unsafe agent config", label))
+        require(isinstance(agent, dict) and set(agent) <= {"reasoning_effort", "reasoning_overrides", "service_tier", "max_turns", "max_tokens", "temperature", "top_p"}, ("unsafe agent config", label))
         require(agent.get("reasoning_effort") == snapshot["reasoning_effort"], ("agent reasoning mismatch", label))
-        for key in set(agent) - {"reasoning_effort"}:
+        overrides = agent.get("reasoning_overrides", {})
+        require(isinstance(overrides, dict) and all(isinstance(k, str) and k.strip() and v in efforts for k, v in overrides.items()),
+                ("invalid reasoning overrides", label))
+        require(isinstance(agent.get("service_tier", "normal"), str) and re.fullmatch(r"[a-z][a-z0-9_-]*", agent.get("service_tier", "normal")),
+                ("invalid service tier", label))
+        # Exact-key per-model resolution only; aliases/provider-qualified keys need fresh installed-resolver review.
+        def expected_effort(model: str) -> str:
+            return overrides.get(model, snapshot["reasoning_effort"])
+        require(snapshot["reasoning_effective"] == expected_effort(snapshot["model_config_explicit"]["default"]), ("primary reasoning mismatch", label))
+        fallback_efforts = snapshot["fallback_reasoning_effective"]
+        require(isinstance(fallback_efforts, list) and len(fallback_efforts) == len(snapshot["fallback_providers"])
+                and all(effort == expected_effort(entry["model"]) for effort, entry in zip(fallback_efforts, snapshot["fallback_providers"])),
+                ("fallback reasoning mismatch", label))
+        for key in set(agent) - {"reasoning_effort", "reasoning_overrides", "service_tier"}:
             require(type(agent[key]) in (int, float) and math.isfinite(agent[key]), ("invalid agent number", label))
         runtime = snapshot["compression_runtime_observed"]
         require(isinstance(runtime, dict) and set(runtime) == {"context_length", "threshold", "threshold_tokens"}, ("compression runtime shape", label))
