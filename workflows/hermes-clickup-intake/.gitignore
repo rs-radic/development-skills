@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+tests/.tmp/
+installation.local.json
+prepared/
+*.dpapi
+*.sqlite3
+*.sqlite3-*
+*.log

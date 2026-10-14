@@ -10,4 +10,5 @@ Short index of skills in this repository:
 
 Hermes-specific workflows:
 
+- [ClickUp planning intake for Hermes](workflows/hermes-clickup-intake/README.md) — Windows self-hosted ClickUp-to-Kanban planning, reviewed approvals, guarded promotion, reusable source and offline setup.
 - [Hermes approval-gated Kanban development](workflows/hermes-approval-gated-kanban/README.md) — reusable Hermes profiles, verified model routes, planning/review and delivery gates, templates, and a sanitized project example.

@@ -1,0 +1,31 @@
+{
+  "hermes_home": "C:/Hermes",
+  "hermes_exe": "C:/Hermes/hermes-agent/venv/Scripts/hermes.exe",
+  "python_exe": "C:/Hermes/hermes-agent/venv/Scripts/python.exe",
+  "credential_path": "C:/Hermes/secrets/dedicated-panel-clickup/api-key.dpapi",
+  "discord_guild_id": "222222222222222222",
+  "request_skills": [
+    "plan",
+    "pragmatic-code"
+  ],
+  "config": {
+    "workspace_id": "11111111111",
+    "space_id": "22222222222",
+    "folder_id": "3333333333333333",
+    "list_id": "4444444444444444",
+    "bot_user_id": 900000001,
+    "approvers": {
+      "900000101": "EXAMPLE Approver One - replace all numeric IDs",
+      "900000102": "EXAMPLE Approver Two - replace all numeric IDs",
+      "900000103": "EXAMPLE Approver Three - replace all numeric IDs"
+    },
+    "board": "example-project",
+    "discord_chat": "111111111111111111",
+    "enabled": false,
+    "mode": "shadow",
+    "cutover_ms": null,
+    "notify_mode": "off",
+    "handoff_unblock": false,
+    "auto_gate": false
+  }
+}
