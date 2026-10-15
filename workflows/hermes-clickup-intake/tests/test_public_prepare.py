@@ -200,6 +200,7 @@ class PublicPreparationTest(unittest.TestCase):
         self.assertEqual(set(example), set(self.settings))
         self.assertEqual(example["request_skills"], ["plan", "pragmatic-code"])
         self.assertEqual(example["hermes_home"], "C:/Hermes")
+        self.assertEqual(example["config"]["plain_attr_allowlist"], ["block-id"])
         self.assertEqual({key: example["config"][key] for key in SAFE_FLAGS}, SAFE_FLAGS)
         # Supply only synthetic executable locations; the reserved example IDs still refuse preparation.
         for key in ("hermes_home", "hermes_exe", "python_exe", "credential_path"):
@@ -365,6 +366,7 @@ module["prepare"](settings, pathlib.Path(sys.argv[3]))
         self.assertFalse((self.root / "unwanted-runtime").exists())
 
     def test_prepares_only_offline_payload_with_matching_constants_config_and_manifest(self):
+        self.settings["config"]["plain_attr_allowlist"] = ["block-id"]
         result = self.prepare()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(self.home.exists())

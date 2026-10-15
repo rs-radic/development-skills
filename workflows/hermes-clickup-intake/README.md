@@ -55,6 +55,8 @@ The preflight compares the **whole set**, including types. A mismatch stops task
 
 The enforced task scope is the task's home `list_id`. Workspace, space and folder IDs are recorded configuration, not additional hierarchy authorization checks. Do not expose the poller account to unrelated lists unnecessarily.
 
+**Plain-comment calibration:** the sample configuration now includes `"plain_attr_allowlist": ["block-id"]`. ClickUp was observed attaching this neutral editor key to a newline in an otherwise plain closure/approval. An empty allowlist rejects that representation as unknown. Existing installations using the same shape should add only `block-id` to their private configuration; no parser-code update is needed. Quoted/code-formatted, edited, unauthorized and stale approvals remain rejected. Do not broadly allow arbitrary formatting attributes; see [calibration and regression coverage](docs/protocol.md#plain-comment-calibration).
+
 ## 2. Create private installation settings
 
 From this directory, copy `installation.example.json` **outside the Git checkout**, then edit it. Replace every example ID and path. Never put a token in this file.

@@ -14,6 +14,7 @@
     "folder_id": "3333333333333333",
     "list_id": "4444444444444444",
     "bot_user_id": 900000001,
+    "plain_attr_allowlist": ["block-id"],
     "approvers": {
       "900000101": "EXAMPLE Approver One - replace all numeric IDs",
       "900000102": "EXAMPLE Approver Two - replace all numeric IDs",

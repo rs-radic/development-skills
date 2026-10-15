@@ -4,6 +4,8 @@
 
 This package was extracted from the host-side ClickUp intake at source commit `f24c844cd9833993359b46357affd9fdd7c5b4b0`, not from the managed application's repository. The source deployment used Windows and Hermes commit `1fd18277267152893a8a24792b79213e7ca3f899` (`rc.13-v0.21.7`). Its runtime was already installed before this public extraction.
 
+The follow-up source revision `20dfb78e8c7e7e6d48530f1181f7b6d5778d05e1` adds `tests/test_schema_f1.py` for the observed neutral `block-id` editor attribute. Its deployed correction is configuration-only: `plain_attr_allowlist` contains `block-id`. The public sample now carries that calibration, with sanitized observation provenance and unchanged parser/runtime code. The original publication's 310-test result remains historical; follow-up checks are not presented as a new live ClickUp test.
+
 The public copy preserves the polling, strict parsing, durable generation/approval state, outbox/recovery logic, ticket checks, API safeguards and internal protocol/idempotency names. Public changes are limited to:
 
 - Synthetic values replacing actual people, IDs, machine paths and project identifiers in source defaults and regression fixtures.

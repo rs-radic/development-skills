@@ -77,6 +77,21 @@ Approve plan r1 for development
 
 The parser normalizes whitespace/case and one optional final period, but does not infer approval from “yes,” a quoted line or a stale revision. Unknown rich-text attributes fail closed. `plain_attr_allowlist` is for separately verified harmless attribute keys; do not add quote/code attributes to make a failed approval appear valid.
 
+### Plain-comment calibration
+
+The October 14, 2026 source update added regression coverage for a ClickUp plain-editor representation equivalent to:
+
+```json
+[
+  {"text": "Approve plan r1 for development", "attributes": {}},
+  {"text": "\n", "attributes": {"block-id": "block-example"}}
+]
+```
+
+Here `comment_text` is the command plus a newline. The sample installation settings use `"plain_attr_allowlist": ["block-id"]`, allowing this neutral metadata key without relaxing the parser. The runtime's default remains empty; an existing private config must opt into the calibrated key. `tools/prepare.py` preserves the supplied allowlist.
+
+`tests/test_schema_f1.py` compares the empty baseline (unknown/rejected) with the calibrated shape (plain), including the composed closure-to-reviewed-approval flow. Quote/code markers remain quoted; unknown attributes/part types, malformed data and disagreement with `comment_text` remain unknown. Author, stage, edit, current-revision and post-publication checks still apply. This is not proof that every ClickUp UI or future editor format has been calibrated.
+
 Approval is bound to the API actor ID, comment, plan revision, hash and input generation. The display name is explanatory only. Extra input can cause reclassification, amendment or revocation. The integration's readback/outbox controls prevent retries from becoming duplicated effects or an implicit approval of different bytes.
 
 The adapter creates:
