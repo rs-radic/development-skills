@@ -219,7 +219,7 @@ class FakeBoard:
         self._run += 1
         self.cards[card]["task"]["status"] = "running"
         self.cards[card]["runs"].append({"id": self._run, "profile": profile, "status": "running", "outcome": None,
-                                         "metadata": None})
+                                         "metadata": None, "started_at": self._now()})
         return self._run
 
     def _end(self, card, outcome, metadata=None):
@@ -635,6 +635,59 @@ class T19LifecycleTest(unittest.TestCase):
         self.assertEqual(life.ticket_check(), (3, ["INVALID lease_expired"]))
 
 
+# Synthetic completed-run receipt fields with no top-level promoted_sha (PROMOTED-SHA-F1).
+RECEIPT_SHA = "ab12cd34ab12cd34ab12cd34ab12cd34ab12cd34"
+RECEIPT_MD = {"candidate": {"sha": RECEIPT_SHA, "tree": "2222222222222222222222222222222222222222",
+                            "base": "3333333333333333333333333333333333333333",
+                            "branch": "feature/example-change"},
+              "promoted": {"dev_before": "3333333333333333333333333333333333333333", "dev_after": RECEIPT_SHA,
+                           "master": "4444444444444444444444444444444444444444 (unchanged)",
+                           "push": "non-force fast-forward"}}
+
+
+class PromotedShaCompositionTest(unittest.TestCase):
+    """PROMOTED-SHA-F1 through the composed scan: future handoff wording and completed-promotion recovery."""
+
+    def ticketed(self):
+        w = World(self)
+        life = Lifecycle(w)
+        life.pickup_to_business()
+        life.business_to_technical()
+        life.technical_to_published()
+        life.approve_to_released()
+        life.orchestrate()
+        life.e2e_done_to_ticketed()
+        return w, life
+
+    def test_orchestrator_body_requires_canonical_promoted_sha_and_structured_receipt_reaches_ready(self):
+        w, life = self.ticketed()
+        self.assertIn("top-level completion metadata `promoted_sha` set to the full 40-hex SHA",
+                      w.board.cards[life.orch()]["task"]["body"])
+        w.board.finish(life.promo, "integrator", RECEIPT_MD)
+        w.step(lambda: life.phase() == "ready_for_deployment" and "ready for deployment" in w.statuses_written())
+        self.assertEqual(w.statuses_written(), EXPECTED_STATUSES)
+        apps = w.q("SELECT * FROM approvals WHERE task=?", life.tid)
+        self.assertEqual([(a["state"], a["promoted_sha"]) for a in apps], [("promoted", RECEIPT_SHA)])
+        self.assertEqual(operator_lines(w), [])
+
+    def test_conflicting_or_narrative_results_leave_the_status_and_alert(self):
+        cases = {"canonical_conflict": dict(RECEIPT_MD, promoted_sha="d" * 40),
+                 "short_hashes": {"candidate": {"sha": RECEIPT_SHA[:8]}, "promoted": {"dev_after": RECEIPT_SHA[:8]}},
+                 "narrative_only": {"summary": "fast-forwarded dev to %s" % RECEIPT_SHA}}
+        for how, md in cases.items():
+            with self.subTest(how=how):
+                w, life = self.ticketed()
+                w.board.finish(life.promo, "integrator", md)
+                w.step(lambda: any("without a valid promoted_sha" in x for x in operator_lines(w)))
+                for _ in range(3):
+                    w.clock.advance(61)
+                    w.run()
+                self.assertEqual(life.phase(), "promotion_window")
+                self.assertNotIn("ready for deployment", w.statuses_written())
+                self.assertEqual([a["promoted_sha"] for a in w.q("SELECT * FROM approvals WHERE task=?", life.tid)],
+                                 [None])
+
+
 class T19AdmissionAndShadowTest(unittest.TestCase):
     def test_done_type_at_first_sight_creates_nothing(self):
         w = World(self)
@@ -847,8 +900,19 @@ class T18ReusableConversationTest(unittest.TestCase):
 
 
 # ------------------------------------------------------------------------------------------ §9 hold
+def feedback_comments(board, card):
+    """Outbound-filter feedback the integration posted to a request card (OUTBOUND-PROSE-F1)."""
+    return [c["body"] for c in board.cards[card]["comments"]
+            if c["author"] == "clickup-intake" and c["body"].startswith("CLICKUP-FILTER v1 ")]
+
+
+def unblocks(board, card):
+    return sum(1 for c, k in board.calls if c == "unblock" and k == card)
+
+
 class OutboundFilterCompositionTest(unittest.TestCase):
     def test_filtered_planner_text_holds_the_task_and_posts_nothing(self):
+        """A planner that keeps producing a filtered draft gets bounded feedback, then a visible hold."""
         w = World(self)
         life = Lifecycle(w)
 
@@ -860,8 +924,473 @@ class OutboundFilterCompositionTest(unittest.TestCase):
         self.assertEqual(w.statuses_written(), [])
         self.assertIn("ClickUp outbound filter hold: task %s (password); nothing was posted" % life.tid, w.outputs)
         self.assertFalse(any("hunter2" in line for line in w.outputs))
+        # OUTBOUND-PROSE-F1: the first draft and each corrected draft were rejected; none was ever sent.
         self.assertEqual(w.q("SELECT state, outcome FROM outbox WHERE idem_key LIKE ? AND kind='cu_comment'",
-                             "clickup-dp:%s:q:business:%%" % life.tid), [{"state": "failed", "outcome": "FILTERED"}])
+                             "clickup-dp:%s:q:business:%%" % life.tid),
+                         [{"state": "failed", "outcome": "FILTERED"}] * 3)
+        card = life.req_cards()[0]
+        fb = feedback_comments(w.board, card)
+        self.assertEqual([x.splitlines()[0].rsplit(" ", 1)[1] for x in fb], ["attempt=1/2", "attempt=2/2"])
+        self.assertFalse(any("hunter2" in x for x in fb))
+        self.assertEqual(life.planner_turns, 3)
+        self.assertTrue(any("no automatic correction left" in line for line in w.outputs), w.outputs)
+        before = (len(w.board.mutations()), life.planner_turns)
+        for _ in range(4):  # the hold is final until an operator acts: no further feedback or wake
+            w.clock.advance(61)
+            w.run()
+        self.assertEqual((len(w.board.mutations()), life.planner_turns), before)
+
+
+class OutboundFilterFeedbackTest(unittest.TestCase):
+    """OUTBOUND-PROSE-F1 owner correction: a rejected planner draft goes back to the SAME request card with the
+    triggered rule (never the matched text); its safe rewrite passes the same filter and is posted."""
+
+    def rewrite(self, crash=False):
+        w = World(self, crash=crash)
+        life = Lifecycle(w)
+        seen = []
+
+        def script(card, ref, gen):
+            seen.append(feedback_comments(w.board, card))
+            if len(seen) == 1:
+                w.board.park(card, out("business_questions", ref, "Use password: hunter2 for the test login?"),
+                             classify(ref, gen))
+            else:
+                w.board.park(card, out("business_questions", ref, "Which test login should we use? Its password"
+                                       " stays in the vault."))
+        w.step(lambda: life.bot_q("Which test login") and w.statuses_written(), world=life.planner(script))
+        return w, life, seen
+
+    def check_rewrite(self, w, life, seen):
+        b, card = w.board, life.req_cards()[0]
+        self.assertEqual(len(seen), 2)
+        self.assertEqual(seen[0], [])
+        fb = seen[1]
+        self.assertEqual(len(fb), 1)
+        ref = relay_of(b, card)[0]
+        head = fb[0].splitlines()[0]
+        self.assertRegex(head, r"^CLICKUP-FILTER v1 output=[0-9a-f]{12} rule=password attempt=1/2$")
+        self.assertIn("CLICKUP-OUT v1 kind=business_questions relay=%s" % ref, fb[0])
+        self.assertNotIn("hunter2", fb[0])
+        self.assertEqual(feedback_comments(b, card), fb)
+        # the safe rewrite passed the same filter and resumed the pending delivery; the task never held
+        self.assertTrue(life.bot_q("Which test login should we use?"))
+        self.assertFalse(any("hunter2" in c["comment_text"] for c in w.bot_comments(life.tid)))
+        self.assertIsNone(w.task(life.tid)["hold_reason"])
+        self.assertEqual(w.task(life.tid)["phase"], "awaiting_business")
+        self.assertEqual(w.statuses_written(), ["business requirements"])
+        rows = w.q("SELECT state, outcome FROM outbox WHERE idem_key LIKE ? AND kind='cu_comment' ORDER BY rowid",
+                   "clickup-dp:%s:q:business:%%" % life.tid)
+        self.assertEqual(rows, [{"state": "failed", "outcome": "FILTERED"}, {"state": "done", "outcome": "OK"}])
+        # initial release + one feedback wake; the operator sees one line, without the matched text
+        self.assertEqual(sum(e["kind"] == "unblocked" for e in b.cards[card]["events"]), 2)
+        lines = operator_lines(w)
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("outbound filter", lines[0])
+        self.assertIn("asked for a corrected draft", lines[0])
+        self.assertNotIn("hunter2", "\n".join(w.outputs))
+        before = (len(b.mutations()), len(seen))
+        for _ in range(4):  # restarts/duplicate observations send nothing twice
+            w.clock.advance(61)
+            w.run()
+        self.assertEqual((len(b.mutations()), len(seen)), before)
+
+    def test_rejected_draft_is_returned_to_the_planner_and_the_safe_rewrite_is_posted(self):
+        self.check_rewrite(*self.rewrite())
+
+    def test_crash_at_every_point_sends_one_feedback_and_one_wake(self):
+        w, life, seen = self.rewrite(crash=True)
+        self.assertGreater(w.inj.crashes, 20)
+        self.check_rewrite(w, life, seen)
+
+    def running_draft(self, w, life):
+        """The relay for new input wakes the planner; it posts a filtered notice and has not parked yet."""
+        life.pickup_to_business()
+        card = life.req_cards()[0]
+        life.say(APPROVER_B, " which login do we test with?", mention=BOT)
+
+        def script(card_, ref, gen):
+            w.board.worker_comment(card_, "planner", out("notice", ref, "The test login is admin, password: Hunter2!"))
+            w.board.worker_comment(card_, "planner", classify(ref, gen))
+        w.step(lambda: feedback_comments(w.board, card), world=life.planner(script))
+        return card
+
+    def test_feedback_waits_for_a_running_planner_and_wakes_it_once(self):
+        w = World(self)
+        life = Lifecycle(w)
+        card = self.running_draft(w, life)
+        b = w.board
+        woken = unblocks(b, card)
+        for _ in range(3):  # still running: the wake waits, nothing is cancelled or counted
+            w.clock.advance(61)
+            w.run()
+        self.assertEqual(unblocks(b, card), woken)
+        self.assertEqual(b.cards[card]["task"]["status"], "running")
+        b.park(card)
+        turns = []
+
+        def script(card_, ref, gen):
+            turns.append(feedback_comments(b, card_))
+            b.park(card_, out("notice", ref, "The test login is in the vault entry for the QA account."))
+        w.step(lambda: life.bot_q("vault entry for the QA account"), world=life.planner(script))
+        self.assertEqual(unblocks(b, card), woken + 1)
+        self.assertEqual(len(turns), 1)
+        self.assertEqual(len(turns[0]), 1)
+        self.assertIn("rule=password attempt=1/2", turns[0][0].splitlines()[0])
+        self.assertNotIn("Hunter2", turns[0][0])
+        self.assertIsNone(w.task(life.tid)["hold_reason"])
+        self.assertFalse(any("Hunter2" in c["comment_text"] for c in w.bot_comments(life.tid)))
+
+    def test_unreachable_planner_is_a_visible_hold(self):
+        w = World(self)
+        life = Lifecycle(w)
+        card = self.running_draft(w, life)
+        b = w.board
+        woken = unblocks(b, card)
+        b._end(card, "blocked")
+        b.cards[card]["task"]["status"] = "blocked"
+        w.step(lambda: w.task(life.tid)["hold_reason"] == "outbound_filter", limit=5)
+        self.assertEqual(unblocks(b, card), woken)
+        self.assertTrue(any("request card %s is blocked" % card in line and "corrected draft" in line
+                            for line in w.outputs), w.outputs)
+        self.assertFalse(any("Hunter2" in line for line in w.outputs))
+
+    # SPEC r14 finding 1: the correction must start with a CLICKUP-OUT v1 header, not the CLICKUP-FILTER line
+    def test_feedback_names_the_clickup_out_header_the_correction_starts_with(self):
+        w, life, seen = self.rewrite()
+        ref = relay_of(w.board, life.req_cards()[0])[0]
+        text = " ".join(seen[1][0].split())
+        self.assertIn("Post the corrected text as a NEW comment whose first line is exactly \"CLICKUP-OUT v1"
+                      " kind=business_questions relay=%s\" (the rejected output's header)" % ref, text)
+        self.assertIn("The CLICKUP-FILTER line of this comment is not an output header", text)
+
+    def test_feedback_without_the_rejected_comment_in_view_still_names_the_clickup_out_header(self):
+        real = glue_main.Glue.filter_feedback
+
+        def unseen(glue, row, reason):  # the rejected comment is missing from this scan's show
+            glue.obs.cards.update({c: dict(s, comments=[]) for c, s in glue.obs.cards.items()})
+            return real(glue, row, reason)
+        with mock.patch.object(glue_main.Glue, "filter_feedback", unseen):
+            w, life, seen = self.rewrite()
+        text = " ".join(seen[1][0].split())
+        self.assertIn("Post the corrected text as a NEW comment whose first line is a \"CLICKUP-OUT v1\" header with"
+                      " the same kind, relay and reply_to as the rejected output", text)
+        self.assertIn("The CLICKUP-FILTER line of this comment is not an output header", text)
+        self.assertTrue(life.bot_q("Which test login should we use?"))
+
+    # SPEC r14 finding 2: a woken planner that ends its run without a corrected draft is a visible hold
+    def uncorrected(self, second, crash=False):
+        """First draft filtered; the feedback-woken planner ends its run with ``second(board, card, fb)``."""
+        w = World(self, crash=crash)
+        life = Lifecycle(w)
+        turns = []
+
+        def script(card, ref, gen):
+            turns.append(feedback_comments(w.board, card))
+            if len(turns) == 1:
+                w.board.park(card, out("business_questions", ref, "Use password: hunter2 for the test login?"),
+                             classify(ref, gen))
+            else:
+                second(w.board, card, turns[-1])
+        world = life.planner(script)
+        w.step(lambda: w.task(life.tid)["hold_reason"] == "outbound_filter", world=world)
+        card = life.req_cards()[0]
+        b = w.board
+        self.assertEqual(len(turns), 2)
+        self.assertEqual(len(turns[1]), 1)
+        lines = [x for x in operator_lines(w) if "without a corrected draft" in x]
+        self.assertEqual(lines, ["ClickUp outbound filter: request card %s ended its run after the feedback on output"
+                                 " %s of task %s without a corrected draft; nothing was posted; task on hold"
+                                 % (card, turns[1][0].split()[2][len("output="):], life.tid)])
+        self.assertFalse(any("hunter2" in x for x in w.outputs))
+        self.assertFalse(any("hunter2" in c["comment_text"] for c in w.bot_comments(life.tid)))
+        self.assertEqual(w.q("SELECT state FROM outbox WHERE kind='alert' AND idem_key LIKE '%:uncorrected'"),
+                         [{"state": "done"}])
+        self.assertEqual(sum(e["kind"] == "unblocked" for e in b.cards[card]["events"]), 2)  # release + feedback
+        before = (len(b.mutations()), life.planner_turns, len(w.outputs))
+        for _ in range(4):  # one durable line; no further feedback, wake or mutation while it holds
+            w.clock.advance(61)
+            w.run()
+            world()
+        self.assertEqual((len(b.mutations()), life.planner_turns, len(w.outputs)), before)
+        self.assertEqual(w.task(life.tid)["hold_reason"], "outbound_filter")
+
+    def test_woken_planner_that_parks_without_a_correction_is_a_visible_hold(self):
+        self.uncorrected(lambda b, card, fb: b.park(card))
+
+    def test_woken_planner_that_starts_with_the_filter_line_is_a_visible_hold(self):
+        self.uncorrected(lambda b, card, fb: b.park(
+            card, fb[-1].splitlines()[0] + "\nWhich test login should we use? It stays in the vault."))
+
+    def test_uncorrected_hold_is_restart_safe(self):
+        self.uncorrected(lambda b, card, fb: b.park(card), crash=True)
+
+    # OP-Q1: the final rejection, its hold and its durable alert commit together
+    def test_bound_hold_survives_death_right_after_the_last_rejected_draft_is_recorded(self):
+        w = World(self)
+        life = Lifecycle(w)
+
+        def script(card, ref, gen):
+            w.board.park(card, out("business_questions", ref, "Use password: hunter2 for the test login?"),
+                         classify(ref, gen))
+        world = life.planner(script)
+        crashed = post_commit_crash(
+            self, "SELECT COUNT(*) FROM outbox WHERE kind='cu_comment' AND outcome='FILTERED'", 3)
+        w.step(lambda: w.task(life.tid)["hold_reason"] == "outbound_filter", world=world)
+        self.assertEqual(crashed, [True])
+        card = life.req_cards()[0]
+        self.assertEqual(w.q("SELECT state, outcome FROM outbox WHERE idem_key LIKE ? AND kind='cu_comment'",
+                             "clickup-dp:%s:q:business:%%" % life.tid), [{"state": "failed", "outcome": "FILTERED"}] * 3)
+        self.assertEqual(len(feedback_comments(w.board, card)), 2)
+        self.assertEqual(life.planner_turns, 3)
+        lines = [x for x in operator_lines(w) if "no automatic correction left" in x]
+        self.assertEqual(lines, ["ClickUp outbound filter: request card %s produced 3 rejected drafts for task %s"
+                                 " (gen %d); no automatic correction left; task on hold"
+                                 % (card, life.tid, w.task(life.tid)["input_gen"])])
+        self.assertFalse(any("hunter2" in x for x in w.outputs))
+        self.assertFalse(any("hunter2" in c["comment_text"] for c in w.bot_comments(life.tid)))
+        before = (len(w.board.mutations()), life.planner_turns, len(w.outputs))
+        for _ in range(4):  # the durable line printed once; no further feedback, wake or mutation while it holds
+            w.clock.advance(61)
+            w.run()
+            world()
+        self.assertEqual((len(w.board.mutations()), life.planner_turns, len(w.outputs)), before)
+        self.assertEqual(w.task(life.tid)["hold_reason"], "outbound_filter")
+
+    def test_unreachable_hold_survives_death_right_after_the_wake_is_failed(self):
+        w = World(self)
+        life = Lifecycle(w)
+        card = self.running_draft(w, life)
+        b = w.board
+        woken = unblocks(b, card)
+        b._end(card, "blocked")
+        b.cards[card]["task"]["status"] = "blocked"
+        crashed = post_commit_crash(self, "SELECT COUNT(*) FROM outbox WHERE outcome='UNREACHABLE'", 1)
+        w.step(lambda: w.task(life.tid)["hold_reason"] == "outbound_filter", limit=5)
+        self.assertEqual(crashed, [True])
+        self.assertEqual(unblocks(b, card), woken)
+        self.assertEqual([x for x in operator_lines(w) if "cannot be asked for a corrected draft" in x],
+                         [glue_main._no_correction(card, "blocked", life.tid)])
+        self.assertFalse(any("Hunter2" in line for line in w.outputs))
+
+    # OP-Q2: the feedback wake is bound to the producing run when the feedback is created
+    def test_feedback_seen_by_an_intervening_relay_run_is_not_woken_again(self):
+        w = World(self)
+        life = Lifecycle(w)
+        life.pickup_to_business()
+        card = life.req_cards()[0]
+        b = w.board
+        real_wait = glue_main.Glue.feedback_wait
+        seen, delayed = [], []
+
+        def failing_show(glue, row, target):  # the feedback wake's own read fails until a relay run saw the feedback
+            if not any(n for _, _, n in seen):
+                delayed.append(glue.now)
+                with mock.patch.object(glue.port, "show", return_value=KanbanResult(Outcome.DEFINITE_FAIL, {})):
+                    return real_wait(glue, row, target)
+            return real_wait(glue, row, target)
+
+        def script(card_, ref, gen):
+            seen.append((ref, gen, len(feedback_comments(b, card_))))
+            if len(seen) == 1:
+                b.park(card_, out("notice", ref, "The test login is admin, password: Hunter2!"), classify(ref, gen))
+                life.say(APPROVER_B, " also, can it be dark blue?", mention=BOT)
+            elif len(seen) == 2:  # the correction keeps the rejected output's header, as the feedback asks
+                b.park(card_, out("notice", seen[0][0], "The test login is in the vault."), classify(ref, gen))
+            else:
+                b.park(card_, classify(ref, gen))
+        life.say(APPROVER_B, " which login do we test with?", mention=BOT)
+        world = life.planner(script)
+        with mock.patch.object(glue_main.Glue, "feedback_wait", failing_show):
+            for _ in range(30):
+                w.clock.advance(61)
+                w.run()
+                world()
+        self.assertTrue(delayed)
+        self.assertEqual(len(seen), 2, seen)  # the relay run that saw the feedback corrected the draft; no extra run
+        self.assertEqual(seen[1][2], 1)
+        self.assertTrue(life.bot_q("The test login is in the vault."))
+        self.assertEqual(len(feedback_comments(b, card)), 1)
+        self.assertEqual(sum(e["kind"] == "unblocked" for e in b.cards[card]["events"]), 3)  # pickup, g2, g3 relays
+        self.assertIsNone(w.task(life.tid)["hold_reason"])
+        self.assertFalse(any("Hunter2" in c["comment_text"] for c in w.bot_comments(life.tid)))
+
+    # SPEC r16: a relay run that started before the (delayed) feedback comment was delivered never saw it
+    def delayed_feedback(self, third):
+        """First draft filtered while new input arrives; the feedback comment fails transiently until the relay
+        run for that input (which never saw the feedback) has parked with only its answer to the new input; the
+        next run ends with ``third(board, card, ref)``."""
+        w = World(self)
+        life = Lifecycle(w)
+        life.pickup_to_business()
+        card = life.req_cards()[0]
+        b = w.board
+        real_comment = b.comment
+        seen, failed = [], []
+
+        def comment(card_, body):
+            if body.startswith("CLICKUP-FILTER v1") and len(seen) < 2:
+                failed.append(w.clock())
+                return KanbanResult(Outcome.DEFINITE_FAIL, {"error": "transient"})
+            return real_comment(card_, body)
+
+        def script(card_, ref, gen):
+            seen.append((ref, gen, len(feedback_comments(b, card_))))
+            if len(seen) == 1:
+                b.park(card_, out("notice", ref, "The test login is admin, password: Hunter2!"), classify(ref, gen))
+                life.say(APPROVER_B, " also, can it be dark blue?", mention=BOT)
+            elif len(seen) == 2:
+                b.park(card_, out("notice", ref, "Dark blue works."), classify(ref, gen))
+            else:  # ``ref`` is the rejected output's relay: the header the feedback asks for
+                third(b, card_, seen[0][0])
+        life.say(APPROVER_B, " which login do we test with?", mention=BOT)
+        world = life.planner(script)
+        with mock.patch.object(b, "comment", comment):
+            w.step(lambda: len(seen) == 3 and (life.bot_q("The test login is in the vault.")
+                                               or w.task(life.tid)["hold_reason"]), world=world)
+            for _ in range(4):
+                w.clock.advance(61)
+                w.run()
+                world()
+        self.assertTrue(failed)
+        # the relay run answered the new input without the feedback; the feedback wake gave it to the next run
+        self.assertEqual([n for _, _, n in seen], [0, 0, 1], seen)
+        self.assertTrue(life.bot_q("Dark blue works."))
+        self.assertEqual(len(feedback_comments(b, card)), 1)
+        self.assertFalse(any("Hunter2" in c["comment_text"] for c in w.bot_comments(life.tid)))
+        self.assertFalse(any("Hunter2" in x for x in w.outputs))
+        return w, life, card
+
+    def test_relay_run_that_started_before_a_delayed_feedback_comment_does_not_count_as_its_correction(self):
+        w, life, card = self.delayed_feedback(
+            lambda b, card, ref: b.park(card, out("notice", ref, "The test login is in the vault.")))
+        self.assertTrue(life.bot_q("The test login is in the vault."))
+        self.assertIsNone(w.task(life.tid)["hold_reason"])
+
+    def test_relay_answer_before_a_delayed_feedback_comment_is_not_taken_for_the_missing_correction(self):
+        w, life, card = self.delayed_feedback(lambda b, card, ref: b.park(card))
+        self.assertEqual(w.task(life.tid)["hold_reason"], "outbound_filter")
+        self.assertEqual(len([x for x in operator_lines(w) if "without a corrected draft" in x]), 1)
+
+    def test_feedback_waits_for_a_readable_request_card(self):
+        real = glue_main.Glue.filter_feedback
+        dropped = []
+
+        def unreadable(glue, row, reason):  # the request card's show failed in the scan of the first rejection
+            if not dropped:
+                dropped.append(True)
+                glue.obs.cards.clear()
+            return real(glue, row, reason)
+        with mock.patch.object(glue_main.Glue, "filter_feedback", unreadable):
+            w, life, seen = self.rewrite()
+        card = life.req_cards()[0]
+        self.assertEqual(len(seen), 2)
+        self.assertEqual(len(seen[1]), 1)
+        self.assertTrue(life.bot_q("Which test login should we use?"))
+        self.assertIsNone(w.task(life.tid)["hold_reason"])
+        self.assertEqual(sum(e["kind"] == "unblocked" for e in w.board.cards[card]["events"]), 2)
+        self.assertEqual([x for x in operator_lines(w) if "not readable" in x],
+                         ["ClickUp outbound filter: request card %s of task %s is not readable; its feedback is"
+                          " deferred" % (card, life.tid)])
+
+    # OP-Q3/OP-Q4: only an output with the rejected output's kind/relay/reply_to is its correction
+    def late_read(self, correct):
+        """Probe shape: the first draft is filtered while new input arrives; the feedback comment fails
+        transiently, so the relay run for that input starts BEFORE the feedback is delivered. That run is still
+        running when it lands, reads it and parks with its answer to the new input, plus (``correct``) the
+        correction under the rejected output's exact header. A further run answers only the new input."""
+        w = World(self)
+        life = Lifecycle(w)
+        life.pickup_to_business()
+        card = life.req_cards()[0]
+        b = w.board
+        real_comment = b.comment
+        seen, pending, failed = [], [], []
+
+        def comment(card_, body):
+            if body.startswith("CLICKUP-FILTER v1") and len(seen) < 2:
+                failed.append(w.clock())
+                return KanbanResult(Outcome.DEFINITE_FAIL, {"error": "transient"})
+            return real_comment(card_, body)
+
+        def script(card_, ref, gen):
+            seen.append((ref, gen, len(feedback_comments(b, card_))))
+            if len(seen) == 1:
+                b.park(card_, out("notice", ref, "The test login is admin, password: Hunter2!"), classify(ref, gen))
+                life.say(APPROVER_B, " also, can it be dark blue?", mention=BOT)
+            elif len(seen) == 2:
+                pending.append((ref, gen))  # still running when the feedback is delivered
+            else:
+                b.park(card_, out("notice", ref, "Dark blue is still available."), classify(ref, gen))
+        life.say(APPROVER_B, " which login do we test with?", mention=BOT)
+        world = life.planner(script)
+        with mock.patch.object(b, "comment", comment):
+            for _ in range(40):
+                w.clock.advance(61)
+                w.run()
+                if pending and feedback_comments(b, card):
+                    ref, gen = pending.pop()
+                    w.clock.advance(5)  # the running relay run reads the delivered feedback, then parks
+                    outputs = [out("notice", ref, "Dark blue works."), classify(ref, gen)]
+                    if correct:
+                        outputs.append(out("notice", seen[0][0], "The test login is in the vault."))
+                    b.park(card, *outputs)
+                world()
+        self.assertTrue(failed)
+        self.assertEqual([n for _, _, n in seen[:2]], [0, 0], seen)
+        self.assertEqual(len(feedback_comments(b, card)), 1)
+        self.assertIn("relay=" + seen[0][0], feedback_comments(b, card)[0])
+        self.assertTrue(life.bot_q("Dark blue works."))
+        return w, life, card, seen, world
+
+    def test_exact_header_correction_by_a_run_that_started_before_the_feedback_is_not_woken_or_held(self):
+        w, life, card, seen, world = self.late_read(True)
+        b = w.board
+        self.assertEqual(len(seen), 2, seen)  # pickup, g2, g3 releases; no redundant feedback wake
+        self.assertEqual(unblocks(b, card), 3)
+        self.assertEqual(sum("The test login is in the vault." in c["comment_text"]
+                             for c in w.bot_comments(life.tid)), 1)
+        self.assertIsNone(w.task(life.tid)["hold_reason"])
+        self.assertEqual([x for x in operator_lines(w) if "without a corrected draft" in x], [])
+        life.say(APPROVER_B, " can we continue with this request?", mention=BOT)  # later input still wakes the planner
+        for _ in range(8):
+            w.clock.advance(61)
+            w.run()
+            world()
+        self.assertEqual(unblocks(b, card), 4)
+        self.assertEqual(len(seen), 3, seen)
+        self.assertIsNone(w.task(life.tid)["hold_reason"])
+        self.assertFalse(any("Hunter2" in c["comment_text"] for c in w.bot_comments(life.tid)))
+        self.assertFalse(any("Hunter2" in x for x in w.outputs))
+
+    def test_output_for_another_relay_does_not_discharge_the_missing_correction(self):
+        w, life, card, seen, world = self.late_read(False)
+        self.assertEqual(len(seen), 3, seen)  # the feedback wake ran; it answered only the newer relay
+        self.assertTrue(life.bot_q("Dark blue is still available."))
+        self.assertFalse(any("The test login is in the vault." in c["comment_text"]
+                             for c in w.bot_comments(life.tid)))
+        self.assertEqual(w.task(life.tid)["hold_reason"], "outbound_filter")
+        self.assertEqual(len([x for x in operator_lines(w) if "without a corrected draft" in x]), 1)
+        self.assertFalse(any("Hunter2" in c["comment_text"] for c in w.bot_comments(life.tid)))
+        self.assertFalse(any("Hunter2" in x for x in w.outputs))
+
+
+def post_commit_crash(tc, count_sql, n):
+    """Simulated death right after the first commit that makes ``count_sql`` return ``n`` (the scan reruns)."""
+    crashed = []
+
+    class PostCommitCrashStore(Store):
+        @contextlib.contextmanager
+        def transaction(self):
+            with Store.transaction(self) as c:
+                yield c
+            if not crashed and self.conn.execute(count_sql).fetchone()[0] == n:
+                crashed.append(True)
+                raise Crash("death right after a commit")
+    p = mock.patch.object(glue_main, "Store", PostCommitCrashStore)
+    p.start()
+    tc.addCleanup(p.stop)
+    return crashed
 
 
 # ------------------------------------------------------------------------------- QSR-612 regressions
@@ -1754,7 +2283,7 @@ class ApprovalCardLedgerGenerationsCliTest(_IsolatedCliHome):
 
 
 class SchedulerNoArgumentEntryTest(unittest.TestCase):
-    """INSTALL-F1 (INSTALL t_563e5763 run 675): the Hermes ``--no-agent`` cron runs the deployed ``.py`` entry with
+    """INSTALL-F1 (source installation regression): the Hermes ``--no-agent`` cron runs the deployed ``.py`` entry with
     no arguments (``sys.argv == [script]``). That must be the ``run`` scan, not an argparse usage error (rc 2).
     The entry is deployed in the §2.1 layout (``<root>/scripts/clickup_dedicated_panel_intake.py`` +
     ``clickup_intake/`` + ``templates/``, config under ``<root>/integrations/clickup-dedicated-panel/``)."""

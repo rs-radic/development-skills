@@ -1,0 +1,106 @@
+{
+  "source_revision": "b665a985434e296f5b3fd796dc34357d0d6464ba",
+  "description": "Sanitized source-only rollback reader fixture. Not installed by prepare.py.",
+  "files": [
+    {
+      "path": "clickup_intake/__init__.py",
+      "size": 78,
+      "sha256": "c2a21626caa64f014b719ba806dd2547aacad1178196c5647ec7a9830eceb3ac"
+    },
+    {
+      "path": "clickup_intake/clickup_api.py",
+      "size": 14518,
+      "sha256": "f27c429cfd9e48f62512c686ac70693303d0ba01b3c52ef988ae8e58923a5e86"
+    },
+    {
+      "path": "clickup_intake/clickup_effects.py",
+      "size": 11922,
+      "sha256": "a4df85b38b787d3fe868026eaec8d43894bb79ef9078116f50a5adbc4b0e950c"
+    },
+    {
+      "path": "clickup_intake/config.py",
+      "size": 6386,
+      "sha256": "bdd2c6caac3f606d8d2cb22a1c153cf1b8b703d5bb7a8555b369b6f7f35ee5f3"
+    },
+    {
+      "path": "clickup_intake/contracts.py",
+      "size": 4461,
+      "sha256": "ebd41fccec71f0fca6a4d5d38a0f644e133809372482d2c0a27a6995618d1bd6"
+    },
+    {
+      "path": "clickup_intake/engine.py",
+      "size": 51147,
+      "sha256": "7ebc6dfdf4ba3adde256ecb18ef211d565fc192c785a1ec5a334e7ceb2db3ce3"
+    },
+    {
+      "path": "clickup_intake/kanban_port.py",
+      "size": 18948,
+      "sha256": "4d32a14727640256d9474c33e63cad40bc8248e9b33ea44cf08704aab1d96e58"
+    },
+    {
+      "path": "clickup_intake/main.py",
+      "size": 75768,
+      "sha256": "5f84b89987b3b3de1d292feb7aff32c4f31f9eacbfb50082b7062b73ba168ac3"
+    },
+    {
+      "path": "clickup_intake/observe.py",
+      "size": 26477,
+      "sha256": "7d446c3402623b968aa9c5f3081507c1adbb2997ef68b85d47b42c0d90a9a4bc"
+    },
+    {
+      "path": "clickup_intake/parse.py",
+      "size": 4207,
+      "sha256": "0b357f4572f5237aeb3136abf126a70bb0955c40a0023f4dcfdd49bae39b04f4"
+    },
+    {
+      "path": "clickup_intake/ports.py",
+      "size": 1535,
+      "sha256": "41fe961d6afc70f3d55dbf7db1a9bae469915612d239f04d3124542cfb7d32fa"
+    },
+    {
+      "path": "clickup_intake/render.py",
+      "size": 18116,
+      "sha256": "8ea24c47068c577b6aaaea5a3d1dd57942a0b50b8075a5d1bf20a9995fbc516e"
+    },
+    {
+      "path": "clickup_intake/rules.py",
+      "size": 11101,
+      "sha256": "beaa564fe83b6dcab58ec6c7f3f579dde6fab8e0f2f811e46ff867bce8658221"
+    },
+    {
+      "path": "clickup_intake/store.py",
+      "size": 12523,
+      "sha256": "2e5dc8a7d07f39f6b7c9f59ec591d41abda260309afaea370c6c6524fd5dcb0a"
+    },
+    {
+      "path": "clickup_intake/ticket.py",
+      "size": 3367,
+      "sha256": "0e2d36c1cc325e893bbf82a306cf58027bc6c73342904a1598f3a69f98d0c141"
+    },
+    {
+      "path": "templates/approval_record.md",
+      "size": 803,
+      "sha256": "66fc4c8af2c28d5b04db0999433418881838103c74f0dc77aabe65a4dab3a1c9"
+    },
+    {
+      "path": "templates/gate_card.md",
+      "size": 895,
+      "sha256": "eeaf7ef02e939f370ffa2d02d17fde6179b0ab8b671182522cf978e3920df947"
+    },
+    {
+      "path": "templates/orchestrator_card.md",
+      "size": 2688,
+      "sha256": "16823b5d82c1888bc2b7a5b96b49cbde904a299cfd4185549b87c429c02d6465"
+    },
+    {
+      "path": "templates/request_card.md",
+      "size": 2950,
+      "sha256": "e4ef140f668eb9df9e8de2a43b8600aedaa030da3b7b2d101e295181107cac9b"
+    },
+    {
+      "path": "templates/ticket_recheck_paragraph.md",
+      "size": 398,
+      "sha256": "a957fd57b2736c5bfd17905e2f7e7029d9e99c0b09311cfd27f0531ee2748b63"
+    }
+  ]
+}

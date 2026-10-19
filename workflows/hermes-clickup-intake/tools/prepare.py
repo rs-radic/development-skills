@@ -130,8 +130,8 @@ def build_payload(settings):
     }
     module_names = {"__init__", "clickup_api", "clickup_effects", "config", "contracts", "engine",
                     "kanban_port", "main", "observe", "parse", "ports", "render", "rules", "store", "ticket"}
-    template_names = {"approval_record", "gate_card", "orchestrator_card", "request_card",
-                      "ticket_recheck_paragraph"}
+    template_names = {"approval_record", "blocker_triage", "gate_card", "orchestrator_card",
+                      "question_protocol", "request_card", "ticket_recheck_paragraph"}
     for directory, names, suffix in (("clickup_intake", module_names, ".py"),
                                      ("templates", template_names, ".md")):
         if any(not (PACKAGE_ROOT / directory / (name + suffix)).is_file() for name in names):

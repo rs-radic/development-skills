@@ -11,6 +11,7 @@ Run the real-CLI tests before using another Hermes build. The adapter requires:
 - `comment`, `attach`, `unblock`, `complete --metadata`, `archive`, `notify-subscribe` and `notify-list --json` with the semantics exercised by the tests.
 - Worker `kanban_schedule(reason="CLICKUP_WAIT")`, leaving a `scheduled` run, and same-card `kanban_request_review` to `plan-reviewer`. Ordinary polling must not create `needs_input` blocks merely because it is waiting for a human response.
 - Passive notifications (`delivery_mode="notify"`), a named notifier profile and inheritance of the orchestrator's subscriptions by its child cards.
+- For the optional question relay: worker `kanban_create` with `workspace_kind="scratch"`, `kanban_link`, dependency `kanban_block`, `kanban_show` and `kanban_heartbeat`. `show --json` must expose `parents`, `children`, `latest_summary`, task creation/status/assignee fields, runs with IDs and start/end times, and creation/claim/dependency-wait events with their creator/run/lane metadata. These are identity and consumption checks, not optional display fields. Native dependency waits must preserve the work/review lane when a parent completes.
 - `hermes cron create ... --script ... --no-agent --paused` and normal pause/resume control.
 
 The poller shells out to a configured executable; it does not patch Hermes or provide these APIs. The test harness is isolated, but uses the **actual** installed CLI. Missing metadata or different status semantics is a compatibility failure, not permission to invent a passing response.
@@ -120,7 +121,22 @@ The orchestrator completes with concrete card IDs:
 
 The promotion card must depend on the approval gate and include the exact marker and recheck paragraph supplied by `templates/ticket_recheck_paragraph.md`. Preserve the other project gates and its final resource-removal gate. A revised plan must safely replace superseded promotion/lineage while the old approval remains revoked.
 
-On successful promotion, completion metadata must contain `promoted_sha`, a full 40-character Git commit SHA. This is how the adapter recognizes completed promotion, not by parsing a casual message. The adapter uses exact gate identities rather than guessing which project task is E2E or release.
+### Promotion receipt compatibility
+
+New promotion cards must still report top-level `promoted_sha` after the nonforced `dev` fast-forward and remote SHA readback. The adapter requires the named promotion card to be `done` and inspects its latest `completed` run's metadata; an archived card or a narrative summary is not a receipt.
+
+The accepted source adds a compatibility path for an older structured receipt:
+
+```json
+{
+  "candidate": {"sha": "0000000000000000000000000000000000000000"},
+  "promoted": {"dev_after": "0000000000000000000000000000000000000000"}
+}
+```
+
+The zeros above are synthetic placeholders, not a commit to promote. Without a top-level `promoted_sha` key, both nested objects must exist and `candidate.sha` must be a full **40-character lowercase hex** value equal to `promoted.dev_after`. Either field alone, unequal values, short/uppercase hashes and prose-only claims fail closed: status stays unchanged and an operator alert identifies the missing valid receipt.
+
+If the top-level key is present, it governs: an invalid/null value cannot fall back to the nested receipt. A non-null `promoted.dev_after`, when present in an object, must agree with it. `candidate.sha` need not equal a valid canonical SHA (a release commit may be above the candidate). This compatibility reader does not waive the preceding ticket check or any project gate, and does not ask new workers to omit `promoted_sha`. The adapter uses exact gate identities rather than guessing which project task is E2E or release.
 
 ## Promotion ticket
 
@@ -135,6 +151,62 @@ Immediately before the nonforced `dev` fast-forward, execute the installed entry
 Validity is recomputed from local state plus a read of the matching gate. It requires the unique current approval to be ticketed, unrevoked, unsuperseded, current/classified input generations, a live lease, no hold/terminal task and gate status `done`. Gate comments are only an audit trail. An archived gate may release a Hermes dependency but **cannot** satisfy the ticket check.
 
 Default renewal interval is 600 seconds and lease is 1,500 seconds. A stopped poller therefore cannot indefinitely authorize promotion. New input, a hold, missing state, wrong gate/hash/revision or expired lease fail closed. The ticket never grants permission to release `master`/`main`, deploy to production or enlarge project scope.
+
+## Outbound text and correction feedback
+
+`OUTBOUND-PROSE-F1` distinguishes discussion of passwords from credential-shaped values: labels such as `Password: required` and noncredential prose are not alone a disclosure. The filter still rejects the integration's actual token and recognized API-key, private-key, password-bearing connection-string, embedded-URL-credential and secret-path patterns. It is a pattern filter, not a guarantee that arbitrary sensitive text is safe to publish. Workers must not include secrets.
+
+For a rejected ordinary planner question/answer/notice from a request card, nothing from that draft is sent to ClickUp. The integration posts a `CLICKUP-FILTER v1 output=<ref> rule=<rule> attempt=<N>/2` comment on the **same request card**, naming the rule but not the matched text, and queues a guarded wake. The planner must submit a **new** `CLICKUP-OUT v1` comment preserving the rejected output's `kind`, `relay` and `reply_to`, then schedule `CLICKUP_WAIT`. The filter-feedback line itself is not an output header. The corrected draft goes through the same filter; a reply to a different relay does not discharge the correction.
+
+There are at most two automatic correction requests per request card and input generation. Another rejection, an unreachable producer, or a feedback-woken run ending without the matching correction holds the task with a durable operator alert and revokes live tickets. A running/reviewing producer is waited for rather than unconditionally restarted. Plan-attachment rejection remains a hold, not this correction loop. Blocker triage has its own consume-time checks below: a rejected blocker question stays in its existing state with an alert rather than entering the ordinary prose-feedback loop.
+
+## Human-decision question relay
+
+This optional relay is the accepted **r12** question/fence/park protocol, using `v1` wire identifiers. It is off until `blockers enable` stores `blocker_cutover_ms` in the integration database's `meta` table. This is distinct from `config.json`'s intake cutoff and polling `enabled` flag. `blockers enable` writes a fresh cutoff on every invocation. No historical question card is backfilled.
+
+While enabled, the integration watches the current ClickUp-origin orchestrator, final-E2E, promotion, cleanup and declared lineage cards, never the approval gate. Detection requires a fresh, initially blocked, never-run protocol parent assigned to `clickup-intake`, created by the waiting work card at/after the cutoff, with that work card as its sole child. Ordinary `needs_input` or `capability` blocks are not forwarded to ClickUp. Held tasks are paused, not discarded; missing card reads defer decisions rather than prove completion.
+
+### Ask, triage and answer
+
+The complete worker instructions are in [question_protocol.md](../templates/question_protocol.md); use them verbatim on every descendant and amendment card when the feature is enabled.
+
+1. A worker needing a human business/technical decision creates a scratch card titled `CLICKUP-QUESTION v1 <work-card-id>`, assigned to `clickup-intake`, initially `blocked`. Its body explains the missing decision and options, without secrets, logs, paths, hosts or customer data. It links the question as parent of **its own** card, calls `kanban_block(kind="dependency", reason="CLICKUP-QUESTION <question-card-id>")`, then stops. It does not complete/unblock the parent itself.
+2. A `CLICKUP-BLOCKER v1` relay sends that internal question to the planner request card with current context and [blocker_triage.md](../templates/blocker_triage.md). The planner may inspect the work card but must not mutate it. It classifies each blocker into a focused business/technical question or `blocker_internal`. Infrastructure/operator work or an answer already supplied by existing authority stays internal and raises an operator alert; the raw worker body is never quoted to ClickUp.
+3. Technical questions use `boundary=none|security`; a missing/invalid value is treated as security. A boundary question must state that the boundary remains in force and that new authority requires a revised plan and approval. The question temporarily moves the visible ClickUp status to the relevant requirements stage without changing the underlying development phase.
+4. The existing closure rules apply to fresh plain comments after the posted question: requester or approver for business, approver for technical. A matching closure can close multiple already-posted questions of that stage. Top-level comments or threaded replies may carry the closure; replies back to a threaded closure use its root. This still does not authorize development or a scope change.
+5. The planner classifies the delivered input generation and gives each carried blocker a resolution (at most **1,600 characters**) or asks a changed, focused question if the answer is insufficient. An unchanged question is not reposted. The exact resolution header is:
+   ```text
+   CLICKUP-OUT v1 kind=resolution blocker=<id> relay=<ref> gen=<G> authority=unchanged
+   ```
+   Resolution text cites the answering ClickUp comments and says no security/containment control is waived. It must match this task, request card, delivered relay and newer generation. The generation must settle as `answer_only`, all input must be classified, and the approval must remain current before delivery. A material change follows the revision/reapproval path instead.
+6. The first delivery completes the question card with a `CLICKUP-ANSWER v1` summary. Before confirmed consumption, changed answers are `clickup-intake` comments on the work card, with a higher `gen` and `supersedes=g<N>`. The highest generation for each question governs. Whole rendered answer/correction text is capped at **2,000 characters**; longer text is not delivered and raises an alert. The consume-time question limit is **4,000 characters**; IPv4 addresses, Windows/UNC paths and non-ClickUp URLs are rejected along with the outbound credential patterns. These checks supplement, not replace, the planner's stricter no-private-data instructions.
+
+“Answer recorded” confirms a settled delivery, not that a worker has consumed it. The intake does not infer consumption from a new claim or directly unblock the watched work card; completing its question dependency permits native scheduling. A valid worker ACK produces the separate “resumed with your answer” notice. Invalid/slipped ACK evidence or completion without an ACK can yield an unconfirmed-resumption notice and operator alert. After confirmed consumption, later input uses the ordinary task/revision path rather than retroactively replacing that consumed answer.
+
+### Answer fence and bounded park
+
+At run start, when a done question parent has no corresponding `CLICKUP-ANSWER-ACK v1` comment, the worker must **not read or act on the answer yet**:
+
+1. Create `CLICKUP-FENCE v1 <work-card-id>` as a blocked scratch parent assigned to `clickup-intake`, link it to its own card, and wait for it to become done. Check about once per minute and heartbeat while waiting. The integration waits for classified input, settled relevant answers and the fence's observation barrier; all relevant answers are considered, not just the first question.
+2. If still waiting after **30 minutes**, create and link a blocked `CLICKUP-PARK v1 <work-card-id>` scratch parent, then `kanban_block(kind="dependency", reason="CLICKUP-PARK <park-card-id> fence <fence-card-id>")` and stop. Do this even if the fence completes during park creation. The integration completes the park only after fresh reads confirm its identity/link and that the work card has **no current run**. A later run starts the fence step again. If park creation/linking fails, report an infrastructure `needs_input` block instead of dependency-blocking without a valid parent.
+3. After a fence becomes done, read the work card, select the highest-generation trusted answer for each question, and post an ACK with this exact whole first line before continuing:
+   ```text
+   CLICKUP-ANSWER-ACK v1 question=<question-card-id> card=<work-card-id> gen=<G> run=<current-run-id> fence=<fence-card-id>
+   ```
+
+A valid ACK is bound to the question/work identities, a later claimed run in the original work/review lane, a delivered generation and an intake-released fence created during that run. Possibly-sent fence releases are reconciled before ACK disposition. Workers must never complete, unblock, unlink or comment on a question/fence/park card or link one they did not create. New approvals, security exceptions and production access are outside this protocol.
+
+An open/releasing **fence** adds the task to the live observation cadence (light pass each scan, full pass at the configured `promotion_full_seconds`, default 300 seconds). A park alone does not add ClickUp polling. This is not a wall-clock resumption guarantee. The 30-minute timeout is a worker instruction, not an independent timer service. Material input does not retract an already delivered parent result: the worker may resume with that earlier answer, while the scope notice, revised-plan approval and promotion-ticket checks still govern.
+
+### Disable and rollback
+
+`blockers disable` removes the relay cutoff, stopping new protocol-parent detection and blocker-relay staging. It cancels then-pending/retry-wait blocker asks and corrections except queued first-answer completions, preserves possibly-sent work for readback, and queues barrier-free releases for open/releasing fences. Recorded parks keep their no-current-run release condition. Per-question alerts identify unanswered questions or delivered answers whose later corrections/resumption are no longer relayed. Normal planning, approval, promotion polling and passive notices are not disabled. The command does not terminate already-running planner/work-card runs; reconcile their outputs as part of shutdown.
+
+Allow the compatible poller to drain the retained effects before code rollback. With relay handling off, an authorized operator answers an open question by completing it with the decision as its summary, puts a later correction on the work card, or re-enables the relay. An operator may complete a fence; **complete a park only after confirming the work card has no current run**. These are maintenance actions within existing authority, not a means to grant scope or bypass tickets.
+
+`blockers rollback-preflight` returns exit 0 and `rollback preflight OK` only when the relay is off, all `:blocker:`/`:bq:` outbox rows (including mirrors) are `done` or `cancelled_stale`, no blocker is `releasing`, and no fence/park is `open` or `releasing`. Failed/held-ambiguous rows also refuse rollback. The predicate does not drain work, change cards or validate unrelated outbox rows; the CLI takes the lock and opens the writer, which can create missing tables before checking.
+
+The base database schema version remains **1**. Writer entry points add `blockers` and `fences` with `CREATE TABLE IF NOT EXISTS`; read-only ticket checks do not. Ordinary persisted preconditions retain their original nine keys; only blocker preconditions add `blocker_id` and `question_card`. The supplied rollback fixture exercises an older reader after the relay's pending work is settled. This is compatibility evidence, not permission to ignore preflight, remove tables, overwrite active state or assume all older releases are compatible. The public preparer produces a new flat-layout staging copy; existing immutable-release loaders and root bindings require a separately reviewed upgrade procedure.
 
 ## Observation, transport and private state
 

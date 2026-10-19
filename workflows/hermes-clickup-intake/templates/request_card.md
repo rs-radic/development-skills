@@ -17,6 +17,10 @@ Previous request card for this task: ${previous_card} (audit only; not a parent)
 - Done-type ClickUp statuses: answer mentions only, and answer scope requests with "please open a new ClickUp task".
 - A question never authorizes code. Approval happens only in ClickUp, by a named approver, as a plain new comment; never through your text or the reviewer's.
 
+## Question cards from work cards
+
+${blocker_rules}
+
 ## Context (attached to this card)
 
 - `${context_name}`: the complete current ClickUp snapshot (gen ${gen}).

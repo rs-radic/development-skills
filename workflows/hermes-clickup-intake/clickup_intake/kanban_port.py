@@ -206,6 +206,116 @@ def _comments(show):
     return [c for c in comments if isinstance(c, dict)] if isinstance(comments, list) else []
 
 
+# --------------------------------------------------------------------------- question relay readers (exported fields)
+def _events(show):
+    events = show.get("events") if isinstance(show, dict) else None
+    return [e for e in events if isinstance(e, dict)] if isinstance(events, list) else []
+
+
+def open_run_ids(show):
+    """Runs without ``ended_at``. ``show --json`` exports no ``current_run_id``; native ``_end_run`` sets
+    ``ended_at`` and clears ``current_run_id`` in one transaction, so an empty list means no current run."""
+    return [r.get("id") for r in _runs(show) if r.get("ended_at") is None]
+
+
+def claimed_runs(show):
+    """{run_id: lane} from ``claimed`` events: ``review`` when the payload carries ``source_status: review``."""
+    out = {}
+    for e in _events(show):
+        p = e.get("payload")
+        if e.get("kind") == "claimed" and isinstance(p, dict) and isinstance(p.get("run_id"), int):
+            out[p["run_id"]] = "review" if p.get("source_status") == "review" else "work"
+    return out
+
+
+def answer_gate(q_show, w_show, q, w, run_id):
+    """r9 §4.4(a) ``question_card`` send gate, delivery form: ``go``; ``children`` when another card linked
+    itself to Q; else ``stale`` (Q not a fresh blocked intake card, Q not a parent of W, or a claim > R)."""
+    task = (q_show or {}).get("task") or {}
+    parents = {p.get("id") if isinstance(p, dict) else p for p in (w_show or {}).get("parents") or []}
+    if (task.get("status") != "blocked" or _runs(q_show) or task.get("assignee") != AUTHOR or q not in parents
+            or any(r > run_id for r in claimed_runs(w_show))):
+        return "stale"
+    return "go" if q_show.get("children") == [w] else "children"
+
+
+def fence_gate(f_show, w):
+    """r11 §3.3 fence send gate: F ``blocked``, no runs, assignee ``clickup-intake``, children(F) == [W]."""
+    task = (f_show or {}).get("task") or {}
+    ok = (task.get("status") == "blocked" and not _runs(f_show) and task.get("assignee") == AUTHOR
+          and f_show.get("children") == [w])
+    return "go" if ok else "stale"
+
+
+def correction_gate(q_show, w_show, q):
+    """r11 §3.6(b) ``question_card`` send gate, correction form: Q done, Q a parent of W, W not done/archived
+    (the blocker-not-final check is the writer's). No claim, run, ACK or fence condition."""
+    parents = {p.get("id") if isinstance(p, dict) else p for p in (w_show or {}).get("parents") or []}
+    ok = card_status(q_show) == "done" and q in parents and card_status(w_show) not in (None, "done", "archived")
+    return "go" if ok else "stale"
+
+
+def sentinel_defect(show, w, cutover_ms):
+    """None when ``show`` is a fresh protocol card created by worker card ``w``: assignee ``clickup-intake``,
+    ``blocked`` with no runs, newest blocked/unblocked event its ``initial_status`` block, ``created`` payload
+    ``creator_task_id == w``, created at/after the cutover. Otherwise the first failed check's name."""
+    task = show.get("task") if isinstance(show, dict) else None
+    if not isinstance(task, dict) or task.get("assignee") != AUTHOR:
+        return "assignee"
+    if task.get("status") != "blocked":
+        return "status"
+    if _runs(show):
+        return "runs"
+    events = _events(show)
+    created = [e for e in events if e.get("kind") == "created"]
+    if len(created) != 1 or not isinstance(created[0].get("payload"), dict) \
+            or created[0]["payload"].get("creator_task_id") != w:
+        return "creator"
+    if not isinstance(task.get("created_at"), int) or task["created_at"] * 1000 < cutover_ms:
+        return "pre_cutover"
+    last = ([e for e in events if e.get("kind") in ("blocked", "unblocked")] or [{}])[-1]
+    if last.get("kind") != "blocked" or (last.get("payload") or {}).get("reason") != "initial_status":
+        return "unblocked"
+    return None
+
+
+PROTOCOL_TITLES = (("CLICKUP-QUESTION v1 ", "question"), ("CLICKUP-FENCE v1 ", "fence"), ("CLICKUP-PARK v1 ", "park"))
+
+
+def protocol_parent(w, w_show, p_show, cutover_ms):
+    """Examine an unrecorded parent P of watched card ``w`` (blocker plan r9 §4.2, r11 §3.2, r12 §3.2).
+
+    (None, None) for a non-protocol parent. A question: ``record`` (W waits in ``todo``), ``wait`` (W not yet
+    ``todo``; re-examined next scan) or ``alert:<why>`` (identity failure or a sticky/terminal child; no row).
+    A fence or park: ``record``, or ``refused:<why>`` (recorded refused, one alert); a fence failing an identity
+    check is ``ignored:<why>`` (r11 §3.2: not recorded, no alert; only children != [W] refuses it)."""
+    task = p_show.get("task") if isinstance(p_show, dict) else None
+    title = task.get("title") if isinstance(task, dict) else None
+    hit = [(p, k) for p, k in PROTOCOL_TITLES if isinstance(title, str) and title.startswith(p)]
+    if not hit:
+        return None, None
+    prefix, kind = hit[0]
+    defect = sentinel_defect(p_show, w, cutover_ms)
+    if defect is None and kind != "question" and title != prefix + w:
+        defect = "title"
+    if kind == "fence" and defect is not None:
+        return kind, "ignored:" + defect  # r11 §3.2: recorded only if its identity holds
+    if defect is None and p_show.get("children") != [w]:
+        defect = "children"
+    if kind != "question":
+        return kind, "record" if defect is None else "refused:" + defect
+    if defect is not None:
+        return kind, "alert:" + defect
+    status = (w_show.get("task") or {}).get("status") if isinstance(w_show, dict) else None
+    if status == "todo":
+        return kind, "record"
+    if status == "blocked":
+        return kind, "alert:sticky"
+    if status in ("done", "archived"):
+        return kind, "alert:orphan"
+    return kind, "wait"
+
+
 def has_comment(show, body, author=AUTHOR):
     """Exact readback of a comment we posted (the CLI stores the body stripped)."""
     want = body.strip()
@@ -351,6 +461,22 @@ def _failed(res):
     return EffectResult(RowState.AMBIGUOUS if res.outcome is Outcome.AMBIGUOUS else RowState.RETRY_WAIT, res.json)
 
 
+def _question_done(show, p):
+    """r9 §4.4(a) ``complete Q`` readback (A2): Q ``done`` with exactly the sent summary."""
+    return card_status(show) == "done" and show.get("latest_summary") == p["summary"]
+
+
+def _readback(port, intent):
+    """``_applied`` plus, for a ``complete Q`` row, the confirming ``show`` of Q (r9 L4 post-release children
+    readback); (applied | None when the read failed, that show or None)."""
+    if intent.kind == COMPLETE and getattr(intent.preconditions, "question_card", None):
+        res = port.show(intent.target)
+        if res.outcome is not Outcome.OK:
+            return None, None
+        return _question_done(res.json, intent.payload), res.json
+    return _applied(port, intent), None
+
+
 def _applied(port, intent):
     """Readback: True if the effect is visible, False if not, None if the readback itself failed."""
     kind, card, p = intent.kind, intent.target, intent.payload
@@ -366,7 +492,10 @@ def _applied(port, intent):
     if kind == COMMENT:
         return has_comment(res.json, p["body"])
     if kind == COMPLETE:
-        return card_status(res.json) == "done"
+        done = card_status(res.json) == "done"
+        if getattr(intent.preconditions, "question_card", None):  # r9 §4.4(a) readback (A2)
+            return _question_done(res.json, p)
+        return done
     if kind == ARCHIVE:
         return card_status(res.json) == "archived"
     if kind == UNBLOCK:
@@ -419,11 +548,11 @@ def run_kanban_effect(port, intent, *, prior_child=None, alive=child_alive):
         if decision == "stale":
             return EffectResult(RowState.CANCELLED_STALE, shown.json)
     elif prior_child is not None:
-        seen = _applied(port, intent)
+        seen, shown = _readback(port, intent)
         if seen is None:
             return EffectResult(RowState.RETRY_WAIT)
         if seen:
-            return EffectResult(RowState.DONE)
+            return EffectResult(RowState.DONE, shown)
     res = _send(port, intent)
     if res.outcome is not Outcome.OK:
         return _failed(res)
@@ -433,5 +562,5 @@ def run_kanban_effect(port, intent, *, prior_child=None, alive=child_alive):
         landed = status in ("ready", "todo", "running") or (
             shown.outcome is Outcome.OK and (latest_run_id(shown.json) or 0) > intent.preconditions.wait_run_id)
         return EffectResult(RowState.DONE if landed else RowState.AMBIGUOUS, shown.json)
-    seen = _applied(port, intent)
-    return EffectResult(RowState.DONE if seen else RowState.AMBIGUOUS, res.json)
+    seen, shown = _readback(port, intent)  # a complete-Q readback returns its confirming show of Q (r9 L4)
+    return EffectResult(RowState.DONE if seen else RowState.AMBIGUOUS, res.json if shown is None else shown)

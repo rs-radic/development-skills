@@ -137,6 +137,22 @@ class Preconditions:
 
 
 @dataclass(frozen=True)
+class BlockerPreconditions(Preconditions):
+    """Preconditions of a question relay row (blocker plan r9 §4.3): the frozen S0 ``Preconditions`` keep their
+    exact fields and legacy 9-key JSON; only blocker rows persist the two extra keys."""
+    blocker_id: Optional[int] = None
+    question_card: Optional[str] = None
+
+
+def load_preconditions(d):
+    """Rebuild persisted preconditions: ``BlockerPreconditions`` when a blocker key is present, else the legacy
+    ``Preconditions``."""
+    if "blocker_id" in d or "question_card" in d:
+        return BlockerPreconditions(**d)
+    return Preconditions(**d)
+
+
+@dataclass(frozen=True)
 class EffectIntent:
     """One planned external effect, persisted to the outbox before the call (§3, §10)."""
     idem_key: str

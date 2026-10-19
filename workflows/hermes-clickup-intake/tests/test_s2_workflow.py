@@ -29,6 +29,7 @@ T = "86task1"
 SHA1 = "a" * 64
 SHA2 = "b" * 64
 PROMOTED = "c" * 40
+RECEIPT_SHA = "ab12cd34ab12cd34ab12cd34ab12cd34ab12cd34"
 STATUS_NAMES = {n for n, _ in Config().expected_statuses}
 WAKES = ("kb_create", "kb_comment", "kb_unblock")
 
@@ -40,6 +41,20 @@ def tearDownModule():
 
 def _h(s):
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
+
+def receipt_md(drop=(), **over):
+    """Synthetic completed-run receipt metadata without a top-level promoted_sha."""
+    md = {"candidate": {"sha": RECEIPT_SHA, "tree": "2222222222222222222222222222222222222222",
+                        "base": "3333333333333333333333333333333333333333",
+                        "branch": "feature/example-change"},
+          "promoted": {"dev_before": "3333333333333333333333333333333333333333", "dev_after": RECEIPT_SHA,
+                       "master": "4444444444444444444444444444444444444444 (unchanged)",
+                       "push": "non-force fast-forward"}}
+    md.update(over)
+    for k in drop:
+        del md[k]
+    return md
 
 
 def tag(uid=BOT):
@@ -858,6 +873,73 @@ class T10StatusTest(unittest.TestCase):
                 self.assertEqual(h.approvals()[0]["state"], "ticketed")
                 self.assertNotIn("ready for deployment", h.statuses)
                 self.assertTrue(any("promot" in x for x in h.alerts))
+
+    def test_promotion_structured_receipt_without_promoted_sha(self):
+        # PROMOTED-SHA-F1: a completed-run receipt shape with no top-level promoted_sha
+        h = H(self)
+        fe, promo = h.ticketed()
+        h._add_run(promo, profile="integrator", status="done", outcome="completed", metadata=receipt_md())
+        h.done(promo)
+        h.cycle()
+        self.assertEqual(h.statuses[-1], "ready for deployment")
+        self.assertEqual(h.approvals()[0]["state"], "promoted")
+        self.assertEqual(h.approvals()[0]["promoted_sha"], RECEIPT_SHA)
+        self.assertEqual(h.task()["phase"], "ready_for_deployment")
+        self.assertFalse(any("promoted_sha" in x for x in h.alerts))
+        h.cycle()
+        self.assertEqual(h.statuses.count("ready for deployment"), 1)
+
+    def test_promotion_receipt_rejected_without_status_change(self):
+        cand, after = receipt_md()["candidate"], receipt_md()["promoted"]
+        cases = {
+            "disagree": receipt_md(candidate=dict(cand, sha="d" * 40)),
+            "short_hashes": receipt_md(candidate=dict(cand, sha=RECEIPT_SHA[:8]),
+                                       promoted=dict(after, dev_after=RECEIPT_SHA[:8])),
+            "uppercase": receipt_md(candidate=dict(cand, sha=RECEIPT_SHA.upper()),
+                                    promoted=dict(after, dev_after=RECEIPT_SHA.upper())),
+            "candidate_only": receipt_md(drop=("promoted",)),
+            "dev_after_only": receipt_md(drop=("candidate",)),
+            "not_structured": receipt_md(candidate=RECEIPT_SHA, promoted=RECEIPT_SHA),
+            "narrative_only": {"summary": "fast-forwarded dev to %s" % RECEIPT_SHA},
+            "canonical_malformed": receipt_md(promoted_sha=RECEIPT_SHA[:8]),
+            "canonical_null": receipt_md(promoted_sha=None),
+            "canonical_conflict": receipt_md(promoted_sha="d" * 40),
+            "unsuccessful_run": None,
+        }
+        for how, md in cases.items():
+            with self.subTest(how=how):
+                h = H(self)
+                fe, promo = h.ticketed()
+                if md is None:
+                    h._add_run(promo, profile="integrator", status="blocked", outcome="blocked",
+                               metadata=receipt_md())
+                else:
+                    h._add_run(promo, profile="integrator", status="done", outcome="completed", metadata=md)
+                h.done(promo)
+                h.cycle()
+                self.assertEqual(h.approvals()[0]["state"], "ticketed")
+                self.assertIsNone(h.approvals()[0]["promoted_sha"])
+                self.assertEqual(h.task()["phase"], "promotion_window")
+                self.assertNotIn("ready for deployment", h.statuses)
+                self.assertTrue(any("without a valid promoted_sha" in x for x in h.alerts))
+
+    def test_promotion_canonical_promoted_sha_governs(self):
+        cand = receipt_md()["candidate"]
+        cases = {
+            "canonical_with_agreeing_receipt": receipt_md(promoted_sha=RECEIPT_SHA),
+            # a release commit on top of the tested candidate: dev_after == promoted_sha != candidate.sha
+            "candidate_differs": receipt_md(promoted_sha=RECEIPT_SHA, candidate=dict(cand, sha="d" * 40)),
+        }
+        for how, md in cases.items():
+            with self.subTest(how=how):
+                h = H(self)
+                fe, promo = h.ticketed()
+                h._add_run(promo, profile="integrator", status="done", outcome="completed", metadata=md)
+                h.done(promo)
+                h.cycle()
+                self.assertEqual(h.approvals()[0]["state"], "promoted")
+                self.assertEqual(h.approvals()[0]["promoted_sha"], RECEIPT_SHA)
+                self.assertEqual(h.statuses[-1], "ready for deployment")
 
     def test_status_writes_come_from_expected_statuses(self):
         h = H(self)

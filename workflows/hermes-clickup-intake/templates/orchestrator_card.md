@@ -18,8 +18,10 @@ Owner of this card: clickup-intake (deterministic, no LLM). This is an ordinary 
 
 ${promotion_block}
 
+   The `dev`-promotion card body must also require that card, after the non-force `dev` fast-forward and its SHA readback, to complete with top-level completion metadata `promoted_sha` set to the full 40-hex SHA of the exact remote `dev` commit it verified. A short hash, a narrative summary or only a nested field (for example `promoted.dev_after` or `candidate.sha`) does not satisfy this; the integration moves the ClickUp task to `ready for deployment` from this field.
+
 5. Complete this card with completion metadata `clickup_gates` naming the exact cards; only these ids drive the ClickUp status, so they must be exact:
    `{"plan_revision": ${rev}, "plan_sha256": "${plan_sha}", "final_e2e": "<final exact-candidate E2E card id>", "promotion": "<dev-promotion card id>", "cleanup": "<final cleanup card id>", "lineage": ["<every card id you created for this plan>"]}`
 6. D3 Discord visibility: status events of this ClickUp-origin graph go to the configured Discord channel as passive `notify` subscriptions only; cards you create inherit this card's passive subscription. Never add `wake` or `notify+wake` subscriptions for this graph; Discord replies are never required.
 7. No ClickUp contact and no ClickUp token for any worker; the integration relays status to ClickUp itself.
-${amendment_block}
+${protocol_block}${amendment_block}

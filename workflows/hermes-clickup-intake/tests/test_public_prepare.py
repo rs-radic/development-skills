@@ -243,7 +243,8 @@ assert not output.exists(), "partial staging was left behind"
         self.assertFalse(self.home.exists())
 
     def test_missing_runtime_source_refuses_before_creating_stage(self):
-        for relative in ("clickup_intake/main.py", "clickup_intake/ports.py", "templates/request_card.md"):
+        for relative in ("clickup_intake/main.py", "clickup_intake/ports.py", "templates/request_card.md",
+                         "templates/blocker_triage.md", "templates/question_protocol.md"):
             with self.subTest(missing=relative):
                 source = self.package / relative
                 content = source.read_bytes()

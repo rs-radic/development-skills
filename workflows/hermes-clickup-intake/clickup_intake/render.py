@@ -34,6 +34,11 @@ def _template(name):
 TICKET_RECHECK_PARAGRAPH = (TEMPLATES_DIR / "ticket_recheck_paragraph.md").read_text(encoding="utf-8").strip()
 
 
+def question_protocol():
+    """The ClickUp question protocol text for ClickUp-origin cards (blocker plan r11 §3.1 as amended by r12 §3.1)."""
+    return (TEMPLATES_DIR / "question_protocol.md").read_text(encoding="utf-8")
+
+
 # --------------------------------------------------------------------------- envelope (§9 untrusted data)
 def _new_nonce():
     return _secrets.token_hex(16)
@@ -108,7 +113,7 @@ def request_card_body(task_id, seq, gen, next_rev, previous_card=None, plan_name
                  else "No passed revision yet.")
     return _template("request_card.md").substitute(
         task_id=task_id, seq=seq, gen=gen, next_rev=next_rev, previous_card=previous_card or "none",
-        context_name=context_name(gen), plan_line=plan_line)
+        context_name=context_name(gen), plan_line=plan_line, blocker_rules=blocker_triage_rules("<ref>"))
 
 
 def _gate_line(auto_gate, gate_id=None):
@@ -126,8 +131,12 @@ def gate_card_body(task_id, rev, plan_sha, accounts_gen, approval, auto_gate):
         gate_line=_gate_line(auto_gate) + " Archiving it also releases the dependency.")
 
 
+PROTOCOL_REQUIREMENT = ("8. Every card you create for this plan, and every card created by a later amendment of it,"
+                        " must include verbatim the ClickUp question protocol below.")
+
+
 def orchestrator_card_body(task_id, rev, plan_name, plan_size, plan_sha, accounts_gen, gate_id, approval, auto_gate,
-                           previous_gates=None):
+                           previous_gates=None, protocol=False):
     d2 = ("this ClickUp approval carries the work through `dev` promotion and the production ZIP only, through the "
           f"gate {gate_id} and a valid ticket. " + _gate_line(auto_gate, gate_id))
     amendment = ""
@@ -146,7 +155,8 @@ def orchestrator_card_body(task_id, rev, plan_name, plan_size, plan_sha, account
         task_id=task_id, rev=rev, plan_name=plan_name, plan_size=plan_size, plan_sha=plan_sha,
         accounts_gen=accounts_gen, gate_id=gate_id, author_name=approval["author_name"],
         author_id=approval["author_id"], comment_id=approval["comment_id"], d2_line=d2,
-        promotion_block=promotion_block(gate_id, task_id, rev, plan_sha), amendment_block=amendment)
+        promotion_block=promotion_block(gate_id, task_id, rev, plan_sha), amendment_block=amendment,
+        protocol_block=(PROTOCOL_REQUIREMENT + "\n\n" + question_protocol().strip() + "\n") if protocol else "")
 
 
 def _iso(ms):
@@ -244,6 +254,23 @@ def relay_comment(ref, gen, items, context_file_name, context_sha256, note=None,
     return "\n".join(head) + "\n" + envelope(text, nonce) + tail
 
 
+def blocker_triage_rules(ref):
+    """Planner triage rules for question cards (blocker plan r6 §4.3, r9 §4.1); shared by the request card."""
+    return _template("blocker_triage.md").substitute(ref=ref).strip()
+
+
+def blocker_relay_comment(ref, blockers, plan_rev, plan_sha, context_file_name):
+    """``CLICKUP-BLOCKER v1`` relay of question cards to the request card (blocker plan r6 §4.3, r9 §4.3)."""
+    out = ["CLICKUP-BLOCKER v1 relay=%s blockers=%s" % (ref, ",".join(str(b["id"]) for b in blockers)),
+           f"Plan in force: r{plan_rev} (SHA-256 {plan_sha}).",
+           f"Context snapshot: {context_file_name} (attached).", "", blocker_triage_rules(ref), "", "Blockers:"]
+    for b in blockers:
+        out.append("- blocker %d: question card %s for card %s, run %s" % (b["id"], b["question_card"], b["card"],
+                                                                         b["run_id"]))
+        out += ["> " + line for line in (b["reason"] or "(no text)").splitlines()]
+    return "\n".join(out) + "\n"
+
+
 def gate_stamp_valid(task_id, rev, plan_sha, epoch, input_gen):
     return (f"CLICKUP-GATE v1 audit=valid task={task_id} rev={rev} sha={plan_sha} epoch={epoch} input_gen={input_gen}"
             "\nAudit copy only: the ticket lives in the integration's local state.")
@@ -315,14 +342,30 @@ def plan_attachment_name(rev, plan_sha, idem_key):
 
 
 # --------------------------------------------------------------------------- outbound filter (§9)
+# A password label blocks only when the token after it is shaped like a credential value: at least 6
+# characters, with a letter plus a digit or symbol, or made only of digits and symbols (with a digit).
+# Labels and prose ("Password: r3 didn't...", "Password: required", "password: <customer-supplied>")
+# are not credential disclosure.
+_PASSWORD_SYMBOLS = set("!@#$%^&*+=~|\\")
+
 _OUTBOUND = [
     ("api_key", re.compile(r"\bpk_[A-Za-z0-9_]{10,}")),
     ("private_key", re.compile(r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----")),
     ("connection_string", re.compile(r"(?i)\b(?:server|data source|host)\s*=[^;\n]*;[^\n]*\b(?:password|pwd)\s*=")),
-    ("password", re.compile(r"(?i)\b(?:password|passwd|pwd)\s*[=:]\s*\S+")),
+    ("password", re.compile(r"(?i)\b(?:password|passwd|pwd)\s*[=:][*_`]*\s*(\S+)")),
     ("credential_url", re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^/\s:@]+:[^@\s/]+@")),
     ("secret_path", re.compile(r"(?i)(?:\.dpapi\b|hermes[\\/]+secrets\b|dedicated-panel-clickup[\\/])")),
 ]
+
+
+def _credential_value(token):
+    value = token.lstrip("\"'`*_([").rstrip("\"'`*_)].,;:!?")
+    if len(value) < 6:
+        return False
+    if any(c.isalpha() for c in value):
+        return any(c.isdigit() or c in _PASSWORD_SYMBOLS for c in value)
+    # Numeric PINs/BMC passwords ("123456", "1234!@"); ranges and dates ("12-128", "2026-10-16") are not.
+    return any(c.isdigit() for c in value) and all(c.isdigit() or c in _PASSWORD_SYMBOLS for c in value)
 
 
 def check_outbound(text, secrets=()):
@@ -331,7 +374,10 @@ def check_outbound(text, secrets=()):
         if s and s in text:
             return "token"
     for reason, pattern in _OUTBOUND:
-        if pattern.search(text):
+        if reason == "password":
+            if any(_credential_value(m.group(1)) for m in pattern.finditer(text)):
+                return reason
+        elif pattern.search(text):
             return reason
     return None
 

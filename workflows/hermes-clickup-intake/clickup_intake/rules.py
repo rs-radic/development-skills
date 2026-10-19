@@ -13,11 +13,30 @@ CLOSE_BUSINESS = "business requirements closed"
 CLOSE_TECHNICAL = "technical requirements closed"
 HEX40 = re.compile(r"[0-9a-f]{40}")
 HEX64 = re.compile(r"[0-9a-f]{64}")
-OUT_KINDS = ("business_questions", "technical_questions", "answer", "notice", "classification")
+OUT_KINDS = ("business_questions", "technical_questions", "answer", "notice", "classification",
+             "blocker_internal", "resolution")  # blocker plan r6 §4.3, §4.5
 # Workflow phases in which a queued wake (request create, relay, unblock) may still go out (§4.2-§4.4, §10.1).
 LIVE_PHASES = ("new_quiet", "planning", "awaiting_business", "awaiting_technical", "in_review", "awaiting_approval",
                "revising", "approval_queued", "development", "implemented", "promotion_window", "promotion_held",
                "ready_for_deployment")
+
+_ACK = re.compile(r"CLICKUP-ANSWER-ACK v1 question=(t_[0-9a-z]+) card=(t_[0-9a-z]+) gen=([1-9]\d*)"
+                  r" run=([1-9]\d*) fence=(t_[0-9a-z]+)")
+# Blocker plan r6 §4.3 consume-time leak guard (beside the send-time outbound filter in render.check_outbound).
+BLOCKER_TEXT_MAX = 4000
+_LEAKS = (("ipv4", re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")),
+          ("path", re.compile(r"(?<![A-Za-z])[A-Za-z]:[\\/]|\\\\[^\\\s]")),
+          ("url", re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://(?!(?:[a-z0-9-]+\.)*clickup\.com(?:[/:?#\s]|$))")))
+
+
+def blocker_leak(text):
+    """Why a blocker question/resolution text must not be posted (r6 §4.3), else None."""
+    if len(text) > BLOCKER_TEXT_MAX:
+        return "length"
+    for reason, pattern in _LEAKS:
+        if pattern.search(text):
+            return reason
+    return None
 
 
 def _command_text(norm_text, lines):
@@ -122,7 +141,19 @@ def parse_out(body):
         if hdr.get("result") not in ("answer_only", "material") or not hdr.get("gen", "").isdigit():
             return None
         hdr["gen"] = int(hdr["gen"])
+    if hdr["kind"] == "resolution":
+        if not hdr.get("gen", "").isdigit():
+            return None
+        hdr["gen"] = int(hdr["gen"])
     return hdr, rest.strip()
+
+
+def parse_ack(line):
+    """The consumption ACK header (blocker plan r11 §3.1 (d), §3.5) when ``line`` is exactly one, else None."""
+    m = _ACK.fullmatch(line)
+    if not m:
+        return None
+    return {"question": m[1], "card": m[2], "gen": int(m[3]), "run": int(m[4]), "fence": m[5]}
 
 
 def runs(show):
@@ -205,10 +236,21 @@ def gates_of(show, rev, sha):
 
 
 def promoted_sha(show):
-    """40-hex ``promoted_sha`` of the latest completed run, or None."""
+    """Full 40-hex promoted commit of the latest completed run, or None.
+
+    Canonical: top-level ``promoted_sha``. When present it governs: malformed, or contradicted
+    by a structured ``promoted.dev_after``, gives None, never a fallback. Without it, a completed
+    structured receipt is accepted only when ``candidate.sha`` and ``promoted.dev_after`` are
+    both full 40-hex and equal.
+    """
     done = [r for r in runs(show) if r.get("outcome") == "completed"]
-    sha = _metadata(done[-1]).get("promoted_sha") if done else None
-    return sha if isinstance(sha, str) and HEX40.fullmatch(sha) else None
+    md = _metadata(done[-1]) if done else {}
+    after = md["promoted"].get("dev_after") if isinstance(md.get("promoted"), dict) else None
+    if "promoted_sha" in md:
+        sha = md["promoted_sha"]
+        return sha if isinstance(sha, str) and HEX40.fullmatch(sha) and after in (None, sha) else None
+    cand = md["candidate"].get("sha") if isinstance(md.get("candidate"), dict) else None
+    return cand if isinstance(cand, str) and HEX40.fullmatch(cand) and cand == after else None
 
 
 def marker(gate, task, rev, sha):
@@ -221,13 +263,17 @@ def guarded(show, gate, task, rev, sha):
     return gate in parents(show) and marker(gate, task, rev, sha) in [ln.strip() for ln in body.splitlines()]
 
 
-def preconditions_ok(task, approvals, pre, kind, card_show=None, confirmed_list_id=None):
+def preconditions_ok(task, approvals, pre, kind, card_show=None, confirmed_list_id=None, blocker=None):
     """§10.1 recheck immediately before a send/retry; False means ``cancelled_stale``.
 
     ``approvals`` maps id -> row; ``confirmed_list_id`` is the home list id the GET Task of
-    this scan confirmed (None when not confirmed).
+    this scan confirmed (None when not confirmed). ``blocker`` is the blockers row of a blocker
+    precondition (blocker plan r6 §4.4): a ClickUp ask row is sent only while that blocker is ``asked``.
     """
     if task is None:
+        return False
+    if (getattr(pre, "blocker_id", None) is not None and getattr(pre, "question_card", None) is None
+            and kind.startswith("cu_") and (blocker is None or blocker["state"] != "asked")):
         return False
     if task["terminal"] and (kind.startswith("cu_") or pre.phases):
         return False  # phase-guarded rows are workflow rows; protective rows carry no phases

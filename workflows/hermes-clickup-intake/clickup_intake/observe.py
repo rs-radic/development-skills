@@ -530,6 +530,10 @@ def observe_scan(transport, store, config, now_ms, filtered=True, guard=None):
     disc = discover(guard.transport(transport), store, config, now_ms, filtered)
     obs = ScanObservation(disc, alerts=list(disc.alerts))
     live = {r[0] for r in store.conn.execute("SELECT DISTINCT task FROM approvals WHERE state='ticketed'")}
+    if store.conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='fences'").fetchone():
+        # r11 §3.3: an open or releasing fence joins the live cadence; r12 §3.3: parks read no ClickUp data.
+        live |= {r[0] for r in store.conn.execute(
+            "SELECT DISTINCT task FROM fences WHERE kind='fence' AND state IN ('open', 'releasing')")}
     rows = [dict(r) for r in store.conn.execute(
         "SELECT * FROM tasks WHERE terminal=0 AND (hold_reason IS NULL OR hold_reason='') AND phase IS NOT NULL")
         if r["phase"] not in NO_READ_PHASES]

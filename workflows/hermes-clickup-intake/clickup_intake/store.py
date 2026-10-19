@@ -131,6 +131,57 @@ _V1 = [
 
 MIGRATIONS = {1: _V1}
 
+# Question relay tables (blocker plan r6 §4.1, r9 §4.3, r11 §3.2, r12 §3.2): created by every writer with
+# CREATE TABLE IF NOT EXISTS, never by readers; schema_version stays 1 and older code ignores unknown tables.
+BLOCKER_STATES = ("detected", "relayed", "internal", "asked", "closed", "resolved", "releasing", "delivered",
+                  "resumed", "resumed_unconfirmed", "released_by_owner", "scope_change", "superseded", "terminal")
+FENCE_STATES = ("open", "releasing", "released", "refused", "owner_released", "abandoned")
+_RELAY_TABLES = [
+    f"""CREATE TABLE IF NOT EXISTS blockers (
+        id INTEGER PRIMARY KEY,
+        task TEXT NOT NULL,
+        question_card TEXT NOT NULL UNIQUE,
+        card TEXT NOT NULL,
+        run_id INTEGER,
+        created_ms INTEGER,
+        body_sha256 TEXT,
+        approval_id INTEGER,
+        phase_at_detect TEXT,
+        restore_status TEXT,
+        stage TEXT CHECK (stage IS NULL OR stage IN ('business', 'technical')),
+        boundary INTEGER NOT NULL DEFAULT 0,
+        state TEXT NOT NULL CHECK (state IN ({_in(BLOCKER_STATES)})),
+        relay_ref TEXT,
+        request_card TEXT,
+        question_key TEXT,
+        closure_item TEXT,
+        closure_gen INTEGER,
+        pending_relay TEXT,
+        resolution_relay TEXT,
+        resolution_card TEXT,
+        resolution_gen INTEGER,
+        resolution_body TEXT,
+        resolution_authority TEXT,
+        release_key TEXT,
+        release_gen INTEGER,
+        delivered_gen INTEGER,
+        delivered_sha256 TEXT,
+        origin_lane TEXT CHECK (origin_lane IS NULL OR origin_lane IN ('work', 'review')),
+        updated_ms INTEGER)""",
+    f"""CREATE TABLE IF NOT EXISTS fences (
+        id INTEGER PRIMARY KEY,
+        task TEXT NOT NULL,
+        card TEXT NOT NULL,
+        fence_card TEXT NOT NULL UNIQUE,
+        kind TEXT NOT NULL DEFAULT 'fence' CHECK (kind IN ('fence', 'park')),
+        created_s INTEGER,
+        anchor_ms INTEGER,
+        state TEXT NOT NULL CHECK (state IN ({_in(FENCE_STATES)})),
+        release_key TEXT,
+        snapshot TEXT,
+        updated_ms INTEGER)""",
+]
+
 _TASK_COLUMNS = (
     "eligible", "requester_id", "phase", "last_status_seen", "list_fp", "content_hash", "attach_ids_hash",
     "quiet_until_ms", "published_rev", "published_sha256", "published_accounts_gen", "next_rev",
@@ -202,6 +253,13 @@ class Store:
                 for stmt in MIGRATIONS[v]:
                     c.execute(stmt)
                 c.execute("INSERT OR REPLACE INTO meta(key, value) VALUES ('schema_version', ?)", (str(v),))
+
+    def ensure_relay_tables(self):
+        """Create the question relay tables if absent (``CREATE TABLE IF NOT EXISTS``); called by the intake's
+        writer entry point after opening the store, never by readers. The base v1 schema is unchanged."""
+        with self.transaction() as c:
+            for stmt in _RELAY_TABLES:
+                c.execute(stmt)
 
     def observe_commit(self, task, items, task_fields):
         """Store one task pass in a single transaction (§4.1 step 4, §8.5).

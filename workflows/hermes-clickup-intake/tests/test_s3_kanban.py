@@ -57,6 +57,70 @@ class OutboundFilterTest(unittest.TestCase):
             for secret in ("Hunter2", "s3cr3tpw", "MIIabc", TOKEN, "pk_998877", "api-key.dpapi"):
                 self.assertNotIn(secret, post.alert, label)
 
+    # Planner prose that only labels or discusses passwords (OUTBOUND-PROSE-F1). The first entry is the
+    # nonsecret sentence of the FILTERED cu_reply clickup-dp:wdpu2ypy93:out:3809cebd1399.
+    BENIGN_PASSWORD_PROSE = [
+        "2. Password: r3 didn't handle this, and it matters. Installs use the server's stored OS password. "
+        "Most unassigned servers store \"N/A\" (179 of the 211 eligible servers on dev). The endpoint never "
+        "returns the password or writes it to the audit log. Rule: 12-50 letters, digits, \".\" or \"_\".",
+        "Password: required",
+        "**Password:** optional, write-only.",
+        "PASSWORD: see the Server Edit page",
+        "password: <customer-supplied>",
+        "Password:\nThe install uses the stored OS password.",
+        "Pwd: N/A",
+        "Password = not stored anywhere",
+        "Password: ******** (masked in the UI)",
+        "Password: r3's rotation rule is unchanged.",
+        "Password: 12-128 characters.",
+        "Password: 2026-10-16 is the rotation date.",
+        "Password:\n==========\nThe install uses the stored OS password.",
+    ]
+
+    # Synthetic, nonsecret credential values that must still hold.
+    PASSWORD_LEAKS = [
+        "PASSWORD=Tr0ub4dor&3",
+        "pwd: \"Xk9#mq2v\"",
+        "Password:\n  Hunter2!",
+        "**Password:** Hunter2!",
+        "passwd: Secret!pass",
+        "Log in with password: abc123.",
+        "Use password: hunter2 for the test login?",
+        "Password=Hunter2",
+        "IPMI password: 123456",
+        "Password: 84729163",
+        "pwd=000000",
+        "Password: 1234!@",
+    ]
+
+    def test_password_prose_and_labels_are_not_credentials(self):
+        for text in self.BENIGN_PASSWORD_PROSE:
+            self.assertIsNone(render.check_outbound(text, (TOKEN,)), text)
+            post = render.prepare_clickup_post(text, "idem-1", task_id=TASK, secrets=(TOKEN,))
+            self.assertTrue(post.ok, text)
+            self.assertFalse(post.hold, text)
+
+    def test_password_values_still_hold_without_echo(self):
+        for text in self.PASSWORD_LEAKS:
+            post = render.prepare_clickup_post(text, "idem-1", task_id=TASK, secrets=(TOKEN,))
+            self.assertFalse(post.ok, text)
+            self.assertTrue(post.hold, text)
+            self.assertEqual(post.reason, "password", text)
+            self.assertIsNone(post.comment, text)
+            for value in ("Tr0ub4dor", "Xk9#mq2v", "Hunter2", "Secret!pass", "abc123", "hunter2",
+                          "123456", "84729163", "000000", "1234!@"):
+                self.assertNotIn(value, post.alert, text)
+
+    def test_benign_password_prose_does_not_mask_other_secret_classes(self):
+        prose = "Password: required.\n"
+        cases = {"api_key": "pk_998877_ZZZZZZZZZZZZZZZZZZZZ",
+                 "private_key": "-----BEGIN RSA PRIVATE KEY-----",
+                 "connection_string": "Server=db01;Database=whmcs;User Id=sa;Password=Hunter2!;",
+                 "credential_url": "https://deploy:s3cr3tpw@git.example.com/repo.git",
+                 "token": TOKEN}
+        for reason, secret in cases.items():
+            self.assertEqual(render.check_outbound(prose + secret, (TOKEN,)), reason, reason)
+
     def test_in_memory_token_is_blocked_even_without_pk_shape(self):
         token = "Zq9-unusual-token-value-77"
         post = render.prepare_clickup_post("value " + token, "idem-1", task_id=TASK, secrets=(token,))
@@ -263,6 +327,21 @@ class TemplatesTest(unittest.TestCase):
         self.assertIn("passive `notify`", body)
         self.assertIn("Never add `wake` or `notify+wake`", body)
         self.assertNotRegex(body, r"\$\{?[a-z_]+")  # every template placeholder substituted
+
+    def test_orchestrator_body_requires_top_level_promoted_sha(self):
+        # PROMOTED-SHA-F1: rules.promoted_sha reads only top-level completion metadata `promoted_sha`
+        # (40-hex). Every generated orchestrator body, including amendments, must require the promotion
+        # card to return exactly that field, inside the promotion-card requirements (before item 5).
+        for body in (self.orch(), self.orch(auto_gate=False),
+                     self.orch(rev=3, previous_gates={"plan_revision": 1, "promotion": "t_0a0b0001",
+                                                      "gate": "t_06a70001", "lineage": []})):
+            reqs = body.split("## Requirements", 1)[1].split("\n5. ", 1)[0]
+            self.assertIn("top-level completion metadata `promoted_sha`", reqs)
+            self.assertIn("full 40-hex SHA of the exact remote `dev` commit", reqs)
+            for rejected in ("short hash", "narrative", "nested field", "`promoted.dev_after`", "`candidate.sha`"):
+                self.assertIn(rejected, reqs, rejected)
+            # the ticket-check paragraph and marker are unchanged and still precede the new requirement
+            self.assertLess(reqs.index(PLAN_RECHECK_PARAGRAPH), reqs.index("`promoted_sha`"))
 
     def test_orchestrator_body_auto_gate_false_names_approver_a(self):
         body = self.orch(auto_gate=False)

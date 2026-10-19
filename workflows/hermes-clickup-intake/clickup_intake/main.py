@@ -17,6 +17,12 @@ The executor adapts S2 outbox rows to the S1/S3 executors without changing eithe
   ``rules.send_barrier_ok`` for quiet-expired rows (False defers; not an attempt).
 - Context snapshots are read resumably across scans (``read_snapshot``), and orchestrator/gate ``card_role``
   rows attach exactly one context or ledger file each.
+- A planner output the §9 outbound filter rejects is never posted; it goes back to its own request card as a
+  ``CLICKUP-FILTER v1`` comment naming the rule (never the matched text) plus a wake, so the planner posts a
+  corrected draft that passes the same filter. After FILTER_FEEDBACK_MAX corrections per card and generation,
+  or when the card cannot take one, the task is held with an operator alert (OUTBOUND-PROSE-F1). A woken card
+  whose run ends without a corrected output also holds the task with one durable operator alert. Each such hold
+  commits with the outcome that caused it and its durable alert row, so a restart cannot lose it.
 """
 
 import argparse
@@ -34,7 +40,7 @@ import time
 from . import clickup_api, clickup_effects, engine, observe, render, rules
 from . import kanban_port as kp
 from .config import load_config
-from .contracts import EffectIntent, Outcome, Preconditions, RowState
+from .contracts import EffectIntent, Outcome, Preconditions, RowState, load_preconditions
 from .parse import parse_comment
 from .store import Store, load_ticket_snapshot, open_readonly, revoke_live_tickets
 from .ticket import ticket_verdict
@@ -54,8 +60,24 @@ MAX_ATTEMPTS = clickup_effects.MAX_ATTEMPTS
 PREFLIGHT_KEY = "incident_preflight"
 OPEN_ALERTS_KEY = "open_alerts"
 CLOSED_CARDS_KEY = "closed_cards"
+WATCHED_CLOSED_KEY = "blocker_closed_cards"  # blocker plan r6 §4.2
 PREPASS_KEY = "prepass_outbox_mark"
 COMMENT_PAGE = 25
+# OUTBOUND-PROSE-F1: corrected drafts asked of one request card per input generation; the next rejection holds
+FILTER_FEEDBACK_MAX = 2
+_OUTPUT_KEY = re.compile(r"clickup-dp:(?P<task>[^:]+):(?:out|q:business|q:technical):(?P<ref>[0-9a-f]{12})")
+_HEADER_VALUE = re.compile(r"[A-Za-z0-9_.-]{1,80}")
+NO_CORRECTION = ("done", "archived", "triage", "blocked")
+FILTER_RULES = {
+    "token": "the integration's own ClickUp API token",
+    "api_key": "an API key (pk_...)",
+    "private_key": "a PEM private key block",
+    "connection_string": "a connection string that carries a password",
+    "password": "a credential-shaped value after a password/passwd/pwd label (the label itself and prose about "
+                "passwords are fine)",
+    "credential_url": "a URL with embedded user:password@ credentials",
+    "secret_path": "a path into a secret store (.dpapi files, Hermes secrets)",
+}
 
 
 def _sha(data):
@@ -168,6 +190,7 @@ class Glue:
         if shadow:
             self.shadow_report(res)
         else:
+            self.uncorrected_feedback()
             self.execute()
         self.alerts.extend(self.guard.alerts[n_guard:])
         self.close_cards()
@@ -178,7 +201,9 @@ class Glue:
         """S2 consumes worker outputs before it records delivered relays. A first pass without cards or
         comments records this run's earlier outbox results, so a worker that parked since then is matched
         to its relay. Without cards that pass can raise false alerts (e.g. a plan source "not observable"),
-        so the alert rows it added are dropped; the full pass queues every genuine one again. The outbox
+        so the alert rows it added are dropped; the full pass queues every genuine one again. Kept are the r9 §7
+        per-question disable alerts (NA1): ``engine._disabled_blockers`` decides them from the outbox alone
+        and queues each once with its blocker's transition, which the full pass does not repeat. The outbox
         rowid mark is kept in meta until the drop commits, so a crash in between drops them on the rerun."""
         mark = self.meta(PREPASS_KEY)
         if mark is None:
@@ -187,7 +212,9 @@ class Glue:
         engine.evaluate(self.store, self.now,
                         dataclasses.replace(self.obs, comments={}, cards={}, attachments={}), self.cfg)
         with self.store.transaction() as c:
-            c.execute("DELETE FROM outbox WHERE kind='alert' AND state='pending' AND rowid>?", (mark,))
+            c.execute("DELETE FROM outbox WHERE kind='alert' AND state='pending' AND rowid>? AND idem_key NOT LIKE ?"
+                      " AND idem_key NOT LIKE ?", (mark, "clickup-dp:alert:blocker:%:disabled:delivered",
+                                                   "clickup-dp:alert:blocker:%:disabled:open"))
             c.execute("DELETE FROM meta WHERE key=?", (PREPASS_KEY,))
 
     def finish(self):
@@ -244,12 +271,110 @@ class Glue:
                     shown = self._show(card)
                     if shown is not None:
                         cards[card] = shown
+        self._observe_watched(cards, terminal)
         atts = {}
         for card, role in want.items():
             if role == "request" and rules.status(cards.get(card)) == "done":
                 atts[card] = [{"name": a.get("filename"), "sha256": a.get("sha256")} for a in self.attachments(card)]
         self.obs = engine.Observation(scan_started_ms=self.now, comments=dict(self.comments), cards=cards,
                                       attachments=atts, confirmed=frozenset(self.confirmed))
+
+    def protocol_targets(self):
+        """r9 §7 D1-A: (task, card) for each watched card (never the gate) of non-terminal, unheld tasks whose fresh
+        ``show`` is neither done nor archived."""
+        out = []
+        for (tid,) in self.c.execute("SELECT clickup_task_id FROM tasks WHERE terminal=0 AND (hold_reason IS NULL"
+                                     " OR hold_reason='') ORDER BY clickup_task_id").fetchall():
+            for card in engine._watched(self, tid):
+                shown = self._show(card)
+                if shown is not None and rules.status(shown) not in ("done", "archived"):
+                    out.append((tid, card))
+        return out
+
+    def _observe_watched(self, cards, terminal):
+        """Blocker plan observation: the watched cards while enabled (``_observe_live_watched``), then the two cards
+        of every recorded open/releasing fence or park and releasing blocker of an unheld task, and while enabled
+        the question card of each non-final blocker of an unheld terminal task and of each live task's blocker
+        that ``engine._dispose`` may make terminal or superseded."""
+        enabled = self.meta(engine.CUTOVER_KEY) is not None
+        if not enabled:
+            if not self.c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='fences'").fetchone():
+                return
+        else:
+            self._observe_live_watched(cards, terminal)
+        # r12 §3.3/§9, r11 §9: recorded open/releasing fences and parks keep their two cards observed (also after
+        # disable and for a terminal task) until they are final; r9 §7: so do a live task's releasing blockers, whose
+        # kept rows are finished after disable; r9 §4.4 / r11 §3.5 (NA1): so does a terminal task's open
+        # blocker's Q, read by _closed_task_blockers until the blocker is final. Held tasks wait.
+        unheld = " JOIN tasks t ON t.clickup_task_id=x.task WHERE (t.hold_reason IS NULL OR t.hold_reason='') AND "
+        for pair in self.c.execute(
+                "SELECT x.fence_card, x.card FROM fences x" + unheld + "x.state IN ('open', 'releasing') UNION ALL"
+                " SELECT x.question_card, x.card FROM blockers x" + unheld + "t.terminal=0 AND x.state='releasing'"
+                + (" UNION ALL SELECT x.question_card, x.question_card FROM blockers x" + unheld
+                   + "t.terminal=1 AND x.state NOT IN (%s)" % engine._in(engine.BLOCKER_FINAL) if enabled else "")
+                ).fetchall():
+            for x in pair:
+                if x not in cards:
+                    shown = self._show(x)
+                    if shown is not None:
+                        cards[x] = shown
+        if enabled:  # r9 §4.4 / r11 §3.5 (NA2): engine._dispose's terminal/superseded case reads Q itself,
+            # also once Q is no longer a parent of W: a live unheld task's non-releasing blocker whose W is
+            # done/archived (or cached closed) or whose approval is gone (W is then not watched: SPEC-R6-B2); and
+            # a post-closure one whose W is unobserved, so that its material input is decided (SPEC-R6-B2).
+            # NA3: a delivered blocker of a gone approval also needs W itself (its consumption ACK precedes
+            # the superseded disposition): a read-only show of that recorded W only, never watched or cached.
+            closed = set(self.meta(WATCHED_CLOSED_KEY, []))
+            final = engine._in(engine.BLOCKER_FINAL + ("releasing",))
+            for q, w, state, gone, delivered in self.c.execute(
+                    "SELECT x.question_card, x.card, x.state, a.id IS NULL OR a.state='stale' OR (a.state='revoked'"
+                    " AND a.revoked_reason='superseded'), x.delivered_gen IS NOT NULL FROM blockers x"
+                    " LEFT JOIN approvals a ON a.id=x.approval_id"
+                    + unheld + "t.terminal=0 AND x.state NOT IN (%s) ORDER BY x.id" % final).fetchall():
+                if gone and delivered and w not in cards and w not in closed:
+                    shown = self._show(w)
+                    if shown is not None:
+                        cards[w] = shown
+                if q not in cards and (gone or w in closed or (rules.status(cards[w]) in ("done", "archived")
+                                                               if w in cards else state in engine.POST_CLOSURE)):
+                    shown = self._show(q)
+                    if shown is not None:
+                        cards[q] = shown
+
+    def _observe_live_watched(self, cards, terminal):
+        """Blocker plan r6 §4.2 / r9 §4.2: once the cutover is set, ``show`` the watched cards of non-terminal,
+        unheld tasks (never the gate) and each watched card's not-yet-recorded parents. Watched cards observed
+        done/archived are cached and no longer shown."""
+        closed = set(self.meta(WATCHED_CLOSED_KEY, []))
+        add = set()
+        for tid, hold in self.c.execute("SELECT clickup_task_id, hold_reason FROM tasks ORDER BY clickup_task_id"):
+            if tid in terminal or hold:
+                continue
+            for card in engine._watched(self, tid):
+                if card in closed:
+                    continue
+                if card not in cards:
+                    shown = self._show(card)
+                    if shown is None:
+                        continue
+                    cards[card] = shown
+                if rules.status(cards[card]) in ("done", "archived") and not self.c.execute(
+                        "SELECT 1 FROM blockers WHERE card=? AND state NOT IN (%s) UNION SELECT 1 FROM fences"
+                        " WHERE card=? AND state NOT IN (%s)" % (engine._in(engine.BLOCKER_FINAL),
+                                                                 engine._in(engine.FENCE_FINAL)),
+                        (card, card)).fetchone():
+                    add.add(card)  # a W with a non-final blocker, fence or park is still evaluated (r11 §3.5)
+                for p in cards[card].get("parents") or []:
+                    if isinstance(p, str) and p not in cards and not self.c.execute(
+                            "SELECT 1 FROM blockers WHERE question_card=? AND state IN (%s) UNION SELECT 1 FROM fences"
+                            " WHERE fence_card=? AND state IN (%s)" % (engine._in(engine.BLOCKER_FINAL),
+                                                                      engine._in(engine.FENCE_FINAL)),
+                            (p, p)).fetchone():
+                        shown = self._show(p)
+                        if shown is not None:
+                            cards[p] = shown
+        if add - closed:
+            self.set_meta(WATCHED_CLOSED_KEY, sorted(closed | add))
 
     def attachments(self, card):
         """``attachments --json`` of a card with the SHA-256 of each stored file (cached per scan)."""
@@ -324,8 +449,8 @@ class Glue:
         if any(s != "done" for s in deps):
             return False
         kind = row["kind"]
-        if kind == "alert":
-            if not self.precheck(row):
+        if kind == "alert":  # a task-less operator alert (the r12 §9 disable sentence) has no task to go stale
+            if json.loads(row["preconditions"]).get("task_id") and not self.precheck(row):
                 return self.update(key, state="cancelled_stale")
             self.out.append(json.loads(row["body"])["text"])
             return self.update(key, state="done", outcome="OK")
@@ -337,14 +462,17 @@ class Glue:
 
     def precheck(self, row, drop_wait=False):
         """§10.1 recheck against this scan's state (``rules.preconditions_ok``)."""
-        pre = Preconditions(**json.loads(row["preconditions"]))
+        pre = load_preconditions(json.loads(row["preconditions"]))
         if drop_wait:
             pre = dataclasses.replace(pre, wait_run_id=None)
         t = self.c.execute("SELECT * FROM tasks WHERE clickup_task_id=?", (pre.task_id,)).fetchone()
         apps = {a["id"]: dict(a) for a in self.c.execute("SELECT * FROM approvals WHERE task=?", (pre.task_id,))}
         card = self.obs.cards.get(json.loads(row["body"] or "{}").get("card"))
         confirmed = self.cfg.list_id if pre.task_id in self.obs.confirmed else None
-        return rules.preconditions_ok(dict(t) if t else None, apps, pre, row["kind"], card, confirmed)
+        b = getattr(pre, "blocker_id", None)
+        b = t is not None and b is not None and self.c.execute("SELECT * FROM blockers WHERE id=?", (b,)).fetchone()
+        return rules.preconditions_ok(dict(t) if t else None, apps, pre, row["kind"], card, confirmed,
+                                      blocker=dict(b) if b else None)
 
     def send_gate(self, row, drop_wait=False):
         """Immediately before every send and retry: the §10.1 precondition recheck ('cancel'), the final
@@ -413,7 +541,7 @@ class Glue:
     # ------------------------------------------------------------------------- ClickUp effects (S1)
     def clickup(self, row):
         key, p = row["idem_key"], json.loads(row["body"])
-        pre = Preconditions(**json.loads(row["preconditions"]))
+        pre = load_preconditions(json.loads(row["preconditions"]))
         tid = pre.task_id
         mirrors = [k for k in (key + "#cu-att", key + "#cu") if self.state(k) is not None]
         if not mirrors:
@@ -425,9 +553,15 @@ class Glue:
             built = self.build_clickup(row, p)
             if built is None:
                 return False
-            if isinstance(built, str):  # outbound filter rejection (§9)
-                self.update(key, state="failed", outcome="FILTERED")
-                self.hold(tid, "outbound_filter", built)
+            if isinstance(built, dict):  # outbound filter rejection (§9): nothing is posted
+                fed = self.filter_feedback(row, built["reason"])
+                if fed is None:
+                    return False  # its request card is not readable in this scan: decided in a later scan
+                if fed == "held":
+                    self.alerts.append(built["alert"])
+                elif not fed:
+                    self.update(key, state="failed", outcome="FILTERED")
+                    self.hold(tid, "outbound_filter", built["alert"])
                 return True
             with self.store.transaction() as c:
                 for mkey, kind, target, body in built:
@@ -458,7 +592,8 @@ class Glue:
         return (mrow["state"], mrow["attempts"], mrow["next_attempt_ms"]) != before
 
     def build_clickup(self, row, p):
-        """Mirror rows (key, S1 kind, target, body) for one S2 ClickUp row; None defers; str = filter alert."""
+        """Mirror rows (key, S1 kind, target, body) for one S2 ClickUp row; None defers; a dict is a filter
+        rejection ({"reason", "alert"})."""
         key, kind, tid = row["idem_key"], row["kind"], p["task"]
         mkey = key + "#cu"
         if kind == "cu_status":
@@ -469,8 +604,10 @@ class Glue:
                 self.alerts.append("plan %s for task %s is not readable on card %s; publication deferred"
                                    % (p["attachment"], tid, p["card"]))
                 return None
-            if render.check_outbound(data.decode("utf-8", "replace"), self.secrets):
-                return "ClickUp outbound filter hold: task %s (plan attachment); nothing was posted" % tid
+            reason = render.check_outbound(data.decode("utf-8", "replace"), self.secrets)
+            if reason:
+                return {"reason": reason,
+                        "alert": "ClickUp outbound filter hold: task %s (plan attachment); nothing was posted" % tid}
             rev = int(re.match(r"plan-r(\d+)-", p["filename"]).group(1))
             name = render.plan_attachment_name(rev, p["sha256"], mkey)
             return [(mkey, "clickup_attachment", tid, {"filename": name, "path": self.stage(mkey, name, data)})]
@@ -483,7 +620,7 @@ class Glue:
             text = text.replace("{summary}", plan_summary(data.decode("utf-8", "replace")))
         post = render.prepare_clickup_post(text, mkey, task_id=tid, secrets=self.secrets)
         if not post.ok:
-            return post.alert
+            return {"reason": post.reason, "alert": post.alert}
         mk, target = ("clickup_reply", p["root"]) if kind == "cu_reply" else ("clickup_comment", tid)
         if post.attachment_name is None:
             return [(mkey, mk, target, {"text": post.comment})]
@@ -507,14 +644,249 @@ class Glue:
                     return a["data"]
         return None
 
+    # -------------------------------------------------- outbound filter feedback (OUTBOUND-PROSE-F1)
+    def filter_feedback(self, row, reason):
+        """A filtered planner output goes back to its own request card instead of a silent hold: in the same
+        transaction that fails the output row, queue one Kanban comment naming the triggered rule (never the
+        matched text) and asking for a corrected draft, plus a wake of the card (``feedback_wait``). The correction
+        is a new output and passes the same filter. At most FILTER_FEEDBACK_MAX corrections per card and input
+        generation. The wake records the card's latest run of this scan's show (the producing run, OP-Q2);
+        ``feedback_wait`` moves it to the latest run that started before the comment was delivered (SPEC r16).
+        "held": a producer that cannot take a correction, or no correction left, failed
+        the row and held the task with a durable alert in one transaction (OP-Q1). None: the request card
+        is not readable in this scan (nothing changed). False (the caller holds the task with its alert) for any
+        other row."""
+        key = row["idem_key"]
+        m = _OUTPUT_KEY.fullmatch(key)
+        if not m:
+            return False
+        tid, ref = m.group("task"), m.group("ref")
+        seen = self.c.execute("SELECT s.key, s.card FROM kanban_seen s JOIN cards c ON c.card_id=s.card AND"
+                              " c.task=? AND c.role='request' WHERE s.key LIKE ?", (tid, ref + "%")).fetchone()
+        if seen is None:
+            return False
+        full, card = seen
+        show = self.obs.cards.get(card)
+        run = rules.latest_run(show)
+        if run is None:
+            self.alerts.append("ClickUp outbound filter: request card %s of task %s is not readable; its feedback is"
+                               " deferred" % (card, tid))
+            return None
+        gen = self.c.execute("SELECT input_gen FROM tasks WHERE clickup_task_id=?", (tid,)).fetchone()[0]
+        base = "clickup-dp:%s:filterfb:%s:g%d:" % (tid, card, gen)
+        held = "clickup-dp:alert:%s:filterfb:%s:g%d:%s:held" % (tid, card, gen, ref)
+        if rules.status(show) in NO_CORRECTION:
+            return self.filter_hold(key, tid, held, _no_correction(card, rules.status(show), tid))
+        n = self.c.execute("SELECT COUNT(*) FROM outbox WHERE idem_key LIKE ?", (base + "%:comment",)).fetchone()[0]
+        if n >= FILTER_FEEDBACK_MAX or self.state(base + ref + ":comment") is not None:
+            return self.filter_hold(key, tid, held, "ClickUp outbound filter: request card %s produced %d rejected"
+                                    " drafts for task %s (gen %d); no automatic correction left; task on hold"
+                                    % (card, n + 1, tid, gen))
+        head, when = "comment", ""
+        start = "a \"CLICKUP-OUT v1\" header with the same kind, relay and reply_to as the rejected output"
+        for cm in (show or {}).get("comments") or []:
+            if isinstance(cm, dict) and _sha(json.dumps([card, cm.get("author"), cm.get("created_at"),
+                                                         cm.get("body")])) == full:
+                hdr = rules.parse_out(cm.get("body"))[0]
+                parts = ["kind=" + hdr["kind"]] + ["%s=%s" % (k, hdr[k]) for k in ("relay", "reply_to")
+                                                   if _HEADER_VALUE.fullmatch(hdr.get(k) or "")]
+                head = "\"CLICKUP-OUT v1 %s\"" % " ".join(parts)
+                when = ", created_at %s" % cm.get("created_at")
+                start = "exactly %s (the rejected output's header)" % head
+        first = "CLICKUP-FILTER v1 output=%s rule=%s attempt=%d/%d" % (ref, reason, n + 1, FILTER_FEEDBACK_MAX)
+        text = "\n".join([
+            first,
+            "Your output %s (output ref %s%s) was NOT posted to ClickUp and will never be sent: the integration's"
+            " outbound filter rule \"%s\" matched %s. Nothing from it was relayed."
+            % (head, ref, when, reason, FILTER_RULES.get(reason, "material that may not leave the integration")),
+            "Post the corrected text as a NEW comment whose first line is %s, then call"
+            " kanban_schedule(reason=\"CLICKUP_WAIT\"). The CLICKUP-FILTER line of this comment is not an output"
+            " header: a comment that starts with it is never posted. The correction passes the same filter before"
+            " anything is posted." % start,
+            "Never post a secret value: name the credential or where it is kept (for example \"the BMC password in"
+            " the vault\"), not the value. Keep the rest, but drop anything that later CLICKUP-IN relays or the"
+            " ledger made obsolete.",
+            "This is correction %d of %d for this card and generation; a further rejected draft holds the task for"
+            " an operator." % (n + 1, FILTER_FEEDBACK_MAX)])
+        live = dataclasses.asdict(Preconditions(task_id=tid, phases=rules.LIVE_PHASES))
+        note = ("ClickUp outbound filter: task %s output %s from request card %s was not posted (%s); the planner was"
+                " asked for a corrected draft (%d of %d)" % (tid, ref, card, reason, n + 1, FILTER_FEEDBACK_MAX))
+        k = base + ref
+        with self.store.transaction() as c:
+            c.execute("UPDATE outbox SET state='failed', outcome='FILTERED' WHERE idem_key=?", (key,))
+            for k_, kind, target, body, pre, deps in (
+                    (k + ":comment", "kb_comment", card, {"card": card, "text": text}, live, []),
+                    (k + ":unblock", "kb_unblock", card, {"card": card, "relay_line": first,
+                                                          "template": "filter_feedback"},
+                     dict(live, wait_run_id=run["id"]), [k + ":comment"]),
+                    ("clickup-dp:alert:" + k[len("clickup-dp:"):], "alert", "operator", {"text": note},
+                     dataclasses.asdict(Preconditions(task_id=tid)), [])):
+                body = json.dumps(body, sort_keys=True)
+                c.execute("INSERT OR IGNORE INTO outbox(idem_key, task, kind, target, payload_sha256, body,"
+                          " preconditions, depends_on) VALUES (?,?,?,?,?,?,?,?)",
+                          (k_, tid, kind, target, _sha(body), body, json.dumps(pre), json.dumps(deps)))
+        self.log.info(json.dumps({"event": "outbox", "key": key, "state": "failed"}))
+        return True
+
+    def feedback_wait(self, row, card):
+        """Wake gate of a filter feedback comment: 'go', 'wait' (no attempt), 'done' or 'held'. The wake targets the
+        latest run that started before the feedback comment was delivered (its Kanban created_at; at least the
+        producing run recorded when the feedback was created), stored as the row's wait_run_id: only a run that
+        started at or after delivery surely saw the comment (SPEC r16). A run that started earlier can still read
+        it: when its correction (``corrected``) is already there, the wake is done without an unblock.
+        It waits while that run is still running or the card is in review. A run that saw the comment makes the
+        §10.3 guard report the wake done, and ``uncorrected_feedback`` checks what it produced. A card that can no
+        longer take a correction fails the wake and holds the task with a durable alert in one transaction."""
+        shown = self.port.show(card)
+        if not _ok(shown):
+            return "wait"
+        pre = json.loads(row["preconditions"])
+        at = _feedback_at(shown.json, json.loads(row["body"])["relay_line"])
+        if at is not None:
+            wait = max([pre["wait_run_id"]] + [r["id"] for r in shown.json.get("runs") or [] if isinstance(r, dict)
+                                               and isinstance(r.get("id"), int) and not (
+                                                   isinstance(r.get("started_at"), int) and r["started_at"] >= at)])
+            if wait != pre["wait_run_id"]:
+                pre["wait_run_id"] = wait
+                self.update(row["idem_key"], preconditions=json.dumps(pre))
+            done = self.corrected(row, shown.json, at)  # a run read the feedback and corrected it already
+            if done is None:
+                return "wait"
+            if done:
+                self.update(row["idem_key"], state="done", outcome="CORRECTED")
+                return "done"
+        status, last = kp.card_status(shown.json), kp.latest_run_id(shown.json) or 0
+        if status == "review" or (status == "running" and last == pre["wait_run_id"]):
+            return "wait"
+        if status in NO_CORRECTION or status is None:
+            alert = "clickup-dp:alert:" + row["idem_key"][len("clickup-dp:"):-len(":unblock")] + ":unreachable"
+            with self.store.transaction() as c:
+                c.execute("UPDATE outbox SET state='failed', outcome='UNREACHABLE' WHERE idem_key=?", (row["idem_key"],))
+                self.escalate(c, row["task"], alert, _no_correction(card, status, row["task"]))
+            self.log.info(json.dumps({"event": "outbox", "key": row["idem_key"], "state": "failed"}))
+            return "held"
+        return "go"
+
+    def filter_hold(self, key, tid, alert, text):
+        """The filtered output row fails, and its task holds with the durable alert ``alert``, in one transaction."""
+        with self.store.transaction() as c:
+            c.execute("UPDATE outbox SET state='failed', outcome='FILTERED' WHERE idem_key=?", (key,))
+            self.escalate(c, tid, alert, text)
+        self.log.info(json.dumps({"event": "outbox", "key": key, "state": "failed"}))
+        return "held"
+
+    def escalate(self, c, tid, alert, text):
+        """Inside the caller's transaction: hold ``tid`` for outbound_filter (live tickets revoked, as ``hold_task``)
+        and queue the operator alert row ``alert`` once. The alert row is printed by the executor exactly once."""
+        body = json.dumps({"text": text}, sort_keys=True)
+        c.execute("UPDATE tasks SET hold_reason='outbound_filter' WHERE clickup_task_id=?", (tid,))
+        revoke_live_tickets(c, tid, "hold", self.now)
+        c.execute("INSERT OR IGNORE INTO outbox(idem_key, task, kind, target, payload_sha256, body, preconditions,"
+                  " depends_on) VALUES (?,?,?,?,?,?,?,?)",
+                  (alert, tid, "alert", "operator", _sha(body), body,
+                   json.dumps(dataclasses.asdict(Preconditions(task_id=tid))), "[]"))
+
+    def uncorrected_feedback(self):
+        """A request card woken by filter feedback that ends its run (parked past the wake's wait run, or no
+        longer able to take a correction) without a corrected output posted -> the task holds with one durable
+        operator alert (no draft text, no further wake). Runs after this scan's engine pass consumed outputs."""
+        for row in map(dict, self.c.execute("SELECT * FROM outbox WHERE kind='kb_unblock' AND state='done' AND"
+                                            " idem_key LIKE 'clickup-dp:%:filterfb:%:unblock' ORDER BY rowid")):
+            tid, card = row["task"], row["target"]
+            base = row["idem_key"][:-len(":unblock")]
+            alert = "clickup-dp:alert:" + base[len("clickup-dp:"):] + ":uncorrected"
+            t = self.c.execute("SELECT terminal, hold_reason FROM tasks WHERE clickup_task_id=?", (tid,)).fetchone()
+            if t is None or t[0] or t[1] or tid not in self.obs.confirmed or self.state(alert) is not None:
+                continue
+            show, wait = self.obs.cards.get(card), json.loads(row["preconditions"]).get("wait_run_id")
+            run, status = rules.latest_run(show), rules.status(show)
+            if not isinstance(wait, int) or not run or run["id"] <= wait or not (
+                    status in NO_CORRECTION or (status == "scheduled" and run.get("outcome") == "scheduled")):
+                continue
+            # The correction is a later output (created at or after the feedback was delivered) under the
+            # rejected output's kind/relay/reply_to that the engine took up; any other output does not discharge it
+            at = _feedback_at(show, json.loads(row["body"])["relay_line"])
+            if at is None or self.corrected(row, show, at) is not False:
+                continue
+            with self.store.transaction() as c:  # hold (as ``hold_task``) and its durable alert commit together
+                self.escalate(c, tid, alert, "ClickUp outbound filter: request card %s ended its run after the feedback"
+                              " on output %s of task %s without a corrected draft; nothing was posted; task on hold"
+                              % (card, base.rsplit(":", 1)[1], tid))
+
+    def corrected(self, row, show, at):
+        """Whether the filter feedback wake ``row`` has its correction: a planner output on the card created at or
+        after the feedback was delivered (``at``) whose kind, relay and reply_to equal the rejected output's (the
+        header the feedback asks for) and that the engine took up as an output row; that row then posts it, or
+        (filtered again) gets its own bounded feedback. None: such an output is not consumed by the engine yet
+        (decided in a later scan). Without the rejected comment in view nothing matches (False)."""
+        tid, card, ref = row["task"], row["target"], row["idem_key"][:-len(":unblock")].rsplit(":", 1)[1]
+        mine, outs = None, []
+        for cm in (show or {}).get("comments") or []:
+            if not isinstance(cm, dict) or cm.get("author") != "planner":
+                continue
+            parsed = rules.parse_out(cm.get("body"))
+            if parsed is None:
+                continue
+            full = _sha(json.dumps([card, cm.get("author"), cm.get("created_at"), cm.get("body")]))
+            ident = tuple(parsed[0].get(k) for k in ("kind", "relay", "reply_to"))
+            if full[:12] == ref:
+                mine = ident
+            elif isinstance(cm.get("created_at"), int) and cm["created_at"] >= at:
+                outs.append((full, ident))
+        result = False
+        for full, ident in outs:
+            if mine is None or ident != mine:
+                continue
+            if not self.c.execute("SELECT 1 FROM kanban_seen WHERE key=?", (full,)).fetchone():
+                result = None
+            elif any(self.state("clickup-dp:%s:%s:%s" % (tid, k, full[:12])) is not None
+                     for k in ("out", "q:business", "q:technical")):
+                return True
+        return result
+
     # -------------------------------------------------------------------------- Kanban effects (S3)
     def kanban(self, row):
         key, kind, p = row["idem_key"], row["kind"], json.loads(row["body"])
         if row["state"] in ("retry_wait", "ambiguous") and (row["next_attempt_ms"] or 0) > self.now:
             return False
+        q = getattr(load_preconditions(json.loads(row["preconditions"])), "question_card", None)
+        fence = kind == "kb_complete" and (":fence:" in key or ":park:" in key) and self.c.execute(
+            "SELECT * FROM fences WHERE release_key=?", (key,)).fetchone()
+        if (q or fence) and row["state"] in ("sending", "ambiguous"):  # r6 "Reconcile before refusal" (r9 §4.4)
+            if row["child_pid"] and kp.child_alive(row["child_pid"], row["child_start_time"]):
+                return False
+            seen, shown = kp._readback(self.port, self.kb_intent(row, p))
+            if seen is None:
+                return False
+            if seen:
+                self.late_children(row, q, shown)
+                return self.update(key, state="done", outcome="OK")
         gate = self.send_gate(row, drop_wait=kind == "kb_unblock")
+        if gate == "go" and fence:  # r11 §3.3 fence send gate; r12 §3.3: fresh reads at every send, P then W
+            gate = kp.fence_gate(self._show(fence["fence_card"]), fence["card"])
+            w_show = self._show(fence["card"]) if fence["kind"] == "park" else None
+            if fence["kind"] == "park" and (fence["fence_card"] not in rules.parents(w_show) or w_show is None
+                                            or kp.open_run_ids(w_show)):
+                gate = "stale"
+        if gate == "go" and q and kind in ("kb_complete", "kb_comment"):
+            b = self.c.execute("SELECT * FROM blockers WHERE question_card=?", (q,)).fetchone()
+            w = b["card"]
+            if kind == "kb_comment":
+                gate = "stale" if b["state"] in engine.BLOCKER_FINAL else \
+                    kp.correction_gate(self.obs.cards.get(q), self.obs.cards.get(w), q)
+            else:
+                gate = kp.answer_gate(self.obs.cards.get(q), self.obs.cards.get(w), q, w, b["run_id"])
+            if gate == "children":
+                kids = ", ".join(map(str, (self.obs.cards.get(q) or {}).get("children") or []))
+                self.alerts.append("question card %s for %s has other children (%s); the answer is not delivered"
+                                   " and %s keeps waiting" % (q, w, kids, w))
         if gate != "go":
             return self.refuse(row, gate)
+        if p.get("template") == "filter_feedback":
+            wait = self.feedback_wait(row, row["target"])
+            if wait != "go":
+                return wait != "wait"
+            row = self.row(key)
         intent = self.kb_intent(row, p)
         if intent is None:
             return False
@@ -534,6 +906,7 @@ class Glue:
             self.port.on_spawn = None
         st = res.state
         if st is RowState.DONE:
+            self.late_children(row, q, res.json)
             ref = res.json.get("id") if kind == "kb_create" and isinstance(res.json, dict) else None
             return self.update(key, state="done", outcome="OK", result_ref=ref)
         if st is RowState.CANCELLED_STALE:
@@ -547,6 +920,21 @@ class Glue:
             return True
         nxt = self.now + KB_BACKOFF_MIN[attempts - 1] * 60_000 if st is RowState.RETRY_WAIT else self.now
         return self.update(key, state=st.value, outcome=st.value, next_attempt_ms=nxt)
+
+    def late_children(self, row, q, shown):
+        """r9 L4 post-release children readback: when the show of Q that confirmed this ``complete Q`` row lists a
+        child other than W (linked after the send gate), queue one durable deduplicated operator alert, before the
+        row is recorded done. The applied delivery stands and is never sent again."""
+        if not q or row["kind"] != "kb_complete" or not isinstance(shown, dict):
+            return
+        b = self.c.execute("SELECT id, task, card FROM blockers WHERE question_card=?", (q,)).fetchone()
+        kids = [c for c in shown.get("children") or [] if c != b["card"]] if b else []
+        if kids:
+            with self.store.transaction():
+                engine._Ctx(self.store, self.now, self.obs, self.cfg).alert(
+                    "blocker:%d:children" % b["id"], "question card %s for %s was completed with its answer while"
+                    " other cards were linked to it (%s): they may have resumed with the answer for %s (protocol"
+                    " violation)" % (q, b["card"], ", ".join(map(str, kids)), b["card"]), b["task"])
 
     def release(self, card, prior=None):
         """Initial release of a blocked, never-run own card (§8.1 request pickup, §8.4 step 3): ``unblock``
@@ -582,7 +970,7 @@ class Glue:
     def kb_intent(self, row, p):
         """S3 ``EffectIntent`` for one S2 Kanban row (payload rendering; None defers)."""
         key, kind, card = row["idem_key"], row["kind"], row["target"]
-        pre = Preconditions(**json.loads(row["preconditions"]))
+        pre = load_preconditions(json.loads(row["preconditions"]))
         tid = pre.task_id
         if kind == "kb_create":
             body = self.card_body(tid, p)
@@ -596,6 +984,9 @@ class Glue:
                 body = self.relay_body(row, p)
                 if body is None:
                     return None
+            elif p.get("template") == "blocker_relay":
+                body = render.blocker_relay_comment(p["relay"], p["blockers"], p["plan_rev"], p["plan_sha256"],
+                                                    p["context"])
             else:
                 body = p["text"]
             payload = {"body": body}
@@ -629,7 +1020,7 @@ class Glue:
             for d in json.loads(row["depends_on"] or "[]"):
                 if d.endswith(":comment"):
                     line = json.loads(self.row(d)["body"]).get("text")
-            payload = {"relay_line": line}
+            payload = {"relay_line": p.get("relay_line", line)}  # a filter feedback wake names its comment's line
         elif kind == "kb_complete":
             payload = {"summary": p["summary"], "metadata": p.get("metadata")}
         else:
@@ -670,7 +1061,8 @@ class Glue:
             last = q["lineage"][-1]
             prev = dict(last.get("clickup_gates") or {}, gate=last.get("gate_card"))
         return render.orchestrator_card_body(tid, q["rev"], "clickup-plan-r%d.md" % q["rev"], len(data), q["sha256"],
-                                             a["accounts_gen"], q["gate"], view, self.cfg.auto_gate, prev)
+                                             a["accounts_gen"], q["gate"], view, self.cfg.auto_gate, prev,
+                                             protocol=self.meta(engine.CUTOVER_KEY) is not None)  # r9 §4.1, §7
 
     def read_snapshot(self, tid, d):
         """Complete current task content (GET Task, every comment page, replies of threaded roots); None defers.
@@ -778,11 +1170,13 @@ class Glue:
         """Name suffix for one relay's ledger, plan copy and staged files on its request card (E2E-F2): the
         installed CLI stores a repeated attachment name as ``name (n).ext``, so the exact-name readback (§10.2)
         needs names no other relay on the card uses. The card's first relay keeps the plain names its body
-        references; any later relay (an earlier relay attach row exists for the card) uses its own context
-        file's stem, ``-g<G>[-b<k>]``. Decided by outbox insertion order, so it is stable across retries."""
+        references; any later relay (an earlier relay or blocker relay attach row exists for the card) uses its
+        own context file's stem, ``-g<G>[-b<k>]`` or ``-<blocker relay ref>``. Decided by outbox insertion order,
+        so it is stable across retries."""
         earlier = att and self.c.execute(
-            "SELECT 1 FROM outbox WHERE kind='kb_attach' AND target=? AND idem_key LIKE '%:relay:%:attach'"
-            " AND rowid < (SELECT rowid FROM outbox WHERE idem_key=?)", (att["target"], att["idem_key"])).fetchone()
+            "SELECT 1 FROM outbox WHERE kind='kb_attach' AND target=? AND (idem_key LIKE '%:relay:%:attach'"
+            " OR idem_key LIKE '%:blocker:%:attach') AND rowid < (SELECT rowid FROM outbox WHERE idem_key=?)",
+            (att["target"], att["idem_key"])).fetchone()
         return "-" + os.path.splitext(ctx_name)[0].replace("clickup-context-", "", 1) if earlier else ""
 
     def context_files(self, row, p):
@@ -877,6 +1271,20 @@ class Glue:
             return f.read()
 
 
+def _feedback_at(show, line):
+    """Kanban ``created_at`` of our delivered filter feedback comment (first line ``line``), else None."""
+    for cm in (show or {}).get("comments") or []:
+        if isinstance(cm, dict) and cm.get("author") == kp.AUTHOR and isinstance(cm.get("created_at"), int) \
+                and str(cm.get("body", "")).splitlines()[:1] == [line]:
+            return cm["created_at"]
+    return None
+
+
+def _no_correction(card, status, task):
+    return ("ClickUp outbound filter: request card %s is %s, so it cannot be asked for a corrected draft; nothing"
+            " was posted; task %s on hold" % (card, status, task))
+
+
 def shared_context_key(key):
     """Staging key of the snapshot shared by an approval's orchestrator and gate context rows for one gen:
     the gate row's key (``clickup-dp:<task>:gate:r<N>:g<A>:attach:context:g<G>``). Other keys map to themselves."""
@@ -969,6 +1377,24 @@ def status_lines(state_path):
             "preflight incident: " + ("open" if incident else "none")]
 
 
+def rollback_preflight(store):
+    """r6 §7 step 3, r9 §7, r11 §9, r12 §9 full code rollback preflight (read-only): the reasons it refuses."""
+    one = lambda sql: store.conn.execute(sql).fetchone()[0]  # noqa: E731
+    reasons = ["blockers enabled"] if one("SELECT COUNT(*) FROM meta WHERE key='%s'" % engine.CUTOVER_KEY) else []
+    for label, n in (
+            ("blocker rows not done or cancelled_stale", one(
+                "SELECT COUNT(*) FROM outbox WHERE state NOT IN ('done', 'cancelled_stale') AND"
+                " (idem_key LIKE 'clickup-dp:%:blocker:%' OR idem_key LIKE 'clickup-dp:%:bq:%')")),
+            ("blockers releasing", one("SELECT COUNT(*) FROM blockers WHERE state='releasing'")),
+            ("fences open or releasing", one(
+                "SELECT COUNT(*) FROM fences WHERE kind='fence' AND state IN ('open', 'releasing')")),
+            ("parks open or releasing", one(
+                "SELECT COUNT(*) FROM fences WHERE kind='park' AND state IN ('open', 'releasing')"))):
+        if n:
+            reasons.append("%s: %d" % (label, n))
+    return reasons
+
+
 def ticket_check(cfg, port, gate, task, rev, sha, now):
     """§8.5 read-only verdict: local state snapshot (read-only URI) + ``show --json`` of the gate."""
     snapshot = load_ticket_snapshot(cfg.state_path, task, cfg.ticket_lease_seconds)
@@ -984,6 +1410,8 @@ def _parser():
     sub.add_parser("status")
     for name in ("admit", "hold", "release"):
         sub.add_parser(name).add_argument("task")
+    sub.add_parser("blockers").add_argument("action", choices=("enable", "disable", "protocol-comment",
+                                                                      "rollback-preflight"))
     ob = sub.add_parser("outbox")
     ob.add_argument("action", choices=("resend", "abandon"))
     ob.add_argument("id")
@@ -1044,6 +1472,7 @@ def main(argv=None, root=None, *, transport=None, port=None, clock=None, opener=
     try:
         store = Store(cfg.state_path, clock)
         try:
+            store.ensure_relay_tables()
             now = clock()
             if args.cmd == "hold":
                 ok = hold_task(store, args.task, now)
@@ -1053,6 +1482,27 @@ def main(argv=None, root=None, *, transport=None, port=None, clock=None, opener=
                 ok = release_task(store, args.task)
                 say("released" if ok else "unknown task")
                 return 0 if ok else 1
+            if args.cmd == "blockers":  # r6 §4.1/§7, r9 §7, r11 §9, r12 §9
+                if args.action == "rollback-preflight":
+                    reasons = rollback_preflight(store)
+                    say("rollback preflight " + ("refused: " + "; ".join(reasons) if reasons else "OK"))
+                    return 1 if reasons else 0
+                if args.action == "protocol-comment":  # D1-A
+                    g = Glue(cfg, store, None, port, now)
+                    if g.meta(engine.CUTOVER_KEY) is None:
+                        say("blockers not enabled")
+                        return 1
+                    targets = g.protocol_targets()
+                    say("protocol comments queued: %d" % len(engine.protocol_comments(store, now, targets, cfg)))
+                elif args.action == "enable":
+                    with store.transaction() as c:
+                        c.execute("INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)",
+                                  (engine.CUTOVER_KEY, json.dumps(now)))
+                    say("blockers enabled; cutover %d" % now)
+                else:
+                    engine.disable_blockers(store, now, cfg)
+                    say("blockers disabled")
+                return 0
             if args.cmd == "outbox":
                 ok = outbox_command(store, args.action, args.id)
                 say(args.action + (" done" if ok else ": no held_ambiguous/failed row with that id"))
