@@ -22,6 +22,7 @@ ClickUp: “Approve plan r1 for development” → orchestration → implementat
 - Worker templates for planning, orchestration, an approval gate and the final promotion check.
 - Optional human-decision questions from development/review workers back to the originating ClickUp task, with generation-bound answers, answer fences and a bounded parking protocol.
 - Credential-shaped outbound-text filtering with bounded correction feedback to the planner; canonical and compatible structured promotion receipts.
+- Plan-publication recovery from an explicit, artifact-bound reviewer PASS when a planner used legacy request metadata; current-input and development-approval checks remain in place.
 - Original regression tests with synthetic identities instead of deployment data.
 - An **offline preparation tool** that substitutes your paths, IDs, approvers and planning skills into a new staging directory, leaving the supplied runtime algorithms intact.
 - A sample installation configuration containing deliberately unusable example IDs.

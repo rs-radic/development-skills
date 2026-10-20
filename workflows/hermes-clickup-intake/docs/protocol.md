@@ -66,7 +66,15 @@ kanban_request_review(
 )
 ```
 
-The adapter requires the completed final run to belong to `plan-reviewer`, the preceding review request to carry the metadata, and the stored attachment bytes to match the hash. It posts the plan only when the revision is still current. “Review requested” is not PASS; PASS is not development approval.
+The canonical path requires the request card to be done, its final run to belong to `plan-reviewer`, the latest review request to carry the typed metadata above, and the stored attachment bytes to match the hash.
+
+If the planner's latest request lacks a valid canonical binding, the adapter can recover it from the final reviewer's **completed** run, but only with explicit `review_outcome="PASS"`, matching `reviewed_sha256`, and the full canonical binding above. That fallback also requires:
+
+- The latest review request was made by `planner` and identifies the same attachment and hash through `plan_attachment`/`attachment` and `plan_sha256`/`sha256`. Every present canonical or legacy value must agree; neither field group may be absent.
+- Its revision matches the reviewer's positive integer revision, either as that integer or the exact legacy `rN` string. Any task ID or input generation present in the request must also agree.
+- The bound attachment remains available under the exact name and hash.
+
+This is a narrow metadata-compatibility path, not prose-based PASS detection or permission to rewrite past run metadata. The adapter still posts the plan only when the revision and input generation are current. “Review requested” is not PASS; PASS is not development approval.
 
 ## Development approval
 

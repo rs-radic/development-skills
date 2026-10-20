@@ -189,11 +189,21 @@ def _metadata(run):
     return md if isinstance(md, dict) else {}
 
 
-def pass_evidence(show, attachments, task_id):
-    """§8.4 PASS evidence of a request card, or None.
+def _plan_binding(md, task_id):
+    rev, sha, name, ag = (md.get("plan_revision"), md.get("plan_sha256"), md.get("plan_attachment"),
+                          md.get("accounts_gen"))
+    if md.get("clickup_task") != task_id or not _pos_int(rev) or not _int(ag) or not isinstance(name, str) \
+            or not isinstance(sha, str) or not HEX64.fullmatch(sha):
+        return None
+    return {"rev": rev, "sha256": sha, "attachment": name, "accounts_gen": ag}
 
-    Card done; final run by plan-reviewer; the latest review_requested metadata names
-    an attached plan whose stored bytes hash to plan_sha256.
+
+def pass_evidence(show, attachments, task_id):
+    """Validate the latest request; recover only from a matching explicit reviewer receipt.
+
+    A reviewer may provide the canonical typed binding when a planner used legacy
+    field names. Its exact artifact/revision must still match the latest request;
+    no prose parsing, inferred PASS, historical metadata edit or approval bypass.
     """
     rs = runs(show)
     if status(show) != "done" or not rs or rs[-1].get("profile") != "plan-reviewer":
@@ -202,14 +212,30 @@ def pass_evidence(show, attachments, task_id):
     if not req:
         return None
     md = _metadata(req[-1])
-    rev, sha, name, ag = (md.get("plan_revision"), md.get("plan_sha256"), md.get("plan_attachment"),
-                          md.get("accounts_gen"))
-    if md.get("clickup_task") != task_id or not _pos_int(rev) or not _int(ag) or not isinstance(name, str) \
-            or not isinstance(sha, str) or not HEX64.fullmatch(sha):
+    ev = _plan_binding(md, task_id)
+    if ev is None:
+        reviewed = _metadata(rs[-1])
+        ev = _plan_binding(reviewed, task_id)
+        if ev is None or rs[-1].get("outcome") != "completed" or req[-1].get("profile") != "planner" \
+                or reviewed.get("review_outcome") != "PASS" or reviewed.get("reviewed_sha256") != ev["sha256"]:
+            return None
+        # Both canonical and legacy keys, when present, must agree. Never hide a contradiction.
+        for keys, expected in ((('plan_attachment', 'attachment'), ev['attachment']),
+                               (('plan_sha256', 'sha256'), ev['sha256'])):
+            values = [md[k] for k in keys if k in md]
+            if not values or any(v != expected for v in values):
+                return None
+        rev = md.get("plan_revision")
+        if not ((_pos_int(rev) and rev == ev["rev"]) or rev == "r%d" % ev["rev"]):
+            return None
+        if "clickup_task" in md and md["clickup_task"] != task_id:
+            return None
+        if "accounts_gen" in md and (not _int(md["accounts_gen"]) or md["accounts_gen"] != ev["accounts_gen"]):
+            return None
+    if not any(a.get("name") == ev["attachment"] and a.get("sha256") == ev["sha256"]
+               for a in attachments or [] if isinstance(a, dict)):
         return None
-    if not any(a.get("name") == name and a.get("sha256") == sha for a in attachments or [] if isinstance(a, dict)):
-        return None
-    return {"rev": rev, "sha256": sha, "attachment": name, "accounts_gen": ag}
+    return ev
 
 
 def _int(v):
