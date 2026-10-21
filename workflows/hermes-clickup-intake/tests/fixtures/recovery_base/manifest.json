@@ -1,0 +1,117 @@
+{
+  "source_revision": "2d53206cb907ae7d1f2e3e8ca0ce0e5170f217fd",
+  "public_fixture_base": "532c102bdaa5bf2f7238f37973ce9e0563ddf0a9",
+  "description": "Immutable sanitized pre-recovery reader fixture from pinned public Git blobs. Runtime is the public equivalent of the source revision; request/orchestrator templates use the approved public generic policy. Not installed by prepare.py.",
+  "files": [
+    {
+      "path": "clickup_intake/__init__.py",
+      "size": 78,
+      "sha256": "c2a21626caa64f014b719ba806dd2547aacad1178196c5647ec7a9830eceb3ac"
+    },
+    {
+      "path": "clickup_intake/clickup_api.py",
+      "size": 14518,
+      "sha256": "f27c429cfd9e48f62512c686ac70693303d0ba01b3c52ef988ae8e58923a5e86"
+    },
+    {
+      "path": "clickup_intake/clickup_effects.py",
+      "size": 11922,
+      "sha256": "a4df85b38b787d3fe868026eaec8d43894bb79ef9078116f50a5adbc4b0e950c"
+    },
+    {
+      "path": "clickup_intake/config.py",
+      "size": 6386,
+      "sha256": "bdd2c6caac3f606d8d2cb22a1c153cf1b8b703d5bb7a8555b369b6f7f35ee5f3"
+    },
+    {
+      "path": "clickup_intake/contracts.py",
+      "size": 5097,
+      "sha256": "251f5a781b3fa0c4c36416246f6263829302295fda1f36a6bc3e3536616db787"
+    },
+    {
+      "path": "clickup_intake/engine.py",
+      "size": 103411,
+      "sha256": "6c7a4eb1abea475bec7eaa2127ac5be54e16ee044e92d2a3beb4dc067cec6c19"
+    },
+    {
+      "path": "clickup_intake/kanban_port.py",
+      "size": 25643,
+      "sha256": "b89343d88567d0aa40d11d135918d2b51f49b34f1eb8732fa7965f74680216aa"
+    },
+    {
+      "path": "clickup_intake/main.py",
+      "size": 89736,
+      "sha256": "1f0019715f4649399160124e667725a8dbaaa44f56ddbc591015a886898cb2d0"
+    },
+    {
+      "path": "clickup_intake/observe.py",
+      "size": 26848,
+      "sha256": "840fce963f0c709e76ff28fd32feac0a74dc2467b88641cb9350379334c4fe18"
+    },
+    {
+      "path": "clickup_intake/parse.py",
+      "size": 4207,
+      "sha256": "0b357f4572f5237aeb3136abf126a70bb0955c40a0023f4dcfdd49bae39b04f4"
+    },
+    {
+      "path": "clickup_intake/ports.py",
+      "size": 1535,
+      "sha256": "41fe961d6afc70f3d55dbf7db1a9bae469915612d239f04d3124542cfb7d32fa"
+    },
+    {
+      "path": "clickup_intake/render.py",
+      "size": 19756,
+      "sha256": "b57868ce9d5f5fa6104fe3b80e78cda1e704472c1b78e73f94fe6075a13500d8"
+    },
+    {
+      "path": "clickup_intake/rules.py",
+      "size": 14219,
+      "sha256": "4f9034aa61d5b0cb7f0cad8a2d912326840f982f3a53771f4536241009c628f5"
+    },
+    {
+      "path": "clickup_intake/store.py",
+      "size": 14995,
+      "sha256": "8697894b26a53be6a354534855b2a2550e69a28c2011ab739e13492932a5a541"
+    },
+    {
+      "path": "clickup_intake/ticket.py",
+      "size": 3367,
+      "sha256": "0e2d36c1cc325e893bbf82a306cf58027bc6c73342904a1598f3a69f98d0c141"
+    },
+    {
+      "path": "templates/approval_record.md",
+      "size": 803,
+      "sha256": "66fc4c8af2c28d5b04db0999433418881838103c74f0dc77aabe65a4dab3a1c9"
+    },
+    {
+      "path": "templates/blocker_triage.md",
+      "size": 2246,
+      "sha256": "186de7d7f4d0a685dc0753d1e835ac90b8a8a53add52f8a6f053fb297799ec69"
+    },
+    {
+      "path": "templates/gate_card.md",
+      "size": 895,
+      "sha256": "eeaf7ef02e939f370ffa2d02d17fde6179b0ab8b671182522cf978e3920df947"
+    },
+    {
+      "path": "templates/orchestrator_card.md",
+      "size": 2705,
+      "sha256": "50a73ecd7bb2838440f043ac1d7e5e0cf6f6bc40775f169d5430e56710e871ba"
+    },
+    {
+      "path": "templates/question_protocol.md",
+      "size": 3549,
+      "sha256": "ff598fbe1d247099d9755bdc01db2d424031e5e76efc5ba8439418f6264e465c"
+    },
+    {
+      "path": "templates/request_card.md",
+      "size": 3003,
+      "sha256": "9c91322f79f76c34a3dc6a68b6f4cf8c762aba922226fab2a8016ff611f14047"
+    },
+    {
+      "path": "templates/ticket_recheck_paragraph.md",
+      "size": 398,
+      "sha256": "a957fd57b2736c5bfd17905e2f7e7029d9e99c0b09311cfd27f0531ee2748b63"
+    }
+  ]
+}

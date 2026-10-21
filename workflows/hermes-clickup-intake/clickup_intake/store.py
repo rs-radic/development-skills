@@ -136,6 +136,7 @@ MIGRATIONS = {1: _V1}
 BLOCKER_STATES = ("detected", "relayed", "internal", "asked", "closed", "resolved", "releasing", "delivered",
                   "resumed", "resumed_unconfirmed", "released_by_owner", "scope_change", "superseded", "terminal")
 FENCE_STATES = ("open", "releasing", "released", "refused", "owner_released", "abandoned")
+RECOVERY_STATES = ("open", "handed_off", "resumed", "gated", "closed", "escalated", "superseded", "disabled")
 _RELAY_TABLES = [
     f"""CREATE TABLE IF NOT EXISTS blockers (
         id INTEGER PRIMARY KEY,
@@ -180,6 +181,29 @@ _RELAY_TABLES = [
         release_key TEXT,
         snapshot TEXT,
         updated_ms INTEGER)""",
+    # technical-recovery plan r3 §8: one row per actionable typed worker stop (W, R); writer-only, additive
+    f"""CREATE TABLE IF NOT EXISTS recoveries (
+        id INTEGER PRIMARY KEY,
+        task TEXT NOT NULL,
+        card TEXT NOT NULL,
+        run_id INTEGER NOT NULL,
+        event_kind TEXT,
+        event_created_s INTEGER,
+        block_kind TEXT,
+        class TEXT,
+        reason_sha256 TEXT,
+        approval_id INTEGER,
+        approval_rev INTEGER,
+        plan_sha256 TEXT,
+        adopted INTEGER NOT NULL DEFAULT 0,
+        state TEXT NOT NULL CHECK (state IN ({_in(RECOVERY_STATES)})),
+        attempts INTEGER NOT NULL DEFAULT 0,
+        next_ms INTEGER,
+        escalate_ms INTEGER,
+        abs_ms INTEGER,
+        detected_ms INTEGER,
+        updated_ms INTEGER,
+        UNIQUE (card, run_id))""",
 ]
 
 _TASK_COLUMNS = (
@@ -335,6 +359,43 @@ def open_readonly(path):
     conn.row_factory = sqlite3.Row
     conn.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_MS}")
     return conn
+
+
+def recovery_snapshot(conn, task, card, run):
+    """r3 §6.1 state of incident (W, R): the incident row (``task`` None: the incident's task), its task row, the
+    task's approval rows, its done orchestrator-create rows (idem_key -> body) and whether recovery is enabled."""
+    enabled = conn.execute("SELECT 1 FROM meta WHERE key='recovery_cutover_ms'").fetchone() is not None
+    inc = None
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='recoveries'").fetchone():
+        inc = conn.execute("SELECT * FROM recoveries WHERE card=? AND run_id=?", (card, run)).fetchone()
+    inc = dict(inc) if inc and task in (None, inc["task"]) else None
+    tid = inc["task"] if inc else task
+    row = conn.execute("SELECT * FROM tasks WHERE clickup_task_id=?", (tid,)).fetchone()
+    approvals = conn.execute("SELECT * FROM approvals WHERE task=? ORDER BY id", (tid,)).fetchall()
+    orch = conn.execute("SELECT idem_key, body FROM outbox WHERE task=? AND kind='kb_create' AND state='done'"
+                        " AND idem_key LIKE ?", (tid, "clickup-dp:%s:orch:%%" % tid)).fetchall()
+    return {"enabled": enabled, "incident": inc, "task": dict(row) if row else None,
+            "approvals": [dict(a) for a in approvals], "orch": {k: b for k, b in orch}}
+
+
+def load_recovery_snapshot(path, task, card, run):
+    """``recovery_snapshot`` in one read transaction through ``open_readonly`` (same pattern as
+    ``load_ticket_snapshot``). None if unavailable or of the wrong schema."""
+    try:
+        conn = open_readonly(path)
+    except (sqlite3.Error, OSError, ValueError):
+        return None
+    try:
+        conn.execute("BEGIN")
+        if _schema_version(conn) != SCHEMA_VERSION:
+            return None
+        snap = recovery_snapshot(conn, task, card, run)
+        conn.execute("COMMIT")
+        return snap
+    except (sqlite3.Error, ValueError, TypeError):
+        return None
+    finally:
+        conn.close()
 
 
 def load_ticket_snapshot(path, task_id, lease_seconds):

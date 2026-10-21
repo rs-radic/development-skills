@@ -42,7 +42,8 @@ from . import kanban_port as kp
 from .config import load_config
 from .contracts import EffectIntent, Outcome, Preconditions, RowState, load_preconditions
 from .parse import parse_comment
-from .store import Store, load_ticket_snapshot, open_readonly, revoke_live_tickets
+from .store import Store, load_recovery_snapshot, load_ticket_snapshot, open_readonly, recovery_snapshot, \
+    revoke_live_tickets
 from .ticket import ticket_verdict
 
 HERMES_EXE = "C:/Hermes/hermes-agent/venv/Scripts/hermes.exe"
@@ -61,6 +62,7 @@ PREFLIGHT_KEY = "incident_preflight"
 OPEN_ALERTS_KEY = "open_alerts"
 CLOSED_CARDS_KEY = "closed_cards"
 WATCHED_CLOSED_KEY = "blocker_closed_cards"  # blocker plan r6 §4.2
+RECOVERY_CLOSED_KEY = "recovery_closed_cards"  # technical-recovery plan r3 §4.1
 PREPASS_KEY = "prepass_outbox_mark"
 COMMENT_PAGE = 25
 # OUTBOUND-PROSE-F1: corrected drafts asked of one request card per input generation; the next rejection holds
@@ -253,7 +255,7 @@ class Glue:
             want[card] = role
         for key, task, ref in c.execute("SELECT idem_key, task, result_ref FROM outbox WHERE kind='kb_create'"
                                         " AND state='done' AND result_ref IS NOT NULL ORDER BY rowid"):
-            if ref and task not in terminal:
+            if ref and task not in terminal and ":rcv:" not in key:  # recovery carriers are never re-shown (r3 §4.4)
                 want.setdefault(ref, "request" if ":req:" in key else "other")
         cards = {}
         for card in want:
@@ -272,6 +274,7 @@ class Glue:
                     if shown is not None:
                         cards[card] = shown
         self._observe_watched(cards, terminal)
+        self._observe_recovery(cards, terminal)
         atts = {}
         for card, role in want.items():
             if role == "request" and rules.status(cards.get(card)) == "done":
@@ -375,6 +378,48 @@ class Glue:
                             cards[p] = shown
         if add - closed:
             self.set_meta(WATCHED_CLOSED_KEY, sorted(closed | add))
+
+    def _observe_recovery(self, cards, terminal):
+        """r3 §4.1 while recovery is enabled: ``show`` each recovery member of a non-terminal, unheld task that is
+        not yet in this scan's cards nor cached closed, and W of every live incident. A member observed
+        done/archived without a live incident is cached and no longer shown."""
+        if self.meta(engine.RECOVERY_KEY) is None:
+            return
+        closed = set(self.meta(RECOVERY_CLOSED_KEY, []))
+        add = set()
+        for tid, hold in self.c.execute("SELECT clickup_task_id, hold_reason FROM tasks ORDER BY clickup_task_id"
+                                        ).fetchall():
+            if tid in terminal or hold:
+                continue
+            live = {r[0] for r in self.c.execute("SELECT card FROM recoveries WHERE task=? AND state IN (%s)"
+                                                 % engine._in(engine.RECOVERY_LIVE), (tid,))}
+            for card in list(engine._recovery_members(self, tid)) + sorted(live):
+                if card in closed and card not in live:
+                    continue
+                if card not in cards:
+                    shown = self._show(card)
+                    if shown is None:
+                        continue
+                    cards[card] = shown
+                if card not in live and rules.status(cards[card]) in ("done", "archived"):
+                    add.add(card)
+        if add - closed:
+            self.set_meta(RECOVERY_CLOSED_KEY, sorted(closed | add))
+
+    def recovery_gate(self, row, p):
+        """r3 §5.2 wake send gate: one fresh ``show W`` and the §6.1 admission over the live state, plus no final
+        ACK. ``defer`` when W is unreadable or the task held; ``stale`` otherwise unless CURRENT."""
+        q = p["params"]
+        snap = recovery_snapshot(self.c, q["task"], q["card"], q["run_id"])
+        snap["members"] = engine.recovery_members(q["task"], snap["approvals"], snap["orch"])
+        w = self._show(q["card"])
+        verdict = kp.recovery_verdict(snap, w, q["card"], q["run_id"])
+        if verdict.verdict == "UNAVAILABLE" or verdict.text == "held":
+            return "defer"
+        if verdict.code != 0:
+            return "stale"
+        ack = kp.recovery_ack(w, q["card"], q["run_id"], snap["incident"]["event_created_s"])
+        return "stale" if ack["final"] else "go"
 
     def attachments(self, card):
         """``attachments --json`` of a card with the SHA-256 of each stored file (cached per scan)."""
@@ -861,7 +906,16 @@ class Glue:
             if seen:
                 self.late_children(row, q, shown)
                 return self.update(key, state="done", outcome="OK")
+        if row["target"] is None and p.get("carrier_from"):  # r3 §5.1: subscribe/wake target the created carrier
+            row = dict(row, target=self.row(p["carrier_from"])["result_ref"])
+            self.update(key, target=row["target"])
         gate = self.send_gate(row, drop_wait=kind == "kb_unblock")
+        if p.get("template") == "recovery_wake":
+            gate = self.recovery_gate(row, p) if gate == "go" else gate
+            if gate in ("cancel", "stale"):  # never completed: archived silently (r3 §5.2)
+                with self.store.transaction():
+                    engine._Ctx(self.store, self.now, self.obs, self.cfg).kb(
+                        p["params"]["task"], key[:-len(":wake")] + ":archive", "kb_archive", row["target"])
         if gate == "go" and fence:  # r11 §3.3 fence send gate; r12 §3.3: fresh reads at every send, P then W
             gate = kp.fence_gate(self._show(fence["fence_card"]), fence["card"])
             w_show = self._show(fence["card"]) if fence["kind"] == "park" else None
@@ -1021,8 +1075,12 @@ class Glue:
                 if d.endswith(":comment"):
                     line = json.loads(self.row(d)["body"]).get("text")
             payload = {"relay_line": p.get("relay_line", line)}  # a filter feedback wake names its comment's line
+        elif kind == "kb_complete" and p.get("template") == "recovery_wake":
+            payload = {"summary": render.recovery_summary(p["params"], card), "metadata": None}
         elif kind == "kb_complete":
             payload = {"summary": p["summary"], "metadata": p.get("metadata")}
+        elif kind == "kb_subscribe" and p.get("delivery_mode") == "wake":
+            payload = {"mode": "wake"}
         else:
             payload = {}
         return EffectIntent(key, KB_KINDS[kind], card, payload, pre, ())
@@ -1043,6 +1101,8 @@ class Glue:
 
     def card_body(self, tid, p):
         q = p["params"]
+        if p["template"] == "recovery_card":
+            return render.recovery_card_body(q)
         t = dict(self.c.execute("SELECT * FROM tasks WHERE clickup_task_id=?", (tid,)).fetchone())
         if p["template"] == "request_card":
             last = self.latest_pass(tid)
@@ -1402,6 +1462,76 @@ def ticket_check(cfg, port, gate, task, rev, sha, now):
     return ticket_verdict(snapshot, shown.json if _ok(shown) else "", task, rev, sha, gate, now)
 
 
+def recovery_check(cfg, port, card, run):
+    """r3 §6.1 read-only admission: one read-only state snapshot and one ``show W --json``; never locks or writes."""
+    snap = load_recovery_snapshot(cfg.state_path, None, card, run)
+    if snap is not None:
+        snap["members"] = engine.recovery_members((snap["incident"] or {}).get("task"), snap["approvals"],
+                                                  snap["orch"])
+    shown = port.show(card)
+    return kp.recovery_verdict(snap if snap is not None else False,
+                               shown.json if _ok(shown) and isinstance(shown.json, dict) else None, card, run)
+
+
+def recovery_adopt(store, port, cfg, card, run, now):
+    """r3 §11 step 7: record an exact current pre-cutover incident (W, R) as adopted; (ok, line)."""
+    c = store.conn
+    if c.execute("SELECT 1 FROM meta WHERE key=?", (engine.RECOVERY_KEY,)).fetchone() is None:
+        return False, "recovery not enabled"
+    old = c.execute("SELECT id FROM recoveries WHERE card=? AND run_id=?", (card, run)).fetchone()
+    if old:
+        return True, "adopted incident %d card=%s run=%d (existing)" % (old[0], card, run)
+    shown = port.show(card)
+    if not _ok(shown) or not isinstance(shown.json, dict) or kp.card_status(shown.json) is None:
+        return False, "card %s is unreadable" % card
+    found = kp.recovery_incident(shown.json)
+    if found is None:
+        return False, "no actionable typed worker stop on %s" % card
+    if found["run_id"] != run:
+        return False, "run %d is not the latest blocked run of %s (latest %d)" % (run, card, found["run_id"])
+    ctx = engine._Ctx(store, now, engine.Observation(), cfg)
+    for (tid,) in c.execute("SELECT clickup_task_id FROM tasks ORDER BY clickup_task_id").fetchall():
+        a = engine._recovery_members(ctx, tid).get(card)
+        if a is None:
+            continue
+        t = ctx.task(tid)
+        if t["terminal"]:
+            return False, "task %s is terminal" % tid
+        if t["hold_reason"]:
+            return False, "task %s is held" % tid
+        if t["phase"] not in engine.AMENDMENT_PHASES:
+            return False, "task %s is in phase %s" % (tid, t["phase"])
+        if not rules.current(a["accounts_gen"], t):
+            return False, "approval %d is not current" % a["id"]
+        with store.transaction():
+            inc = engine.open_incident(ctx, tid, card, a, found, adopted=1)
+        return True, "adopted incident %d card=%s run=%d" % (inc["id"], card, run)
+    return False, "%s is not a recovery member of a live approval" % card
+
+
+def recovery_status(store):
+    c = store.conn
+    cut = c.execute("SELECT value FROM meta WHERE key=?", (engine.RECOVERY_KEY,)).fetchone()
+    states = c.execute("SELECT state, COUNT(*) FROM recoveries GROUP BY 1 ORDER BY 1").fetchall()
+    return ["recovery: " + ("enabled; cutover %s" % json.loads(cut[0]) if cut else "disabled"),
+            "incidents: " + (", ".join("%s=%d" % (st, n) for st, n in states) or "none")]
+
+
+def recovery_rollback_check(store):
+    """r3 §8 (read-only): the recovery-only reasons a rollback to 2d53206 is refused."""
+    one = lambda sql: store.conn.execute(sql).fetchone()[0]  # noqa: E731
+    reasons = ["recovery enabled"] if one("SELECT COUNT(*) FROM meta WHERE key='%s'" % engine.RECOVERY_KEY) else []
+    for label, n in (
+            (":rcv: rows not done or cancelled_stale", one(
+                "SELECT COUNT(*) FROM outbox WHERE state NOT IN ('done', 'cancelled_stale') AND"
+                " idem_key LIKE 'clickup-dp:%:rcv:%'")),
+            ("open incidents", one("SELECT COUNT(*) FROM recoveries WHERE state IN (%s)"
+                                   % engine._in(engine.RECOVERY_LIVE)))):
+        if n:
+            reasons.append("%s: %d" % (label, n))
+    return reasons
+
+
 def _parser():
     p = argparse.ArgumentParser(prog="clickup_dedicated_panel_intake")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -1420,6 +1550,13 @@ def _parser():
     tc.add_argument("--task", required=True)
     tc.add_argument("--rev", required=True, type=int)
     tc.add_argument("--sha", required=True)
+    rc = sub.add_parser("recovery-check")
+    rc.add_argument("--card", required=True)
+    rc.add_argument("--run", required=True, type=int)
+    rv = sub.add_parser("recovery")
+    rv.add_argument("action", choices=("enable", "disable", "adopt", "status", "rollback-check"))
+    rv.add_argument("--card")
+    rv.add_argument("--run", type=int)
     return p
 
 
@@ -1445,6 +1582,9 @@ def main(argv=None, root=None, *, transport=None, port=None, clock=None, opener=
         if args.cmd == "ticket-check":
             say("INVALID config_unavailable")
             return 3
+        if args.cmd == "recovery-check":
+            say("UNAVAILABLE config_unavailable")
+            return 2
         say("ClickUp intake: config unavailable or invalid")
         return 2
     port = port or kp.KanbanCli(HERMES_EXE, cfg.board, discord_chat=cfg.discord_chat)
@@ -1453,6 +1593,13 @@ def main(argv=None, root=None, *, transport=None, port=None, clock=None, opener=
         verdict = ticket_check(cfg, port, args.gate, args.task, args.rev, args.sha, clock())
         say(str(verdict))
         return 0 if verdict.valid else 3
+    if args.cmd == "recovery-check":  # r3 §6.1: read-only, before the lock
+        verdict = recovery_check(cfg, port, args.card, args.run)
+        say(str(verdict))
+        return verdict.code
+    if args.cmd == "recovery" and args.action == "adopt" and (args.card is None or args.run is None):
+        say("recovery adopt requires --card and --run")
+        return 2
     if args.cmd == "status":
         try:
             say(*status_lines(cfg.state_path))
@@ -1502,6 +1649,26 @@ def main(argv=None, root=None, *, transport=None, port=None, clock=None, opener=
                 else:
                     engine.disable_blockers(store, now, cfg)
                     say("blockers disabled")
+                return 0
+            if args.cmd == "recovery":  # r3 §8, §11
+                if args.action == "enable":
+                    with store.transaction() as c:
+                        c.execute("INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)",
+                                  (engine.RECOVERY_KEY, json.dumps(now)))
+                    say("recovery enabled; cutover %d" % now)
+                elif args.action == "disable":
+                    engine.disable_recovery(store, now, cfg)
+                    say("recovery disabled")
+                elif args.action == "status":
+                    say(*recovery_status(store))
+                elif args.action == "rollback-check":
+                    reasons = recovery_rollback_check(store)
+                    say("recovery rollback-check " + ("refused: " + "; ".join(reasons) if reasons else "OK"))
+                    return 1 if reasons else 0
+                else:
+                    ok, line = recovery_adopt(store, port, cfg, args.card, args.run, now)
+                    say(line if ok else "adopt refused: " + line)
+                    return 0 if ok else 1
                 return 0
             if args.cmd == "outbox":
                 ok = outbox_command(store, args.action, args.id)

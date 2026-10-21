@@ -168,6 +168,7 @@ def evaluate(store, now, obs=None, config=None):
         if t["terminal"]:
             _terminal(ctx, tid)
             _closed_task_blockers(ctx, tid)
+            _supersede_recoveries(ctx, tid)
             if not t["hold_reason"]:
                 _fences(ctx, tid)  # r12 §3.3 parks and fence/park readback need no live task (r11 §9, r12 §9)
             continue
@@ -180,6 +181,7 @@ def evaluate(store, now, obs=None, config=None):
         _requests(ctx, tid)
         _approvals(ctx, tid)
         _detect(ctx, tid)
+        _recover(ctx, tid)
     return ctx.new
 
 
@@ -1777,3 +1779,239 @@ def _terminal(ctx, tid):
     for a in map(dict, ctx.c.execute("SELECT * FROM approvals WHERE task=? AND state IN ('recorded', 'staged')",
                                      (tid,))):
         _stale(ctx, tid, a, notice=False)
+
+
+# ---- technical-blocker recovery (technical-recovery plan r3 §3-§8) -----------------------------------------------
+
+RECOVERY_KEY = "recovery_cutover_ms"
+RECOVERY_LIVE = ("open", "handed_off")
+RECOVERY_ATTEMPTS = 3
+RECOVERY_RETRY_MIN = {1: 60, 2: 180}  # attempt n+1 is due at detect + this many minutes after attempt n
+RECOVERY_ESCALATE_MIN = 360
+RECOVERY_DEFER_MIN = 180  # ACK working; and the handed-off grace before its alert
+RECOVERY_ABS_MIN = 24 * 60
+RECOVERY_CAP = 3  # incidents per (task, W, A*) that wake; the next one escalates without a wake
+RECOVERY_REASON_ALERT = 160
+_MIN_MS = 60_000
+_UNSENT = ("pending", "retry_wait")
+
+
+def _recovery_cutover(ctx):
+    r = ctx.c.execute("SELECT value FROM meta WHERE key=?", (RECOVERY_KEY,)).fetchone()
+    return json.loads(r[0]) if r else None
+
+
+def _handed_lineage(o_params):
+    """The previous ``clickup_gates`` an orchestrator body hands over (``main.Glue.card_body``): last element only."""
+    return dict(o_params["lineage"][-1].get("clickup_gates") or {})
+
+
+def recovery_members(tid, approvals, orch):
+    """r3 §4.1 {card: A*}: rule 1, ``_watched``'s mapping restricted to approvals in WATCHED_STATES; rule 2, the
+    cards of ``_handed_lineage`` of A*'s own done orchestrator-create row (``orch``: idem_key -> stored body).
+    Never a gate card of the task."""
+    watched = {}
+    for a in approvals:  # the ``_watched`` loop, over rows already read
+        if a["state"] not in WATCHED_STATES and (a["state"] != "revoked" or a["revoked_reason"] == "superseded"):
+            continue
+        g = _gates(a) or {}
+        for card in [a["orchestrator_card"], g.get("final_e2e"), g.get("promotion"), g.get("cleanup")] \
+                + list(g.get("lineage") or []):
+            if isinstance(card, str) and card and card != a["gate_card"]:
+                watched.setdefault(card, a)
+    gates = {a["gate_card"] for a in approvals if a["gate_card"]}
+    out = {c: a for c, a in watched.items() if a["state"] in WATCHED_STATES and c not in gates}
+    for a in approvals:
+        if a["state"] not in WATCHED_STATES:
+            continue
+        body = orch.get(_keys(tid, a)[1])
+        params = (json.loads(body).get("params") or {}) if body else {}
+        if not params.get("lineage"):
+            continue
+        g = _handed_lineage(params)
+        for card in [g.get("final_e2e"), g.get("promotion"), g.get("cleanup")] + list(g.get("lineage") or []):
+            if isinstance(card, str) and card and card not in gates:
+                out.setdefault(card, a)
+    return out
+
+
+def _recovery_members(ctx, tid):
+    approvals = [dict(a) for a in ctx.c.execute("SELECT * FROM approvals WHERE task=? ORDER BY id", (tid,))]
+    orch = dict(ctx.c.execute("SELECT idem_key, body FROM outbox WHERE task=? AND kind='kb_create' AND state='done'"
+                              " AND idem_key LIKE ?", (tid, "clickup-dp:%s:orch:%%" % tid)).fetchall())
+    return recovery_members(tid, approvals, orch)
+
+
+def _rcv_key(tid, card, run, n):
+    return "clickup-dp:%s:rcv:%s:%d:%d" % (tid, card, run, n)
+
+
+def _recover(ctx, tid):
+    """r3 §4-§7 for one confirmed, unheld, non-terminal task: decide each live incident from W's observed show,
+    then record new actionable typed worker stops of members (one transaction each, rows included)."""
+    cut = _recovery_cutover(ctx)
+    if cut is None:
+        return
+    t = ctx.task(tid)
+    for inc in map(dict, ctx.c.execute("SELECT * FROM recoveries WHERE task=? AND state IN (%s) ORDER BY id"
+                                       % _in(RECOVERY_LIVE), (tid,)).fetchall()):
+        with ctx.store.transaction():
+            _recovery_step(ctx, tid, t, inc)
+    if t["phase"] not in AMENDMENT_PHASES:
+        return
+    for card, a in _recovery_members(ctx, tid).items():
+        found = kp.recovery_incident(ctx.show(card))
+        if (found is None or not rules.current(a["accounts_gen"], t) or found["event_created_s"] * 1000 < cut
+                or ctx.c.execute("SELECT 1 FROM recoveries WHERE card=? AND run_id=?",
+                                 (card, found["run_id"])).fetchone()):
+            continue
+        with ctx.store.transaction():
+            open_incident(ctx, tid, card, a, found, adopted=0)
+
+
+def open_incident(ctx, tid, card, a, found, adopted):
+    """Insert incident (W, R) bound to A*; a fresh one queues wake attempt 1 in the same transaction, the
+    (RECOVERY_CAP+1)th on (task, W, A*) escalates without a wake; an adopted one waits for the next scan."""
+    earlier = ctx.c.execute("SELECT COUNT(*) FROM recoveries WHERE task=? AND card=? AND approval_id=?",
+                            (tid, card, a["id"])).fetchone()[0]
+    iid = ctx.c.execute(
+        "INSERT INTO recoveries(task, card, run_id, event_kind, event_created_s, block_kind, class, reason_sha256,"
+        " approval_id, approval_rev, plan_sha256, adopted, state, attempts, abs_ms, detected_ms, updated_ms)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'open',0,?,?,?)",
+        (tid, card, found["run_id"], found["event_kind"], found["event_created_s"], found["block_kind"],
+         found["class"], found["reason_sha256"], a["id"], a["rev"], a["plan_sha256"], adopted,
+         ctx.now + RECOVERY_ABS_MIN * _MIN_MS, ctx.now, ctx.now)).lastrowid
+    inc = dict(ctx.c.execute("SELECT * FROM recoveries WHERE id=?", (iid,)).fetchone())
+    if earlier >= RECOVERY_CAP:
+        _escalate(ctx, tid, inc, "incident cap reached", found["reason"])
+    elif not adopted:
+        _attempt(ctx, tid, inc, a, found)
+    return inc
+
+
+def _recovery_update(ctx, inc, **cols):
+    cols["updated_ms"] = ctx.now
+    ctx.c.execute("UPDATE recoveries SET %s WHERE id=?" % ", ".join(k + "=?" for k in cols), [*cols.values(), inc["id"]])
+
+
+def _recovery_step(ctx, tid, t, inc):
+    a = ctx.c.execute("SELECT * FROM approvals WHERE id=?", (inc["approval_id"],)).fetchone()
+    if (a is None or a["state"] not in WATCHED_STATES or not rules.current(a["accounts_gen"], t)
+            or t["phase"] not in AMENDMENT_PHASES):
+        _recovery_update(ctx, inc, state="superseded")
+        return
+    show = ctx.show(inc["card"])
+    if show is None:
+        return  # not observed this pass (e.g. the cards-empty progress pass): nothing is decided
+    outcome, at = kp.recovery_outcome(show, inc["run_id"], inc["event_created_s"])
+    if outcome in ("resumed", "closed", "gated"):
+        _recovery_update(ctx, inc, state=outcome)
+        return
+    if outcome == "handed_off" or inc["state"] == "handed_off":
+        if inc["state"] == "open":
+            _recovery_update(ctx, inc, state="handed_off", escalate_ms=at * 1000 + RECOVERY_DEFER_MIN * _MIN_MS)
+        elif ctx.now >= inc["escalate_ms"]:
+            _escalate(ctx, tid, inc, "handed off, no worker started")
+        return
+    ack = kp.recovery_ack(show, inc["card"], inc["run_id"], inc["event_created_s"])
+    if ack["final"]:
+        _escalate(ctx, tid, inc, "coordinator: " + ("owner" if ack["final"] == "owner" else "cannot act"))
+        return
+    defer = ack["working_s"] * 1000 + RECOVERY_DEFER_MIN * _MIN_MS if ack["working_s"] is not None else 0
+    d, n = inc["detected_ms"], inc["attempts"]
+    if ctx.now >= inc["abs_ms"]:  # §7.2: neither a working ACK nor an outstanding attempt defers past detect + 24 h
+        _escalate(ctx, tid, inc, "not resumed after %d AI wakes" % n)
+        return
+    if n < RECOVERY_ATTEMPTS:
+        due = min(max(d + RECOVERY_RETRY_MIN.get(n, 0) * _MIN_MS, defer), inc["abs_ms"])
+        found = kp.recovery_incident(show)
+        if ctx.now < due or found is None or found["run_id"] != inc["run_id"]:
+            if ctx.now < due and inc["next_ms"] != due:
+                _recovery_update(ctx, inc, next_ms=due)
+            return
+        _attempt(ctx, tid, inc, dict(a), found)
+        return
+    due = min(max(d + RECOVERY_ESCALATE_MIN * _MIN_MS, defer), inc["abs_ms"])
+    if ctx.now >= due:
+        _escalate(ctx, tid, inc, "not resumed after %d AI wakes" % RECOVERY_ATTEMPTS)
+    elif inc["escalate_ms"] != due:
+        _recovery_update(ctx, inc, escalate_ms=due)
+
+
+def _attempt(ctx, tid, inc, a, found):
+    """r3 §5.1: wake attempt n = create (blocked, unassigned carrier) -> subscribe(wake) -> complete; earlier
+    attempts' unsent rows are retired first (§5.2: their carriers are archived silently)."""
+    n = inc["attempts"] + 1
+    _retire_attempts(ctx, tid, inc["card"], inc["run_id"])
+    k = _rcv_key(tid, inc["card"], inc["run_id"], n)
+    params = {"task": tid, "card": inc["card"], "run_id": inc["run_id"], "event_kind": inc["event_kind"],
+              "event_created_s": inc["event_created_s"], "block_kind": inc["block_kind"], "class": inc["class"],
+              "reason": found["reason"], "reason_sha256": inc["reason_sha256"], "approval_id": a["id"],
+              "rev": a["rev"], "plan_sha256": a["plan_sha256"], "attempt": n, "adopted": inc["adopted"],
+              "source_status": found["source_status"]}
+    pre = Preconditions(task_id=tid, phases=AMENDMENT_PHASES, approval_id=a["id"], approval_states=WATCHED_STATES)
+    _carrier_row(ctx, k + ":create", "kb_create", {
+        "role": "recovery", "title": "CLICKUP-RECOVERY v1 %s run=%d attempt=%d" % (inc["card"], inc["run_id"], n),
+        "template": "recovery_card", "params": params, "assignee": None, "skills": [], "initial_status": "blocked",
+        "idempotency_key": k + ":create"}, pre)
+    _carrier_row(ctx, k + ":subscribe", "kb_subscribe", {"chat_id": ctx.cfg.discord_chat, "delivery_mode": "wake",
+                                                          "carrier_from": k + ":create"}, pre, (k + ":create",))
+    _carrier_row(ctx, k + ":wake", "kb_complete", {"template": "recovery_wake", "params": params,
+                                                    "carrier_from": k + ":create"}, pre, (k + ":subscribe",))
+    _recovery_update(ctx, inc, attempts=n, next_ms=None)
+
+
+def _carrier_row(ctx, key, kind, payload, pre, depends=()):
+    """A row on the attempt's own carrier only: no target is named at queue time; the executor resolves it from
+    ``carrier_from`` (the done create row's result) and never from W or any other card (r3 §5.1, control A)."""
+    ctx.put(key, kind, None, dict(payload, card=None), pre, depends)
+
+
+def _retire_attempts(ctx, tid, card, run):
+    """Cancel the unsent rows of the incident's attempts and queue one silent ``kb_archive`` of each created
+    carrier whose wake is not done (r3 §5.2, §8 ``disable_recovery``)."""
+    prefix = _rcv_key(tid, card, run, 0)[:-1]
+    for key, ref, state in ctx.c.execute("SELECT idem_key, result_ref, state FROM outbox WHERE idem_key LIKE ?"
+                                         " AND idem_key LIKE '%:create' ORDER BY rowid", (prefix + "%",)).fetchall():
+        k = key[:-len(":create")]
+        ctx.c.execute("UPDATE outbox SET state='cancelled_stale', outcome='STALE' WHERE idem_key IN (?,?,?) AND"
+                      " state IN (%s)" % _in(_UNSENT), (k + ":create", k + ":subscribe", k + ":wake"))
+        if state == "done" and ref and ctx.state(k + ":wake") != "done":
+            ctx.kb(tid, k + ":archive", "kb_archive", ref)
+
+
+def _recovery_reason(ctx, tid, inc):
+    r = ctx.c.execute("SELECT body FROM outbox WHERE idem_key LIKE ? AND idem_key LIKE '%:create' ORDER BY rowid"
+                      " DESC LIMIT 1", (_rcv_key(tid, inc["card"], inc["run_id"], 0)[:-1] + "%",)).fetchone()
+    return (json.loads(r[0]).get("params") or {}).get("reason", "") if r else ""
+
+
+def _escalate(ctx, tid, inc, why, reason=None):
+    """r3 §7.3: the incident's single alert; the incident is final."""
+    _recovery_update(ctx, inc, state="escalated")
+    reason = _recovery_reason(ctx, tid, inc) if reason is None else reason
+    ctx.alert("rcv:%s:%d" % (inc["card"], inc["run_id"]),
+              "ClickUp recovery needs owner attention: %s run %d (%s, ClickUp %s r%d) %s. Reason: %s."
+              % (inc["card"], inc["run_id"], inc["block_kind"], tid, inc["approval_rev"], why,
+                 " ".join(reason.split())[:RECOVERY_REASON_ALERT]), tid)
+
+
+def _supersede_recoveries(ctx, tid):
+    """Terminal task: its live incidents are superseded (store-only, no effects)."""
+    if _recovery_cutover(ctx) is None:
+        return  # disabled: no live incidents (``disable_recovery``), and the table may not exist
+    with ctx.store.transaction() as c:
+        c.execute("UPDATE recoveries SET state='superseded', updated_ms=? WHERE task=? AND state IN (%s)"
+                  % _in(RECOVERY_LIVE), (ctx.now, tid))
+
+
+def disable_recovery(store, now, config=None):
+    """``recovery disable`` (r3 §8, §11): one transaction that deletes the cutover key, marks live incidents
+    ``disabled``, cancels unsent ``:rcv:`` rows and archives each created carrier whose wake was not sent."""
+    ctx = _Ctx(store, now, Observation(), config or Config())
+    with store.transaction() as c:
+        c.execute("DELETE FROM meta WHERE key=?", (RECOVERY_KEY,))
+        for inc in map(dict, c.execute("SELECT * FROM recoveries ORDER BY id").fetchall()):
+            _retire_attempts(ctx, inc["task"], inc["card"], inc["run_id"])
+        c.execute("UPDATE recoveries SET state='disabled', updated_ms=? WHERE state IN (%s)" % _in(RECOVERY_LIVE),
+                  (now,))

@@ -244,7 +244,7 @@ assert not output.exists(), "partial staging was left behind"
 
     def test_missing_runtime_source_refuses_before_creating_stage(self):
         for relative in ("clickup_intake/main.py", "clickup_intake/ports.py", "templates/request_card.md",
-                         "templates/blocker_triage.md", "templates/question_protocol.md"):
+                         "templates/blocker_triage.md", "templates/question_protocol.md", "templates/recovery_card.md"):
             with self.subTest(missing=relative):
                 source = self.package / relative
                 content = source.read_bytes()
@@ -402,6 +402,8 @@ module["prepare"](settings, pathlib.Path(sys.argv[3]))
         payload = sorted(p.relative_to(self.output).as_posix() for p in self.output.rglob("*")
                          if p.is_file() and p.name != "manifest.json")
         self.assertEqual(manifest["algorithm"], "sha256")
+        self.assertEqual(manifest["file_count"], 25)
+        self.assertIn("scripts/templates/recovery_card.md", payload)
         self.assertEqual(manifest["file_count"], len(payload))
         self.assertEqual([entry["path"] for entry in manifest["files"]], payload)
         for entry in manifest["files"]:

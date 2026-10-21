@@ -160,11 +160,12 @@ class KanbanCli:
     def archive(self, card_id):
         return self._run(["archive", card_id])
 
-    def subscribe(self, card_id):
-        """D3: passive notify subscription of an integration-created card to the configured Discord channel."""
+    def subscribe(self, card_id, mode=DELIVERY_MODE):
+        """D3: passive notify subscription of an integration-created card to the configured Discord channel; ``mode="wake"``
+        only for an intake-owned recovery carrier (technical-recovery plan r3 §5.1)."""
         return self._run(["notify-subscribe", card_id, "--platform", "discord", "--chat-id", self.discord_chat,
                           "--guild-id", DISCORD_GUILD_ID, "--chat-type", CHAT_TYPE,
-                          "--notifier-profile", NOTIFIER_PROFILE, "--delivery-mode", DELIVERY_MODE])
+                          "--notifier-profile", NOTIFIER_PROFILE, "--delivery-mode", mode])
 
     def subscriptions(self, card_id):
         return self._run(["notify-list", card_id, "--json"], json_out=True)
@@ -439,16 +440,179 @@ def promoted_sha(show):
     return sha if isinstance(sha, str) and _SHA1.match(sha) else None
 
 
-def has_passive_subscription(subs, chat_id):
-    """D3 readback: a passive notify subscription to the configured Discord channel owned by the default notifier."""
+def has_subscription(subs, chat_id, mode=DELIVERY_MODE):
+    """Readback: a ``mode`` subscription to the configured Discord channel owned by the default notifier (group, guild)."""
     for s in subs if isinstance(subs, list) else ():
         meta = s.get("delivery_metadata") if isinstance(s, dict) else None
         if (isinstance(s, dict) and s.get("platform") == "discord" and str(s.get("chat_id")) == str(chat_id)
-                and s.get("delivery_mode") == DELIVERY_MODE and s.get("notifier_profile") == NOTIFIER_PROFILE
+                and s.get("delivery_mode") == mode and s.get("notifier_profile") == NOTIFIER_PROFILE
                 and s.get("chat_type") == CHAT_TYPE and isinstance(meta, dict)
                 and meta.get("guild_id") == DISCORD_GUILD_ID):
             return True
     return False
+
+
+def has_passive_subscription(subs, chat_id):
+    """D3 readback: a passive notify subscription to the configured Discord channel owned by the default notifier."""
+    return has_subscription(subs, chat_id, DELIVERY_MODE)
+
+
+# --------------------------------------------------------------------------- technical recovery (r3 §4.2, §6.1, §7.1)
+RECOVERY_KINDS = ("capability", "transient", "needs_input")
+TICKET_INVALID_PREFIX = "ClickUp approval ticket INVALID"  # owner/approval path (orchestrator requirement 4)
+_BLOCK_EVENTS = ("blocked", "block_loop_detected")
+
+
+def _event_run(e):
+    run = e.get("run_id")
+    return run if isinstance(run, int) else (e.get("payload") or {}).get("run_id")
+
+
+def _block_event(show):
+    """(index, event) of the newest ``blocked``/``block_loop_detected`` event, else (None, None)."""
+    events = _events(show)
+    for i in range(len(events) - 1, -1, -1):
+        if events[i].get("kind") in _BLOCK_EVENTS:
+            return i, events[i]
+    return None, None
+
+
+def recovery_incident(show):
+    """r3 §4.2 (a)-(d): the actionable typed worker stop of a card, else None. W is ``blocked`` (or ``triage``
+    through ``block_loop_detected``); the newest blocking event E belongs to the latest run R, which ended
+    ``blocked`` and was really claimed; E's kind is capability/transient/needs_input and not an owner approval stop."""
+    _, e = _block_event(show)
+    run = latest_run(show)
+    if e is None or run is None:
+        return None
+    if (card_status(show), e.get("kind")) not in (("blocked", "blocked"), ("triage", "block_loop_detected")):
+        return None
+    r = run.get("id")
+    if _event_run(e) != r or run.get("outcome") != "blocked" or r not in claimed_runs(show):
+        return None
+    p = e.get("payload") if isinstance(e.get("payload"), dict) else {}
+    kind, reason = p.get("kind"), str(p.get("reason") or "")
+    if kind not in RECOVERY_KINDS or (kind == "needs_input" and reason.startswith(TICKET_INVALID_PREFIX)):
+        return None
+    loop = e.get("kind") == "block_loop_detected"
+    return {"run_id": r, "event_kind": e.get("kind"), "event_created_s": e.get("created_at"), "block_kind": kind,
+            "class": "loop" if loop else kind, "reason": reason,
+            "reason_sha256": hashlib.sha256(reason.encode("utf-8")).hexdigest(),
+            "source_status": p.get("source_status")}
+
+
+def recovery_outcome(show, run_id, event_created_s):
+    """r3 §7.1 from W's native records after the stop E of run R: (``resumed``|``closed``|``gated``|``handed_off``,
+    at_s of the releasing event) or (None, None) while nothing moved W."""
+    if any(r > run_id for r in claimed_runs(show)):
+        return "resumed", None
+    status = card_status(show)
+    if status in ("done", "archived"):
+        return "closed", None
+    events = _events(show)
+    at = [i for i, e in enumerate(events) if e.get("kind") in _BLOCK_EVENTS and _event_run(e) == run_id
+          and e.get("created_at") == event_created_s]
+    if not at:
+        return None, None
+    for e in events[at[-1] + 1:]:
+        p = e.get("payload") if isinstance(e.get("payload"), dict) else {}
+        if e.get("kind") == "unblocked" or (e.get("kind") == "status" and p.get("status") in ("ready", "todo")):
+            if status == "todo":
+                return "gated", e.get("created_at")
+            if status in ("ready", "review"):
+                return "handed_off", e.get("created_at")
+            break
+    return None, None
+
+
+ACK_DISPOSITIONS = ("owner", "cannot_act", "working")
+
+
+def recovery_ack(show, card, run_id, since_s):
+    """r3 §6.3/§7.1 coordinator ACKs on W: first line exactly ``CLICKUP-RECOVERY-ACK v1 card=<W> run=<R>
+    disposition=<d>``, author not the intake, created at/after E. The earliest owner/cannot_act ACK is final."""
+    out = {"final": None, "final_s": None, "working_s": None}
+    for c in _comments(show):
+        lines = str(c.get("body", "")).splitlines()
+        at = c.get("created_at")
+        if not lines or c.get("author") == AUTHOR or not isinstance(at, int) or at < since_s:
+            continue
+        for d in ACK_DISPOSITIONS:
+            if lines[0] == "CLICKUP-RECOVERY-ACK v1 card=%s run=%s disposition=%s" % (card, run_id, d):
+                if d == "working":
+                    out["working_s"] = max(out["working_s"] or at, at)
+                elif out["final"] is None or at < out["final_s"]:
+                    out["final"], out["final_s"] = d, at
+    return out
+
+
+class RecoveryVerdict(NamedTuple):
+    """``recovery-check`` result: CURRENT (exit 0), STALE (exit 3) or UNAVAILABLE (exit 2)."""
+    verdict: str
+    text: str
+
+    @property
+    def code(self):
+        return {"CURRENT": 0, "STALE": 3}.get(self.verdict, 2)
+
+    def __str__(self):
+        return self.verdict + " " + self.text
+
+
+def recovery_verdict(snapshot, w_show, card, run):
+    """r3 §6.1 fail-closed admission from one read-only state snapshot (``store.load_recovery_snapshot`` plus the
+    recomputed ``members``) and one fresh ``show`` of W. It can only stop the coordinator, never authorize."""
+    from . import engine, rules  # engine imports this module
+
+    def stale(why):
+        return RecoveryVerdict("STALE", why)
+    if not isinstance(snapshot, dict):
+        return RecoveryVerdict("UNAVAILABLE", "state_unavailable")
+    if not isinstance(w_show, dict) or card_status(w_show) is None:
+        return RecoveryVerdict("UNAVAILABLE", "show_unavailable")
+    inc, t = snapshot.get("incident"), snapshot.get("task")
+    if not snapshot.get("enabled"):
+        return stale("recovery_disabled")
+    if inc is None:
+        return stale("no_incident")
+    if inc["state"] != "open":
+        return stale("incident_" + str(inc["state"]))
+    if t is None or t["terminal"]:
+        return stale("terminal")
+    if t["hold_reason"]:
+        return stale("held")
+    if t["phase"] not in engine.AMENDMENT_PHASES:
+        return stale("phase")
+    a = next((x for x in snapshot.get("approvals") or () if x["id"] == inc["approval_id"]), None)
+    if a is None or a["state"] not in engine.WATCHED_STATES:
+        return stale("approval_" + (str(a["state"]) if a else "missing"))
+    if a["rev"] != inc["approval_rev"] or a["plan_sha256"] != inc["plan_sha256"]:
+        return stale("approval_changed")  # §4.5/§5.2: A* unchanged since the incident bound it
+    if not rules.current(a["accounts_gen"], t):
+        return stale("not_current")
+    if any(x["id"] > a["id"] and x["state"] in engine.ACTIVE + engine.WATCHED_STATES
+           for x in snapshot.get("approvals") or ()):
+        return stale("superseded")
+    m = (snapshot.get("members") or {}).get(card)
+    if m is None or m["id"] != a["id"]:
+        return stale("not_member")
+    status = card_status(w_show)
+    if status != "blocked" and not (status == "triage" and inc["class"] == "loop"):
+        return stale("status_" + str(status))
+    last = latest_run(w_show)
+    if latest_run_id(w_show) != run or inc["run_id"] != run:
+        return stale("newer_run")
+    if last.get("ended_at") is None or last.get("worker_pid") is not None or open_run_ids(w_show):
+        return stale("open_run")
+    _, e = _block_event(w_show)
+    p = e.get("payload") if e is not None and isinstance(e.get("payload"), dict) else {}
+    reason = str(p.get("reason") or "")
+    if (e is None or _event_run(e) != run or e.get("kind") != inc["event_kind"] or p.get("kind") != inc["block_kind"]
+            or e.get("created_at") != inc["event_created_s"]
+            or hashlib.sha256(reason.encode("utf-8")).hexdigest() != inc["reason_sha256"]):
+        return stale("event_changed")
+    return RecoveryVerdict("CURRENT", "incident=%d card=%s run=%d approval=%d rev=%d class=%s source_status=%s"
+                           % (inc["id"], card, run, a["id"], a["rev"], inc["class"], p.get("source_status")))
 
 
 # --------------------------------------------------------------------------- effect execution (§10.2, §10.3)
@@ -485,7 +649,8 @@ def _applied(port, intent):
         return None if res.outcome is not Outcome.OK else attachment_matches(res.json, p["name"], p["path"])
     if kind == SUBSCRIBE:
         res = port.subscriptions(card)
-        return None if res.outcome is not Outcome.OK else has_passive_subscription(res.json, port.discord_chat)
+        mode = p.get("mode", DELIVERY_MODE)
+        return None if res.outcome is not Outcome.OK else has_subscription(res.json, port.discord_chat, mode)
     res = port.show(card)
     if res.outcome is not Outcome.OK:
         return None
@@ -516,7 +681,8 @@ def _send(port, intent):
         return port.complete(card, p["summary"], p.get("metadata"))
     if kind == ARCHIVE:
         return port.archive(card)
-    return port.subscribe(card)
+    mode = p.get("mode", DELIVERY_MODE)
+    return port.subscribe(card) if mode == DELIVERY_MODE else port.subscribe(card, mode=mode)
 
 
 def run_kanban_effect(port, intent, *, prior_child=None, alive=child_alive):
