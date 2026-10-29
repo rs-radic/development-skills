@@ -6,6 +6,7 @@ read-only opener serves ``ticket-check``.
 """
 
 import contextlib
+import json
 import pathlib
 import sqlite3
 from typing import NamedTuple
@@ -204,6 +205,26 @@ _RELAY_TABLES = [
         detected_ms INTEGER,
         updated_ms INTEGER,
         UNIQUE (card, run_id))""",
+    # workflow repair r3 §3.2: one row per (blocker, approval) binding of an approved-amendment continuation
+    """CREATE TABLE IF NOT EXISTS amendment_answers (
+        id INTEGER PRIMARY KEY,
+        task TEXT NOT NULL,
+        blocker_id INTEGER NOT NULL,
+        approval_id INTEGER NOT NULL,
+        rev INTEGER NOT NULL,
+        plan_sha256 TEXT NOT NULL,
+        question_card TEXT NOT NULL,
+        card TEXT NOT NULL,
+        gen INTEGER NOT NULL,
+        relay_ref TEXT NOT NULL,
+        resolution_sha256 TEXT NOT NULL,
+        source TEXT NOT NULL CHECK (source IN ('plan', 'operator')),
+        receipt_sha256 TEXT,
+        state TEXT NOT NULL CHECK (state IN ('bound', 'applied', 'void')),
+        reason TEXT,
+        created_ms INTEGER NOT NULL,
+        updated_ms INTEGER NOT NULL,
+        UNIQUE (blocker_id, approval_id))""",
 ]
 
 _TASK_COLUMNS = (
@@ -368,14 +389,36 @@ def recovery_snapshot(conn, task, card, run):
     inc = None
     if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='recoveries'").fetchone():
         inc = conn.execute("SELECT * FROM recoveries WHERE card=? AND run_id=?", (card, run)).fetchone()
+        if inc is None:
+            # A notice may concern a successor claim while retaining the original incident and budget.
+            for row in conn.execute("SELECT r.* FROM recoveries r JOIN meta m ON m.key='diagnostic_wait:'||r.id"
+                                    " WHERE r.card=? AND r.state='open' ORDER BY r.id DESC", (card,)):
+                wait = conn.execute('SELECT value FROM meta WHERE key=?', ('diagnostic_wait:%d' % row['id'],)).fetchone()
+                q = json.loads(wait[0]).get('question', {})
+                if q.get('card') == card and q.get('run') == run:
+                    inc = row
+                    break
     inc = dict(inc) if inc and task in (None, inc["task"]) else None
     tid = inc["task"] if inc else task
     row = conn.execute("SELECT * FROM tasks WHERE clickup_task_id=?", (tid,)).fetchone()
     approvals = conn.execute("SELECT * FROM approvals WHERE task=? ORDER BY id", (tid,)).fetchall()
     orch = conn.execute("SELECT idem_key, body FROM outbox WHERE task=? AND kind='kb_create' AND state='done'"
                         " AND idem_key LIKE ?", (tid, "clickup-dp:%s:orch:%%" % tid)).fetchall()
-    return {"enabled": enabled, "incident": inc, "task": dict(row) if row else None,
+    snap = {"enabled": enabled, "incident": inc, "task": dict(row) if row else None,
             "approvals": [dict(a) for a in approvals], "orch": {k: b for k, b in orch}}
+    if inc:
+        from .engine import recovery_abandoned, _notice_key
+        snap["abandoned"] = recovery_abandoned(conn, inc)
+    if inc:
+        from . import stalled
+        snap.update(stalled.context(conn, tid))
+        if inc['class'] == 'approval_staging':
+            from . import preworker
+            snap.update(preworker.context(conn, tid))
+        snap['diagnostic_notice_key'] = _notice_key(tid, inc, conn)
+        wait = conn.execute('SELECT value FROM meta WHERE key=?', ('diagnostic_wait:%d' % inc['id'],)).fetchone()
+        snap['diagnostic_wait'] = json.loads(wait[0]) if wait else None
+    return snap
 
 
 def load_recovery_snapshot(path, task, card, run):

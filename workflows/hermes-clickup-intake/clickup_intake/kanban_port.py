@@ -66,6 +66,27 @@ def process_start_time(pid):
         k32.CloseHandle(handle)
 
 
+def worker_progress(show, now_ms):
+    """Read-only local proof of the current capable owner, not merely a queued status/old claim."""
+    task = show.get('task') or {}
+    run = latest_run(show)
+    if (not run or task.get('status') != 'running' or run.get('status') != 'running'
+            or run.get('ended_at') is not None or run.get('outcome') is not None
+            or not task.get('assignee') or run.get('profile') != task['assignee']
+            or task.get('current_run_id') != run.get('id') or run['id'] not in claimed_runs(show)):
+        return None
+    pid, started, heartbeat = task.get('worker_pid'), run.get('started_at'), task.get('last_heartbeat_at')
+    if (type(pid) is not int or pid < 1 or type(started) is not int or type(heartbeat) is not int
+            or heartbeat < started or not 0 <= now_ms - heartbeat * 1000 <= 120_000
+            or run.get('worker_pid', pid) != pid):
+        return None
+    generation = process_start_time(pid)
+    if generation is None or abs(int(generation) / 10_000_000 - 11_644_473_600 - started) > 2:
+        return None  # existing Windows FILETIME probe: reject dead/reused PID and unknown generation
+    return {'run': run['id'], 'pid': pid, 'owner': task['assignee'], 'heartbeat_s': heartbeat,
+            'process_start': generation}
+
+
 def child_alive(pid, start_time):
     """True only if ``pid`` is running AND is the same process (creation time) as recorded."""
     return bool(pid and start_time) and process_start_time(pid) == str(start_time)
@@ -147,6 +168,46 @@ class KanbanCli:
 
     def show(self, card_id):
         return self._run(["show", card_id, "--json"], json_out=True)
+
+    def _preworker_snapshot(self, roots, take, clock):
+        # Same installed resolver and explicit board as this port, but no initializing connection.
+        from pathlib import Path
+        import sys
+        from .preworker_snapshot import acquire
+        native_root = str(Path(self.hermes_exe).resolve().parents[2])
+        added = native_root not in sys.path
+        if added:
+            sys.path.insert(0, native_root)
+        try:
+            from hermes_cli.update_lock import update_in_progress
+            from hermes_cli.venv_sync import completion_pending_path
+            root = Path(native_root)
+            def stable():
+                return not update_in_progress(root) and not completion_pending_path(root).exists()
+            if not stable():
+                return None
+            # Refuse any installed read-contract change during acquisition/use.
+            paths = [root / p for p in ('hermes_cli/kanban_db.py', 'hermes_cli/kanban_db_connect.py',
+                                        'hermes_cli/kanban_output.py', 'hermes_constants.py')]
+            before = [hashlib.sha256(p.read_bytes()).digest() for p in paths]
+            if getattr(self, '_native_contract', before) != before:
+                return None
+            self._native_contract = before
+            from hermes_cli.kanban_db import kanban_db_path
+            if self.env is not None:
+                return None  # no implicit substitution for a custom child environment
+            proof = acquire(kanban_db_path(board=self.board), roots, take, clock)
+            if proof is not None:
+                proof.native_stable = lambda: stable() and before == [hashlib.sha256(p.read_bytes()).digest() for p in paths]
+                if not proof.valid():
+                    proof.close()
+                    return None
+            return proof
+        except (ImportError, OSError, ValueError):
+            return None
+        finally:
+            if added:
+                sys.path.remove(native_root)
 
     def unblock(self, card_id):
         return self._run(["unblock", card_id])
@@ -460,6 +521,10 @@ def has_passive_subscription(subs, chat_id):
 # --------------------------------------------------------------------------- technical recovery (r3 §4.2, §6.1, §7.1)
 RECOVERY_KINDS = ("capability", "transient", "needs_input")
 TICKET_INVALID_PREFIX = "ClickUp approval ticket INVALID"  # owner/approval path (orchestrator requirement 4)
+_TICKET_LEASE_REASON = re.compile(
+    r"ClickUp approval ticket INVALID: lease_expired"
+    r"(?: \(ticket-check gate t_[0-9a-f]{8,} task [A-Za-z0-9]+ rev [1-9][0-9]*, exit 3 at "
+    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\)\.[^\x0a\x0d]*)?")
 _BLOCK_EVENTS = ("blocked", "block_loop_detected")
 
 
@@ -477,10 +542,10 @@ def _block_event(show):
     return None, None
 
 
-def recovery_incident(show):
-    """r3 §4.2 (a)-(d): the actionable typed worker stop of a card, else None. W is ``blocked`` (or ``triage``
+def _worker_stop(show):
+    """The typed worker stop of a card, else None. W is ``blocked`` (or ``triage``
     through ``block_loop_detected``); the newest blocking event E belongs to the latest run R, which ended
-    ``blocked`` and was really claimed; E's kind is capability/transient/needs_input and not an owner approval stop."""
+    ``blocked`` and was really claimed; E's kind is capability/transient/needs_input."""
     _, e = _block_event(show)
     run = latest_run(show)
     if e is None or run is None:
@@ -492,13 +557,36 @@ def recovery_incident(show):
         return None
     p = e.get("payload") if isinstance(e.get("payload"), dict) else {}
     kind, reason = p.get("kind"), str(p.get("reason") or "")
-    if kind not in RECOVERY_KINDS or (kind == "needs_input" and reason.startswith(TICKET_INVALID_PREFIX)):
+    if kind not in RECOVERY_KINDS:
         return None
     loop = e.get("kind") == "block_loop_detected"
     return {"run_id": r, "event_kind": e.get("kind"), "event_created_s": e.get("created_at"), "block_kind": kind,
             "class": "loop" if loop else kind, "reason": reason,
             "reason_sha256": hashlib.sha256(reason.encode("utf-8")).hexdigest(),
             "source_status": p.get("source_status")}
+
+
+def recovery_incident(show):
+    """Technical recovery never supplies approval authority, including for an expired ticket."""
+    stop = _worker_stop(show)
+    if stop and not (stop["block_kind"] == "needs_input" and stop["reason"].startswith(TICKET_INVALID_PREFIX)):
+        return stop
+    return None
+
+
+def ticket_lease_stop(show):
+    """Only lease_expired, bare or with native ticket-check diagnostics, may enter the ticket retry path."""
+    stop = _worker_stop(show)
+    run = latest_run(show)
+    _, event = _block_event(show)
+    if (stop is None or stop["class"] != "needs_input"
+            or _TICKET_LEASE_REASON.fullmatch(stop["reason"]) is None
+            or type(stop["run_id"]) is not int or stop["run_id"] < 1
+            or type(_event_run(event)) is not int
+            or type(stop["event_created_s"]) is not int or stop["event_created_s"] < 1
+            or run.get("ended_at") is None or run.get("worker_pid") is not None or open_run_ids(show)):
+        return None
+    return stop
 
 
 def recovery_outcome(show, run_id, event_created_s):
@@ -577,6 +665,8 @@ def recovery_verdict(snapshot, w_show, card, run):
         return stale("no_incident")
     if inc["state"] != "open":
         return stale("incident_" + str(inc["state"]))
+    if snapshot.get("abandoned"):
+        return stale("operator_abandoned")
     if t is None or t["terminal"]:
         return stale("terminal")
     if t["hold_reason"]:
@@ -596,6 +686,33 @@ def recovery_verdict(snapshot, w_show, card, run):
     m = (snapshot.get("members") or {}).get(card)
     if m is None or m["id"] != a["id"]:
         return stale("not_member")
+    wait = snapshot.get('diagnostic_wait') or {}
+    if wait.get('takeover') and (latest_run_id(w_show) or 0) != run:
+        return stale('newer_run')
+    if wait.get('takeover') and wait.get('question', {}).get('run') != run:
+        return stale('diagnostic_changed')
+    if wait.get('state') in ('publishing', 'waiting', 'classifying'):
+        if (wait['state'] in ('waiting', 'classifying') and wait.get('root') and wait.get('verified_ms')
+                and wait.get('key') == snapshot.get('diagnostic_notice_key', engine._notice_key(inc['task'], inc))):
+            return stale('diagnostic_human_wait')
+        return stale('diagnostic_notice_unfinished')
+    if wait.get('takeover') and run != inc['run_id'] and (open_run_ids(w_show)
+            or (latest_run(w_show) or {}).get('worker_pid') is not None):
+        return stale('open_run')
+    if inc["class"] == "diagnostic":
+        from . import stalled
+        now = snapshot.get("now_ms")
+        if (now is None or not rules.barrier_ok(t, 0, now, snapshot.get("scan_started_ms", now))
+                or now - (t["last_light_ms"] or 0) > 5 * 60_000):
+            return RecoveryVerdict("UNAVAILABLE", "diagnostic_input_barrier")
+        found = stalled.candidate(t, a, card, snapshot.get("shows") or {card: w_show}, snapshot,
+                                 snapshot.get("attachments"))
+        if found is None:
+            return RecoveryVerdict("UNAVAILABLE", "diagnostic_observation")
+        if found["run_id"] != run or found["reason_sha256"] != inc["reason_sha256"]:
+            return stale("diagnostic_changed")
+        return RecoveryVerdict("CURRENT", "incident=%d card=%s run=%d approval=%d rev=%d class=diagnostic"
+                               % (inc["id"], card, run, a["id"], a["rev"]))
     status = card_status(w_show)
     if status != "blocked" and not (status == "triage" and inc["class"] == "loop"):
         return stale("status_" + str(status))

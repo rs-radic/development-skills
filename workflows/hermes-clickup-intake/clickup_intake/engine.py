@@ -19,7 +19,7 @@ import re
 from dataclasses import dataclass, field
 
 from . import kanban_port as kp
-from . import render, rules
+from . import render, rules, stalled, preworker
 from .config import Config
 from .contracts import BlockerPreconditions, EffectIntent, Preconditions
 from .store import revoke_live_tickets
@@ -57,6 +57,8 @@ class Observation:
     cards: dict = field(default_factory=dict)
     attachments: dict = field(default_factory=dict)
     confirmed: frozenset = frozenset()
+    workers: dict = field(default_factory=dict)  # card -> separately observed current process/heartbeat proof
+    early_approvals: frozenset = frozenset()  # already reconciled before this scan's global card collection
 
 
 def _sha(s):
@@ -163,11 +165,14 @@ def evaluate(store, now, obs=None, config=None):
         _candidacy(ctx, tid)
         _revocations(ctx, tid)
         t = ctx.task(tid)
+        _amend_alerts(ctx, tid)  # workflow repair r3 §3.4: durable void alerts, every evaluated task
+        _recovery_delivery_progress(ctx, tid)  # reconcile only; a transport hold never means delivered
         if not t["hold_reason"]:
             _disabled_blockers(ctx, tid)
         if t["terminal"]:
             _terminal(ctx, tid)
             _closed_task_blockers(ctx, tid)
+            _amend_terminal(ctx, tid)
             _supersede_recoveries(ctx, tid)
             if not t["hold_reason"]:
                 _fences(ctx, tid)  # r12 §3.3 parks and fence/park readback need no live task (r11 §9, r12 §9)
@@ -175,12 +180,14 @@ def evaluate(store, now, obs=None, config=None):
         if t["hold_reason"] or tid not in ctx.obs.confirmed:
             continue  # owner V1 (the approved temporary-hold rule): a temporary hold pauses its blockers and fences, never final
         _outputs(ctx, tid)
+        _amend(ctx, tid)  # workflow repair r3 §3.4: bind/apply approved-amendment continuations
         _deliver(ctx, tid)
         _fences(ctx, tid)
         _commands(ctx, tid)
         _requests(ctx, tid)
         _approvals(ctx, tid)
         _detect(ctx, tid)
+        _fences(ctx, tid, discovered_now=True)  # Reuse this snapshot, never a future-created protocol card.
         _recover(ctx, tid)
     return ctx.new
 
@@ -462,6 +469,8 @@ def _consume(ctx, tid, card, key, hdr, text):
             _published_after_classification(ctx, tid)
             return
         if kind == "resolution":
+            if 'diagnostic' in hdr:
+                return _diagnostic_resolution(ctx, tid, card, h12, hdr, text)
             return _resolution(ctx, tid, card, h12, hdr, text)
         if not text:
             return
@@ -856,6 +865,7 @@ def _relay(ctx, tid, card_row, expect, wait, fresh, old=None):
     k = "clickup-dp:%s:relay:%s" % (tid, ref)
     with ctx.store.transaction() as c:
         note = _bind_blockers(ctx, tid, ref, note)
+        note = _bind_diagnostic_waits(ctx, tid, ref, g, items, note)
         if old:  # the unsent rows of the superseded relay never go out; its items return to the new batch
             c.execute("UPDATE outbox SET state='cancelled_stale', outcome='SUPERSEDED' WHERE idem_key IN (?,?,?)"
                       " AND state IN ('pending', 'retry_wait')", (ok + ":comment", ok + ":attach", ok + ":unblock"))
@@ -895,7 +905,7 @@ def _derive(ctx, bid):
     if _effect_open(ctx, b):
         state = "releasing"
     elif (b["resolution_body"] is not None and b["resolution_relay"] == b["pending_relay"]
-          and (b["delivered_gen"] is None or _sha(b["resolution_body"]) != b["delivered_sha256"])):
+          and (b["delivered_gen"] is None or _sha(_answer_body(ctx, b)) != b["delivered_sha256"])):
         state = "resolved"
     elif b["delivered_gen"] is not None:
         state = "delivered"
@@ -932,7 +942,8 @@ def _deliver(ctx, tid):
             if state != "releasing" and _dispose(ctx, tid, b) is not False:
                 continue  # final, or None: it waits for Q's observation (no lower-precedence path decides it)
             rel = ctx.c.execute("SELECT * FROM relays WHERE relay_ref=?", (b["pending_relay"],)).fetchone()
-            if state != "releasing" and rel and rel["state"] == "classified" and rel["classification"] == "material":
+            if state != "releasing" and rel and rel["state"] == "classified" and rel["classification"] == "material" \
+                    and not _incorporated(b, _binding(ctx, b)):  # r3 §3.6: that exact relay is accounted by A
                 if ctx.show(b["card"]) is not None or ctx.show(b["question_card"]) is not None:
                     _scope_change(ctx, tid, b, rel["gen"])  # SPEC-R6-B1/B2: a pass observing neither W nor Q (the
                 continue  # progress pass, failed reads) waits: W may be done/archived, whose disposition precedes
@@ -985,7 +996,7 @@ def _disabled_alert(ctx, b, delivered):
                   " decision as its summary, or re-enable." % b["question_card"], b["task"])
 
 
-def _fences(ctx, tid):
+def _fences(ctx, tid, discovered_now=False):
     """r11 §3.3 engine side of the answer-fence release (parks: r12 §3.3). An open fence of W is released by one
     ``complete F`` row once all input is classified, W, F and each non-final blocker's Q are observed in this pass, and
     every non-final blocker of W whose Q is done is ``delivered`` and settled, behind the fence's barrier (none when it
@@ -997,6 +1008,8 @@ def _fences(ctx, tid):
     t = ctx.task(tid)
     for f in map(dict, ctx.c.execute("SELECT * FROM fences WHERE task=? AND state IN ('open', 'releasing')"
                                      " ORDER BY id", (tid,)).fetchall()):
+        if discovered_now and f["created_s"] * 1000 > ctx.now:
+            continue
         with ctx.store.transaction():
             state = None
             if f["state"] == "releasing":
@@ -1119,7 +1132,7 @@ def _dispose(ctx, tid, b):
     and an absent W (progress pass, failed read) is None: the blocker waits, no lower-precedence path decides it.
     E936-F1: so does a delivered blocker whose ACK is undecided while its fence's release row is possibly sent."""
     w = ctx.show(b["card"])
-    a = b["approval_id"] is not None and ctx.approval(b["approval_id"])
+    a, _ = _gov(ctx, b)  # r3 §3.6: ``gone`` is judged on the governing approval
     gone = not a or a["state"] == "stale" or (a["state"] == "revoked" and a["revoked_reason"] == "superseded")
     delivered = b["delivered_gen"] is not None
     if w is None and b["card"] not in json.loads((ctx.c.execute(
@@ -1264,7 +1277,11 @@ def _scope_change(ctx, tid, b, g):
 
 def _settled(ctx, t, b):
     """r6 ``settled`` (r9 §4.4): all input classified and the blocker's pending relay classified at input_gen
-    with its planner wake ended in this scan's snapshot (the derived state is checked by the caller)."""
+    with its planner wake ended in this scan's snapshot (the derived state is checked by the caller). r3 §3.6: the
+    exact incorporated resolution is settled once all input is classified and its governing approval is current."""
+    a, k = _gov(ctx, b)
+    if _incorporated(b, k):
+        return t["classified_gen"] == t["input_gen"] and bool(a) and rules.current(a["accounts_gen"], t)
     rel = ctx.c.execute("SELECT * FROM relays WHERE relay_ref=?", (b["pending_relay"],)).fetchone()
     return (t["classified_gen"] == t["input_gen"] and rel is not None and rel["state"] == "classified"
             and rel["gen"] == t["input_gen"] and rules.status(ctx.show(rel["card"])) in WAKE_ENDED)
@@ -1284,9 +1301,16 @@ def _closure_root(ctx, tid, b):
 
 
 def _due(ctx, t, b):
-    """r9 §4.4 due trigger (the task is neither held nor terminal here: ``evaluate`` skips those)."""
+    """r9 §4.4 due trigger (the task is neither held nor terminal here: ``evaluate`` skips those). r3 §3.6: the exact
+    incorporated resolution is due under its governing approval; every other case is the native predicate with the
+    governing approval substituted."""
+    a, k = _gov(ctx, b)
+    if _incorporated(b, k):
+        rel = ctx.c.execute("SELECT * FROM relays WHERE relay_ref=?", (k["relay_ref"],)).fetchone()
+        return (bool(a) and a["state"] in AMENDED_STATES and rules.current(a["accounts_gen"], t)
+                and k["gen"] <= a["accounts_gen"] and rel is not None and rel["state"] == "classified"
+                and rules.status(ctx.show(rel["card"])) in WAKE_ENDED and b["resolution_authority"] == "unchanged")
     rel = ctx.c.execute("SELECT * FROM relays WHERE relay_ref=?", (b["pending_relay"],)).fetchone()
-    a = b["approval_id"] is not None and ctx.approval(b["approval_id"])
     return (t["classified_gen"] == t["input_gen"] and rel is not None and rel["state"] == "classified"
             and rel["gen"] == t["input_gen"] == b["resolution_gen"] and rel["classification"] == "answer_only"
             and rules.status(ctx.show(rel["card"])) in WAKE_ENDED
@@ -1318,29 +1342,36 @@ def _over_length(ctx, tid, b, text):
 
 
 def _first_delivery(ctx, tid, t, b):
-    g, q, a = b["resolution_gen"], b["question_card"], ctx.approval(b["approval_id"])
+    a, k = _gov(ctx, b)
+    inc = _incorporated(b, k)  # r3 §3.5: the delivered body, its SHA-256 and gen are bound to their real authority
+    g, q = b["resolution_gen"], b["question_card"]
+    body = amended_body(k, a) if inc else b["resolution_body"]
     key = "clickup-dp:%s:blocker:%d:answer:g%d" % (tid, b["id"], g)
     summary = ("CLICKUP-ANSWER v1 question=%s card=%s gen=%d task=%s\n%s\nThis answer grants no new authority;"
-               " boundary: %s — unchanged." % (q, b["card"], g, tid, b["resolution_body"], _boundary(b)))
+               " boundary: %s — unchanged." % (q, b["card"], g, tid, body, _boundary(b)))
     if _over_length(ctx, tid, b, summary):
         return
+    frozen = _frozen(t, b, a)
+    if inc:
+        frozen["input_gen"] = t["input_gen"]  # any newer input cancels the row at send (rules.preconditions_ok)
     ctx.c.execute("UPDATE blockers SET release_key=?, release_gen=?, updated_ms=? WHERE id=?",
                   (key, g, ctx.now, b["id"]))
-    ctx.kb(tid, key, "kb_complete", q, {"summary": summary, "gen": g, "answer_sha256": _sha(b["resolution_body"])},
-           rearm=True, **_frozen(t, b, a))  # a refused row is re-derived and sent again (r9 §4.4)
+    ctx.kb(tid, key, "kb_complete", q, {"summary": summary, "gen": g, "answer_sha256": _sha(body)},
+           rearm=True, **frozen)  # a refused row is re-derived and sent again (r9 §4.4)
 
 
 def _correction(ctx, tid, t, b):
     """r9 §4.4(b): a changed answer after delivery is one ``CLICKUP-ANSWER ... supersedes=`` comment on W."""
     g, d = b["resolution_gen"], b["delivered_gen"]
+    a, _ = _gov(ctx, b)
+    body = _answer_body(ctx, b)
     text = ("CLICKUP-ANSWER v1 question=%s card=%s gen=%d task=%s supersedes=g%d\n%s\nThis answer replaces gen %d for"
             " this question and grants no new authority; boundary: %s — unchanged."
-            % (b["question_card"], b["card"], g, tid, d, b["resolution_body"], d, _boundary(b)))
+            % (b["question_card"], b["card"], g, tid, d, body, d, _boundary(b)))
     if _over_length(ctx, tid, b, text):
         return
     ctx.kb(tid, "clickup-dp:%s:blocker:%d:corr:g%d" % (tid, b["id"], g), "kb_comment", b["card"],
-           {"text": text, "gen": g, "answer_sha256": _sha(b["resolution_body"])}, rearm=True,
-           **_frozen(t, b, ctx.approval(b["approval_id"])))
+           {"text": text, "gen": g, "answer_sha256": _sha(body)}, rearm=True, **_frozen(t, b, a))
 
 
 def _bind_blockers(ctx, tid, ref, note):
@@ -1442,14 +1473,28 @@ def _revise(ctx, tid, rev):
 
 # ---- approval lifecycle and promotion ticket (§8.4-§8.6) -----------------------------------
 
-def _approvals(ctx, tid):
+def _approvals(ctx, tid, early_only=False):
     handlers = {"held": _held, "recorded": _stage, "staged": _release, "released": _start,
                 "started": _implement, "implemented": _issue, "ticketed": _ticketed, "revoked": _revoked}
     for aid, in ctx.c.execute("SELECT id FROM approvals WHERE task=? ORDER BY id", (tid,)).fetchall():
+        if not early_only and aid in ctx.obs.early_approvals:
+            continue
+        if early_only and aid != early_only:
+            continue
         for _ in range(8):
             a = ctx.approval(aid)
+            if early_only and a['state'] not in preworker.STATES:
+                break
             if a["state"] not in handlers:
                 break
+            if a['state'] in preworker.STATES and preworker.pending_question(ctx, aid):
+                break
+            if a['state'] == 'recorded':
+                t = ctx.task(tid)
+                if (not preworker.current_plan(t, a) or t['phase'] not in preworker.PHASES
+                        or ctx.c.execute("SELECT 1 FROM approvals WHERE task=? AND id>? AND state IN (%s)" % _in(ACTIVE),
+                                         (tid, a['id'])).fetchone()):
+                    break
             handlers[a["state"]](ctx, tid, a)
             if ctx.approval(aid)["state"] == a["state"]:
                 break
@@ -1689,6 +1734,21 @@ def _ticketed(ctx, tid, a):
             and ctx.barrier(t, a["ticket_renewed_ms"]):
         ctx.store.renew_ticket(a["id"], a["ticket_epoch"], ctx.now)  # local CAS; posts nothing
 
+    g = _gates(a)
+    show = ctx.show(g["promotion"]) if g else None
+    stop = kp.ticket_lease_stop(show)
+    if stop is None or not kp.promotion_guarded(show, a["gate_card"],
+                                               render.ticket_marker(a["gate_card"], tid, a["rev"], a["plan_sha256"])):
+        return
+    # Bind once to the stopped run and ticket identity. Expiry/failed observation defers the existing row;
+    # revocation, replacement or an operator abandonment must never create a fresh retry of the same stop.
+    binding = {k: a[k] for k in ("id", "rev", "plan_sha256", "gate_card", "ticket_epoch", "ticket_input_gen")}
+    ctx.kb(tid, "clickup-dp:%s:ticket-lease:%s:%d" % (tid, g["promotion"], stop["run_id"]),
+           "kb_unblock", g["promotion"], {"ticket_lease_retry": binding, "stop": stop},
+           anchor=stop["event_created_s"] * 1000, phases=("promotion_window",),
+           approval_id=a["id"], approval_states=("ticketed",), input_gen=a["ticket_input_gen"],
+           wait_run_id=stop["run_id"])
+
 
 def _revoked(ctx, tid, a):
     if a["ticket_epoch"] >= 1 and _promoted(ctx, tid, a):
@@ -1781,6 +1841,248 @@ def _terminal(ctx, tid):
         _stale(ctx, tid, a, notice=False)
 
 
+# ---- approved-amendment continuation (workflow repair r3 §3) -----------------------------------------------------
+
+AMENDED_STATES = ("started", "implemented", "ticketed", "promoted")  # the amendment's orchestrator has completed
+AMEND_KEY = "amendment_cutover_ms"  # r3 §3.8 enablement gate: no binding is created or applied without it
+ADMISSION_KEY = "admission_closed"  # r3 §3.8 rollback admission flag (read by ``main.main``)
+
+
+def _amend_table(ctx):
+    if getattr(ctx, "_amend_tbl", None) is None:
+        ctx._amend_tbl = ctx.c.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='amendment_answers'").fetchone() is not None
+    return ctx._amend_tbl
+
+
+def _amend_enabled(ctx):
+    return ctx.c.execute("SELECT 1 FROM meta WHERE key=?", (AMEND_KEY,)).fetchone() is not None
+
+
+def _approval_or_none(ctx, aid):
+    r = ctx.c.execute("SELECT * FROM approvals WHERE id=?", (aid,)).fetchone()
+    return dict(r) if r else None
+
+
+def _binding(ctx, b):
+    """r3 §3.3: the ``applied`` binding of blocker ``b`` with the highest approval id, or None."""
+    if not _amend_table(ctx):
+        return None
+    r = ctx.c.execute("SELECT * FROM amendment_answers WHERE blocker_id=? AND state='applied'"
+                      " ORDER BY approval_id DESC LIMIT 1", (b["id"],)).fetchone()
+    return dict(r) if r else None
+
+
+def _gov(ctx, b):
+    """r3 §3.3 (A, k): the governing approval and binding; without a binding the native ``b.approval_id``."""
+    k = _binding(ctx, b)
+    if k is not None:
+        return _approval_or_none(ctx, k["approval_id"]), k
+    return (b["approval_id"] is not None and ctx.approval(b["approval_id"])), None
+
+
+def _incorporated(b, k):
+    """r3 §3.3: the blocker still carries exactly the incorporated resolution and no newer relay is bound to it."""
+    return (k is not None and b["pending_relay"] == b["resolution_relay"] == k["relay_ref"]
+            and b["resolution_gen"] == k["gen"] and b["resolution_body"] is not None
+            and _sha(b["resolution_body"]) == k["resolution_sha256"])
+
+
+def amended_body(k, a):
+    """r3 §3.5: deterministic from the immutable binding and approval rows; no ClickUp content."""
+    src = k["source"] + (", receipt SHA-256 %s" % k["receipt_sha256"] if k["receipt_sha256"] else "")
+    return ("The decision for this question (ClickUp resolution gen %d, relay %s, stored answer SHA-256 %s) is"
+            " incorporated in approved plan r%d (SHA-256 %s), approved in ClickUp comment %s (approval %d,"
+            " accounts_gen %d); binding %d (%s). Follow that plan and the latest governing comments on this card;"
+            " they supersede any interim instructions that accompanied the original question."
+            % (k["gen"], k["relay_ref"], k["resolution_sha256"], a["rev"], a["plan_sha256"], a["comment_id"],
+               a["id"], a["accounts_gen"], k["id"], src))
+
+
+def _answer_body(ctx, b):
+    a, k = _gov(ctx, b)
+    return amended_body(k, a) if a and _incorporated(b, k) else b["resolution_body"]
+
+
+def _disposition(a):
+    """r3 §3.3 (N3), classified as the native lifecycle does: ``live``, ``paused`` (a revocation ``_issue`` can
+    reissue) or ``gone``. States a binding cannot have are ``paused`` (wait, never void)."""
+    if not a or a["state"] == "stale":
+        return "gone"
+    if a["state"] in AMENDED_STATES:
+        return "live"
+    if a["state"] == "revoked":
+        return "paused" if a["revoked_reason"] in REISSUE_REASONS else "gone"
+    return "paused"
+
+
+def approval_cards(a):
+    """The approval's own cards: orchestrator, ``clickup_gates`` final_e2e/promotion/cleanup and lineage; never the
+    gate card (the ``_watched`` card set of one approval)."""
+    g = _gates(a) or {}
+    return {c for c in [a["orchestrator_card"], g.get("final_e2e"), g.get("promotion"), g.get("cleanup")]
+            + list(g.get("lineage") or []) if isinstance(c, str) and c and c != a["gate_card"]}
+
+
+def insert_binding(c, tid, b, a, source, receipt_sha256, now):
+    """One ``bound`` row (INSERT OR IGNORE on (blocker, approval)); relay and resolution hash from the blocker row."""
+    return c.execute(
+        "INSERT OR IGNORE INTO amendment_answers(task, blocker_id, approval_id, rev, plan_sha256, question_card,"
+        " card, gen, relay_ref, resolution_sha256, source, receipt_sha256, state, created_ms, updated_ms)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'bound',?,?)",
+        (tid, b["id"], a["id"], a["rev"], a["plan_sha256"], b["question_card"], b["card"], b["resolution_gen"],
+         b["resolution_relay"], _sha(b["resolution_body"]), source, receipt_sha256, now, now))
+
+
+def _amend(ctx, tid):
+    """r3 §3.4 for a confirmed, unheld, live task: ingest plan markers (full pass only), then decide every ``bound``
+    row in one transaction each. Inert unless the enablement key exists (§3.8)."""
+    if not _amend_table(ctx) or _cutover_ms(ctx) is None or not _amend_enabled(ctx):
+        return
+    _amend_ingest(ctx, tid)
+    for k in [dict(r) for r in ctx.c.execute("SELECT * FROM amendment_answers WHERE task=? AND state='bound'"
+                                             " ORDER BY id", (tid,)).fetchall()]:
+        with ctx.store.transaction():
+            _amend_apply(ctx, tid, k)
+
+
+def _approved_plan_resolution(ctx, tid, b, a, source, ev, marker):
+    """An explicit current approved incorporation owns absent bookkeeping, never a planner's missing answer."""
+    fields = ('resolution_relay', 'resolution_card', 'resolution_gen', 'resolution_body', 'resolution_authority')
+    t = ctx.task(tid)
+    if (not b or b['state'] != 'scope_change' or b['task'] != tid or b['delivered_gen'] is not None
+            or b['release_key'] is not None or any(b[k] is not None for k in fields)
+            or marker != {'blocker': b['id'], 'question': b['question_card'], 'card': b['card'], 'gen': b['closure_gen']}
+            or a['id'] <= (b['approval_id'] or 0) or marker['gen'] > a['accounts_gen']
+            or ev['accounts_gen'] != a['accounts_gen'] or b['request_card'] != source
+            or tid not in ctx.obs.confirmed or t['terminal'] or t['hold_reason']
+            or t['phase'] not in AMENDMENT_PHASES or not rules.current(a['accounts_gen'], t)
+            or t['input_gen'] > a['accounts_gen'] or not ctx.barrier(t)
+            or t['published_rev'] != a['rev'] or t['published_sha256'] != a['plan_sha256']
+            or ctx.c.execute("SELECT 1 FROM approvals WHERE task=? AND id>? AND state IN (%s)" %
+                             _in(ACTIVE + WATCHED_STATES), (tid, a['id'])).fetchone()):
+        return None
+    rel = ctx.c.execute('SELECT * FROM relays WHERE relay_ref=? AND task=? AND card=?',
+                        (b['pending_relay'], tid, source)).fetchone()
+    if not rel or rel['gen'] != marker['gen'] or rel['state'] != 'classified' or rel['classification'] != 'material':
+        return None
+    text = ('Approved incorporation: task=%s blocker=%d question=%s work=%s gen=%d; approval=%d r%d '
+            'sha256=%s comment=%s reviewed-source=%s relay=%s. Use the decision in these exact approved plan '
+            'bytes, with no authority beyond this approval; retain the normal answer-fence and worker checks.' %
+            (tid, b['id'], b['question_card'], b['card'], marker['gen'], a['id'], a['rev'], a['plan_sha256'],
+             a['comment_id'], source, b['pending_relay']))
+    return text if len(text) <= RESOLUTION_MAX and not rules.blocker_leak(text) and not render.check_outbound(text) else None
+
+
+def _amend_ingest(ctx, tid):
+    """Markers of the observed approved plan bytes (``_pass_source``; attachments are observed in the full pass)."""
+    for a in map(dict, ctx.c.execute("SELECT * FROM approvals WHERE task=? AND state IN (%s) ORDER BY id"
+                                     % _in(AMENDED_STATES), (tid,)).fetchall()):
+        src = _pass_source(ctx, tid, a["rev"], a["plan_sha256"])
+        if src is None:
+            continue
+        card, ev = src
+        att = next((x for x in ctx.obs.attachments.get(card) or [] if isinstance(x, dict)
+                    and x.get("name") == ev["attachment"] and x.get("sha256") == ev["sha256"]), {})
+        if att.get("incorporates_oversize"):
+            ctx.alert("amend:a%d:oversize" % a["id"], "ClickUp amendment markers of plan r%d (approval %d) were not"
+                      " read: the plan file is over 1 MiB" % (a["rev"], a["id"]), tid)
+        if att.get("incorporates_ignored"):
+            ctx.alert("amend:a%d:ignored" % a["id"], "ClickUp amendment markers of plan r%d (approval %d): %d beyond"
+                      " the first 20 were ignored" % (a["rev"], a["id"], att["incorporates_ignored"]), tid)
+        for m in att.get("incorporates") or []:
+            if ctx.c.execute("SELECT 1 FROM amendment_answers WHERE blocker_id=? AND approval_id=?",
+                             (m["blocker"], a["id"])).fetchone():
+                continue
+            with ctx.store.transaction() as c:
+                b = ctx.c.execute("SELECT * FROM blockers WHERE id=?", (m["blocker"],)).fetchone()
+                text = _approved_plan_resolution(ctx, tid, b, a, card, ev, m)
+                if text is not None:
+                    c.execute("UPDATE blockers SET resolution_relay=pending_relay,resolution_card=?,resolution_gen=?,"
+                              "resolution_body=?,resolution_authority='unchanged',updated_ms=? WHERE id=?",
+                              (card, m['gen'], text, ctx.now, b['id']))
+                    b = c.execute('SELECT * FROM blockers WHERE id=?', (b['id'],)).fetchone()
+                if (b is None or b["task"] != tid or b["question_card"] != m["question"] or b["card"] != m["card"]
+                        or b["resolution_gen"] != m["gen"] or m["gen"] > a["accounts_gen"]
+                        or a["id"] <= (b["approval_id"] or 0) or b["resolution_authority"] != "unchanged"
+                        or b["resolution_body"] is None):
+                    ctx.alert("amend:a%d:b%d:mismatch" % (a["id"], m["blocker"]),
+                              "ClickUp amendment marker mismatch: plan r%d (approval %d) names blocker %d (question %s,"
+                              " card %s, gen %d), which does not match the recorded blocker; nothing was bound"
+                              % (a["rev"], a["id"], m["blocker"], m["question"], m["card"], m["gen"]), tid)
+                    continue
+                insert_binding(c, tid, b, a, "plan", None, ctx.now)
+
+
+def _amend_apply(ctx, tid, k):
+    """r3 §3.4 apply rules 1-10, first match decides (inside the caller's transaction)."""
+    b = ctx.c.execute("SELECT * FROM blockers WHERE id=?", (k["blocker_id"],)).fetchone()
+    if b is None:
+        return _amend_void(ctx, tid, k, "blocker changed")
+    b, a, t = dict(b), _approval_or_none(ctx, k["approval_id"]), ctx.task(tid)
+    if b["state"] not in BLOCKER_FINAL:
+        return  # 1: its material disposition has not been taken yet
+    if (b["state"] != "scope_change" or b["delivered_gen"] is not None or b["release_key"] is not None
+            or b["resolution_relay"] != k["relay_ref"] or b["pending_relay"] != k["relay_ref"]
+            or b["resolution_gen"] != k["gen"] or b["resolution_body"] is None
+            or _sha(b["resolution_body"]) != k["resolution_sha256"]):
+        return _amend_void(ctx, tid, k, "blocker changed")  # 2
+    d = _disposition(a)
+    if d == "gone":
+        return _amend_void(ctx, tid, k, "approval gone")  # 3
+    if t["scope_gen"] > a["accounts_gen"]:
+        return _amend_void(ctx, tid, k, "newer material input")  # 4
+    if t["classified_gen"] != t["input_gen"]:
+        return  # 5
+    if t["input_gen"] > a["accounts_gen"]:
+        return _amend_void(ctx, tid, k, "newer input")  # 6
+    if d == "paused":
+        return  # 7 (N3): native _approvals restores A or it becomes gone
+    w, q = ctx.show(k["card"]), ctx.show(k["question_card"])
+    if w is None or q is None:
+        return  # 8: not observed in this pass
+    if rules.status(q) != "blocked":
+        return _amend_void(ctx, tid, k, "question card not blocked")  # 9
+    if (rules.status(w) != "todo" or k["question_card"] not in rules.parents(w) or k["card"] not in approval_cards(a)
+            or kp.open_run_ids(w) or any(r > (b["run_id"] or 0) for r in kp.claimed_runs(w))):
+        return _amend_void(ctx, tid, k, "work card not eligible")  # 9
+    ctx.c.execute("UPDATE amendment_answers SET state='applied', updated_ms=? WHERE id=?", (ctx.now, k["id"]))
+    ctx.c.execute("UPDATE blockers SET state='closed', updated_ms=? WHERE id=?", (ctx.now, b["id"]))  # 10
+    _derive(ctx, b["id"])
+
+
+def _amend_void(ctx, tid, k, reason):
+    ctx.c.execute("UPDATE amendment_answers SET state='void', reason=?, updated_ms=? WHERE id=? AND state='bound'",
+                  (reason, ctx.now, k["id"]))
+    _amend_alert(ctx, tid, dict(k, reason=reason))
+
+
+def _amend_alert(ctx, tid, k):
+    ctx.alert("amend:%d:void" % k["id"], "ClickUp amendment binding %d (blocker %d, question %s, card %s) is void: %s;"
+              " the question stays with a human." % (k["id"], k["blocker_id"], k["question_card"], k["card"],
+                                                      k["reason"]), tid)
+
+
+def _amend_alerts(ctx, tid):
+    """r3 §3.4 (N2): re-assert every void row's alert each pass; ``ctx.alert`` is INSERT OR IGNORE, so a progress-pass
+    drop is queued again by the same scan's full pass and the executor prints it exactly once."""
+    if not _amend_table(ctx):
+        return
+    for k in map(dict, ctx.c.execute("SELECT * FROM amendment_answers WHERE task=? AND state='void' ORDER BY id",
+                                     (tid,)).fetchall()):
+        _amend_alert(ctx, tid, k)
+
+
+def _amend_terminal(ctx, tid):
+    """r3 §3.4 (N2), terminal branch (held or not): every ``bound`` row is void (``terminal``); no effect else."""
+    if not _amend_table(ctx):
+        return
+    for k in map(dict, ctx.c.execute("SELECT * FROM amendment_answers WHERE task=? AND state='bound' ORDER BY id",
+                                     (tid,)).fetchall()):
+        with ctx.store.transaction():
+            _amend_void(ctx, tid, k, "terminal")
+
+
 # ---- technical-blocker recovery (technical-recovery plan r3 §3-§8) -----------------------------------------------
 
 RECOVERY_KEY = "recovery_cutover_ms"
@@ -1856,14 +2158,38 @@ def _recover(ctx, tid):
     for inc in map(dict, ctx.c.execute("SELECT * FROM recoveries WHERE task=? AND state IN (%s) ORDER BY id"
                                        % _in(RECOVERY_LIVE), (tid,)).fetchall()):
         with ctx.store.transaction():
-            _recovery_step(ctx, tid, t, inc)
+            if inc['class'] == preworker.CLASS:
+                preworker.step(ctx, tid, t, inc)
+            else:
+                _recovery_step(ctx, tid, t, inc)
+    with ctx.store.transaction():
+        preworker.detect(ctx, tid)
     if t["phase"] not in AMENDMENT_PHASES:
         return
     for card, a in _recovery_members(ctx, tid).items():
+        if rules.status(ctx.show(card)) in ("ready", "running", "review", "done", "archived"):
+            ctx.c.execute("DELETE FROM meta WHERE key=?", ("stall_observed:" + tid + ":" + card,))
+            continue  # a known healthy interval resets grace; an absent/failed show never does
         found = kp.recovery_incident(ctx.show(card))
-        if (found is None or not rules.current(a["accounts_gen"], t) or found["event_created_s"] * 1000 < cut
-                or ctx.c.execute("SELECT 1 FROM recoveries WHERE card=? AND run_id=?",
-                                 (card, found["run_id"])).fetchone()):
+        if found is None and rules.current(a["accounts_gen"], t) and ctx.barrier(t):
+            generic = _diagnostic_found(ctx, tid, card, a)
+            if generic is not None:
+                key = "stall_observed:" + tid + ":" + card
+                row = ctx.c.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+                previous = json.loads(row[0]) if row else None
+                if not previous or previous["fingerprint"] != generic["reason_sha256"]:
+                    ctx.c.execute("INSERT OR REPLACE INTO meta(key,value) VALUES (?,?)", (key, json.dumps(
+                        {"fingerprint": generic["reason_sha256"], "first_ms": ctx.now})))
+                elif ctx.now - previous["first_ms"] >= stalled.GRACE_MS:
+                    found = generic
+        if found is None or not rules.current(a["accounts_gen"], t) or found["event_created_s"] * 1000 < cut:
+            continue
+        previous = ctx.c.execute("SELECT * FROM recoveries WHERE card=? AND run_id=?",
+                                 (card, found["run_id"])).fetchone()
+        if previous:
+            if found['class'] == stalled.CLASS and ctx.barrier(t):
+                with ctx.store.transaction():
+                    _refresh_diagnostic(ctx, tid, dict(previous), a, found)
             continue
         with ctx.store.transaction():
             open_incident(ctx, tid, card, a, found, adopted=0)
@@ -1894,8 +2220,105 @@ def _recovery_update(ctx, inc, **cols):
     ctx.c.execute("UPDATE recoveries SET %s WHERE id=?" % ", ".join(k + "=?" for k in cols), [*cols.values(), inc["id"]])
 
 
+def _diagnostic_found(ctx, tid, card, a):
+    return stalled.candidate(ctx.task(tid), a, card, ctx.obs.cards, stalled.context(ctx.c, tid), ctx.obs.attachments)
+
+
+def _diagnostic_wait(ctx, iid, value=None):
+    key = 'diagnostic_wait:%d' % iid
+    if value is not None:
+        ctx.c.execute('INSERT OR REPLACE INTO meta(key,value) VALUES (?,?)', (key, json.dumps(value, sort_keys=True)))
+    row = ctx.c.execute('SELECT value FROM meta WHERE key=?', (key,)).fetchone()
+    return json.loads(row[0]) if row else None
+
+
+def _bind_diagnostic_waits(ctx, tid, ref, gen, items, note):
+    if _recovery_cutover(ctx) is None:
+        return note
+    for inc in map(dict, ctx.c.execute("SELECT * FROM recoveries WHERE task=? AND state='open'",
+                                      (tid,)).fetchall()):
+        wait = _diagnostic_wait(ctx, inc['id'])
+        if not wait or wait['state'] not in ('waiting', 'classifying'):
+            continue
+        base = ctx.item(tid, 'comment', wait.get('root'))
+        answers = [ctx.item(tid, kind, iid) for kind, iid in items]
+        answers = [it for it in answers if it and base and it['gen'] is not None and it['gen'] <= gen
+                   and it['author_id'] != ctx.cfg.bot_user_id and not it['deleted']
+                   and _root(ctx, tid, it['id']) == wait['root'] and rules.is_new(it, base)]
+        if not answers:
+            continue
+        wait.update(state='classifying', relay=ref, gen=gen, answers=[[it['kind'], it['id']] for it in answers])
+        _diagnostic_wait(ctx, inc['id'], wait)
+        instruction = ('Diagnostic question %d on originating task %s (thread %s): classify normally; if the answer '
+                       'is sufficient within unchanged authority, emit CLICKUP-OUT v1 kind=resolution relay=%s '
+                       'gen=%d diagnostic=%d authority=unchanged with safe bounded guidance. Otherwise leave the '
+                       'question unfinished; material input follows normal revision/approval. This does not complete '
+                       'a native question or resume a worker.' % (inc['id'], tid, wait['root'], ref, gen, inc['id']))
+        note = (note + '\n' if note else '') + instruction
+    return note
+
+
+def _diagnostic_resolution(ctx, tid, card, h12, hdr, text):
+    """Ordinary planner output can answer only its own delivered, targeted, classified diagnostic input."""
+    token = hdr.get('diagnostic', '')
+    inc = token.isdigit() and ctx.c.execute('SELECT * FROM recoveries WHERE id=? AND task=?',
+                                          (int(token), tid)).fetchone()
+    wait = _diagnostic_wait(ctx, inc['id']) if inc else None
+    rel = ctx.c.execute('SELECT * FROM relays WHERE relay_ref=? AND task=? AND card=?',
+                        (hdr['relay'], tid, card)).fetchone()
+    a = inc and ctx.c.execute('SELECT * FROM approvals WHERE id=?', (inc['approval_id'],)).fetchone()
+    if (not inc or inc['state'] != 'open' or recovery_abandoned(ctx.c, inc) or not wait
+            or wait['state'] != 'classifying' or wait.get('relay') != hdr['relay'] or wait.get('gen') != hdr['gen']
+            or not rel or rel['state'] != 'classified' or rel['classification'] != 'answer_only'
+            or rel['gen'] != hdr['gen'] or not a or a['state'] not in
+               (preworker.STATES + WATCHED_STATES if inc['class'] == preworker.CLASS else WATCHED_STATES)
+            or not rules.current(a['accounts_gen'], ctx.task(tid)) or hdr.get('authority') != 'unchanged'
+            or not text or len(text) > RESOLUTION_MAX or rules.blocker_leak(text) or render.check_outbound(text)):
+        ctx.alert('diagnostic-resolution:' + h12, 'Diagnostic question resolution refused: unknown/foreign target, '
+                  'unclassified relay, changed authority or unsafe guidance; the question remains unfinished.', tid)
+        return
+    wait.update(state='answered', resolution=text, resolution_card=card, answered_ms=ctx.now)
+    _diagnostic_wait(ctx, inc['id'], wait)  # no native question completion or worker resume
+
+
+def _refresh_diagnostic(ctx, tid, inc, a, found):
+    """Rebind only the same diagnostic stop after classification; never reset its finite incident budget."""
+    if (inc['reason_sha256'] == found['reason_sha256'] or inc['class'] != stalled.CLASS or found['class'] != stalled.CLASS
+            or inc['state'] not in ('open', 'superseded', 'escalated') or recovery_abandoned(ctx.c, inc)
+            or found['run_id'] != inc['run_id'] or found['event_created_s'] != inc['event_created_s']):
+        return False
+    key = _notice_key(tid, inc, ctx.c)
+    wait = _diagnostic_wait(ctx, inc['id'])
+    verified_done = (inc['state'] == 'escalated' or (wait and wait['key'] == key and
+                     (wait['state'] == 'answered' or (wait.get('root') and a['id'] != inc['approval_id']))))
+    allowed = ('pending', 'retry_wait', 'cancelled_stale') + (('done',) if verified_done else ())
+    if ctx.c.execute("SELECT 1 FROM outbox WHERE idem_key IN (?,?) AND state NOT IN (%s)" % _in(allowed),
+                     (key, key + '#cu')).fetchone():
+        return False  # failed or possibly-applied notice is not permission to manufacture a fresh effect
+    history = 'diagnostic_history:%d:%s' % (inc['id'], inc['reason_sha256'])
+    ctx.c.execute('INSERT OR IGNORE INTO meta(key,value) VALUES (?,?)', (history, json.dumps(inc, sort_keys=True)))
+    if wait and a['id'] != inc['approval_id']:
+        ctx.c.execute('INSERT OR IGNORE INTO meta(key,value) VALUES (?,?)',
+                      ('diagnostic_wait_history:%d:%s' % (inc['id'], inc['reason_sha256']), json.dumps(wait, sort_keys=True)))
+        wait.update(state='superseded')
+        _diagnostic_wait(ctx, inc['id'], wait)
+    _retire_attempts(ctx, tid, inc['card'], inc['run_id'])
+    ctx.c.execute("UPDATE outbox SET state='cancelled_stale',outcome='STALE' WHERE idem_key IN (?,?)"
+                  " AND state IN ('pending','retry_wait')", (key, key + '#cu'))
+    _reconcile_cancelled_question(ctx, inc)
+    _recovery_update(ctx, inc, approval_id=a['id'], approval_rev=a['rev'], plan_sha256=a['plan_sha256'],
+                     reason_sha256=found['reason_sha256'], state='open')
+    return True
+
+
 def _recovery_step(ctx, tid, t, inc):
+    if recovery_abandoned(ctx.c, inc):
+        return
     a = ctx.c.execute("SELECT * FROM approvals WHERE id=?", (inc["approval_id"],)).fetchone()
+    if (a is not None and a["state"] in WATCHED_STATES
+            and a["accounts_gen"] >= t["scope_gen"] and t["classified_gen"] != t["input_gen"]
+            and t["phase"] in AMENDMENT_PHASES):
+        return  # new addressed input awaits ordinary classification; it is not revoked authority
     if (a is None or a["state"] not in WATCHED_STATES or not rules.current(a["accounts_gen"], t)
             or t["phase"] not in AMENDMENT_PHASES):
         _recovery_update(ctx, inc, state="superseded")
@@ -1904,19 +2327,65 @@ def _recovery_step(ctx, tid, t, inc):
     if show is None:
         return  # not observed this pass (e.g. the cards-empty progress pass): nothing is decided
     outcome, at = kp.recovery_outcome(show, inc["run_id"], inc["event_created_s"])
-    if outcome in ("resumed", "closed", "gated"):
+    if rules.status(show) in ('done', 'archived'):
+        outcome = 'closed'  # a completed successor no longer has a live process to attest
+    proof = ctx.obs.workers.get(inc['card'])
+    if outcome == "closed" or (outcome == "resumed" and proof and proof['run'] > inc['run_id']):
         _recovery_update(ctx, inc, state=outcome)
         return
+    if outcome == "gated":
+        outcome = "handed_off"  # healthy dependency work may be interim; no capable-owner pickup yet
+    handoff = stalled.handoff(t, dict(a), inc, ctx.obs.cards, stalled.context(ctx.c, tid), ctx.obs.attachments)
+    wait = _reconcile_cancelled_question(ctx, inc)
+    if (wait and wait.get('takeover') and handoff is not None
+            and wait.get('question', {}).get('run') != handoff):
+        row = ctx.c.execute('SELECT state FROM outbox WHERE idem_key=?', (wait['key'],)).fetchone()
+        if row and row['state'] == 'done':
+            ctx.c.execute('INSERT OR IGNORE INTO meta(key,value) VALUES (?,?)',
+                          ('diagnostic_wait_history:%d:run:%d' % (inc['id'], wait['question']['run']),
+                           json.dumps(wait, sort_keys=True)))
+            wait = dict(wait, state='superseded')
+            _diagnostic_wait(ctx, inc['id'], wait)
+    if wait and wait['state'] in ('publishing', 'waiting', 'classifying'):
+        _notice_pending(ctx, tid, inc)
+        return  # unfinished delivery or a verified explicit human wait remains owned and observable
+    if handoff is not None:
+        outcome, at = 'handed_off', at if at is not None else ctx.now // 1000
+    elif outcome == 'resumed':
+        return  # unknown/foreign successor context cannot authorize even a notice
+    if inc["class"] == stalled.CLASS:
+        found = _diagnostic_found(ctx, tid, inc["card"], dict(a))
+        if found is None and handoff is None:
+            return  # incomplete observations never authorize a wake or escalation
+        if found is not None and found["reason_sha256"] != inc["reason_sha256"]:
+            if not _refresh_diagnostic(ctx, tid, inc, dict(a), found):
+                return
+            inc = dict(ctx.c.execute("SELECT * FROM recoveries WHERE id=?", (inc["id"],)).fetchone())
+    if _notice_pending(ctx, tid, inc):
+        return  # delivery is unfinished; never manufacture another wake/notice key
     if outcome == "handed_off" or inc["state"] == "handed_off":
-        if inc["state"] == "open":
-            _recovery_update(ctx, inc, state="handed_off", escalate_ms=at * 1000 + RECOVERY_DEFER_MIN * _MIN_MS)
+        if ctx.now >= inc['abs_ms']:
+            _escalate(ctx, tid, inc, "handed off, no worker started")
+        elif inc["state"] == "open":
+            _recovery_update(ctx, inc, state="handed_off",
+                             escalate_ms=min(at * 1000 + RECOVERY_DEFER_MIN * _MIN_MS, inc['abs_ms']))
         elif ctx.now >= inc["escalate_ms"]:
             _escalate(ctx, tid, inc, "handed off, no worker started")
         return
-    ack = kp.recovery_ack(show, inc["card"], inc["run_id"], inc["event_created_s"])
-    if ack["final"]:
-        _escalate(ctx, tid, inc, "coordinator: " + ("owner" if ack["final"] == "owner" else "cannot act"))
-        return
+    wait = _diagnostic_wait(ctx, inc['id'])
+    ack, comment = stalled.diagnostic_ack(show, inc, wait['ack_s'] if wait and wait['state'] in ('answered', 'superseded') else -1)
+    if ack['final'] == 'owner':
+        question = stalled.question_projection(comment, inc) or stalled.legacy_question_projection(comment, inc)
+        if question is None:
+            ctx.alert('diagnostic-question:%d:invalid' % inc['id'],
+                      'Cannot publish precise diagnostic question for task %s: missing, foreign or unsafe '
+                      'structured decision. The default coordinator must submit a bound safe '
+                      'CLICKUP-RECOVERY-QUESTION; required human escalation remains unfinished.' % tid, tid)
+        else:
+            _escalate(ctx, tid, inc, 'coordinator: owner', question=question, ack_s=ack['final_s'])
+            return
+    # A technical inability is intermediate: the same approved owner keeps the original finite wake budget.
+    # It cannot retire the remaining attempts or become a completed recovery by publishing a canned notice.
     defer = ack["working_s"] * 1000 + RECOVERY_DEFER_MIN * _MIN_MS if ack["working_s"] is not None else 0
     d, n = inc["detected_ms"], inc["attempts"]
     if ctx.now >= inc["abs_ms"]:  # §7.2: neither a working ACK nor an outstanding attempt defers past detect + 24 h
@@ -1924,7 +2393,8 @@ def _recovery_step(ctx, tid, t, inc):
         return
     if n < RECOVERY_ATTEMPTS:
         due = min(max(d + RECOVERY_RETRY_MIN.get(n, 0) * _MIN_MS, defer), inc["abs_ms"])
-        found = kp.recovery_incident(show)
+        found = (_diagnostic_found(ctx, tid, inc["card"], dict(a)) if inc["class"] == stalled.CLASS
+                 else kp.recovery_incident(show))
         if ctx.now < due or found is None or found["run_id"] != inc["run_id"]:
             if ctx.now < due and inc["next_ms"] != due:
                 _recovery_update(ctx, inc, next_ms=due)
@@ -1949,7 +2419,9 @@ def _attempt(ctx, tid, inc, a, found):
               "reason": found["reason"], "reason_sha256": inc["reason_sha256"], "approval_id": a["id"],
               "rev": a["rev"], "plan_sha256": a["plan_sha256"], "attempt": n, "adopted": inc["adopted"],
               "source_status": found["source_status"]}
-    pre = Preconditions(task_id=tid, phases=AMENDMENT_PHASES, approval_id=a["id"], approval_states=WATCHED_STATES)
+    early = inc['class'] == preworker.CLASS
+    pre = Preconditions(task_id=tid, phases=preworker.PHASES if early else AMENDMENT_PHASES,
+                        approval_id=a["id"], approval_states=preworker.STATES + WATCHED_STATES if early else WATCHED_STATES)
     _carrier_row(ctx, k + ":create", "kb_create", {
         "role": "recovery", "title": "CLICKUP-RECOVERY v1 %s run=%d attempt=%d" % (inc["card"], inc["run_id"], n),
         "template": "recovery_card", "params": params, "assignee": None, "skills": [], "initial_status": "blocked",
@@ -1986,14 +2458,186 @@ def _recovery_reason(ctx, tid, inc):
     return (json.loads(r[0]).get("params") or {}).get("reason", "") if r else ""
 
 
-def _escalate(ctx, tid, inc, why, reason=None):
-    """r3 §7.3: the incident's single alert; the incident is final."""
-    _recovery_update(ctx, inc, state="escalated")
-    reason = _recovery_reason(ctx, tid, inc) if reason is None else reason
+def _escalate(ctx, tid, inc, why, reason=None, delivery_hold=None, question=None, ack_s=None):
+    """Queue the originating-task result, not a successful escalation. Only observed delivery finalizes it."""
+    t = ctx.task(tid)
+    wait = _diagnostic_wait(ctx, inc['id'])
+    if inc['class'] == preworker.CLASS and question is None:
+        return  # no fabricated operator question or native stopped-run fallback for an approval anchor
+    takeover = question is None and delivery_hold is None
+    if takeover:
+        if wait and wait['state'] == 'answered':
+            return  # the human response follows normal authority checks; never refund wakes or ask it again
+        observed_run = kp.latest_run_id(ctx.show(inc['card'])) or inc['run_id']
+        question = dict(task=tid, card=inc['card'], run=observed_run, approval=inc['approval_id'],
+                        revision=inc['approval_rev'], sha256=inc['plan_sha256'], fingerprint=inc['reason_sha256'],
+                        failed='Bounded automatic recovery did not establish a running owner: %s.' % why,
+                        attempted='%d diagnostic wakes; the original deadline and all spent attempts remain unchanged.'
+                                  % inc['attempts'],
+                        decision='Which existing authorized operator can take over the stopped card %s run %d, '
+                                 'or restore the existing recovery capability if no operator is available?'
+                                 % (inc['card'], observed_run),
+                        next_action='Identify the available operator and arrange takeover through the existing '
+                                    'supported recovery path, or state the specific unavailable resource. No new product '
+                                    'approval is requested. Do not post credentials; reply here and mention the intake bot.')
+        ack_s = inc['event_created_s']  # comment freshness watermark, not a manufactured owner ACK
+    key = _notice_key(tid, inc, ctx.c)
+    previous = None
+    row = ctx.c.execute('SELECT rowid,* FROM outbox WHERE idem_key=?', (key,)).fetchone()
+    technical_done = bool(question and row and row['state'] == 'done' and row['result_ref']
+                          and _diagnostic_wait(ctx, inc['id']) is None)
+    rebound = bool(takeover and wait and wait['state'] == 'superseded' and row and row['state'] == 'done'
+                   and wait.get('question', {}).get('run') != question['run'])
+    if _cancelled_notice(ctx, key) or technical_done or rebound:
+        key = _notice_key(tid, inc) + ':publication:%d' % row['rowid']
+    # A new immutable payload still belongs to the same logical stopped-work send budget.
+    prefix = ('clickup-dp:%s:recovery-notice:%s:%d' % (tid, inc['card'], inc['run_id']))
+    row = ctx.c.execute("SELECT * FROM outbox WHERE task=? AND kind='cu_comment'"
+                        " AND (idem_key=? OR substr(idem_key,1,?)=?) ORDER BY rowid DESC LIMIT 1",
+                        (tid, prefix, len(prefix) + 1, prefix + ':')).fetchone()
+    if (row and json.loads(row['body']).get('recovery_notice') == inc['id']
+            and (_cancelled_notice(ctx, row['idem_key']) or technical_done or rebound)):
+        # The mirror may be ahead after a crash: use the real maximum, never sum cumulative copies.
+        previous = ctx.c.execute('SELECT * FROM outbox WHERE idem_key IN (?,?)'
+                                 ' ORDER BY attempts DESC,next_attempt_ms DESC LIMIT 1',
+                                 (row['idem_key'], row['idem_key'] + '#cu')).fetchone()
+    text = ("Approved plan r%d remains stopped: %s. Diagnostic wakes attempted: %d. "
+            "The available recovery operations did not establish a safe continuation. "
+            "Next action: the integration operator must inspect this stopped workflow and use only an existing "
+            "supported, already-authorized recovery; if an integration repair is required, arrange a separately "
+            "authorized tested repair before resuming the same work. No new product approval or repeated answer "
+            "is requested for technical bookkeeping. Any actual missing decision must be stated precisely on "
+            "this task before a human is asked to decide. Work remains safely stopped; this notice grants no "
+            "approval, repair permission or release." % (inc["approval_rev"], why, inc["attempts"]))
+    detail = stalled.notice_detail(ctx.show(inc["card"]), inc)
+    if detail:
+        text += "\n\n" + detail
+    if question:
+        text = ('Approved plan r%d remains safely stopped. Diagnostic wakes attempted: %d.\n'
+                'Failed: %s\nAttempted: %s\nDecision needed: %s\nNext action: %s\n\n'
+                'Reply in this question thread and mention the intake bot. The answer enters normal '
+                'classification and authority checks; it is not approval or permission to resume, repair, '
+                'complete a question or bypass any gate.' % (inc['approval_rev'], inc['attempts'], question['failed'],
+                question['attempted'], question['decision'], question['next_action']))
+        if inc['state'] == 'handed_off':
+            _recovery_update(ctx, inc, state='open')
+        _diagnostic_wait(ctx, inc['id'], {'state': 'publishing', 'question': question, 'ack_s': ack_s, 'key': key,
+                                         'takeover': takeover})
+    payload = {"text": text, "recovery_notice": inc["id"]}
+    if delivery_hold:
+        payload["recovery_delivery_hold"] = delivery_hold
+    ctx.cu(tid, key, "cu_comment", payload, anchor=0,
+           phases=preworker.PHASES if inc['class'] == preworker.CLASS else AMENDMENT_PHASES,
+           approval_id=inc["approval_id"],
+           approval_states=preworker.STATES + WATCHED_STATES if inc['class'] == preworker.CLASS else
+                           WATCHED_STATES + (("revoked",) if delivery_hold else ()),
+           input_gen=t["input_gen"], scope_gen=t["scope_gen"])
+    if previous:
+        ctx.c.execute("UPDATE outbox SET attempts=?,next_attempt_ms=?,first_send_ms=?,state=?"
+                      " WHERE idem_key=? AND state='pending' AND attempts=0",
+                      (previous['attempts'], previous['next_attempt_ms'], previous['first_send_ms'],
+                       'retry_wait' if previous['attempts'] else 'pending', key))
+    _retire_attempts(ctx, tid, inc["card"], inc["run_id"])
     ctx.alert("rcv:%s:%d" % (inc["card"], inc["run_id"]),
-              "ClickUp recovery needs owner attention: %s run %d (%s, ClickUp %s r%d) %s. Reason: %s."
-              % (inc["card"], inc["run_id"], inc["block_kind"], tid, inc["approval_rev"], why,
-                 " ".join(reason.split())[:RECOVERY_REASON_ALERT]), tid)
+              "ClickUp recovery for %s r%d: %s; originating-task notice queued, delivery not yet verified. "
+              "Integration operator action is needed if delivery fails; no product reapproval requested."
+              % (tid, inc["approval_rev"], why), tid)
+
+
+def _notice_key(tid, inc, conn=None):
+    key = "clickup-dp:%s:recovery-notice:%s:%d" % (tid, inc["card"], inc["run_id"])
+    if inc['class'] == stalled.CLASS:
+        key += ':ctx:' + inc['reason_sha256']
+    # The immutable outbox itself selects the latest publication across scans/restarts.
+    # Only _escalate may replace a proven known-unsent stale row; failed/applied rows are never rearmed.
+    row = conn.execute("SELECT idem_key FROM outbox WHERE task=? AND kind='cu_comment'"
+                       " AND (idem_key=? OR idem_key LIKE ?) ORDER BY rowid DESC LIMIT 1",
+                       (tid, key, key + ':publication:%')).fetchone() if conn is not None else None
+    return row[0] if row else key
+
+
+def recovery_abandoned(conn, inc):
+    prefix = _rcv_key(inc["task"], inc["card"], inc["run_id"], 0)[:-1] + "%"
+    notice = 'clickup-dp:%s:recovery-notice:%s:%d' % (inc['task'], inc['card'], inc['run_id'])
+    return conn.execute("SELECT 1 FROM outbox WHERE outcome='ABANDONED' AND (idem_key LIKE ? OR idem_key=?"
+                        " OR idem_key LIKE ?)", (prefix, notice, notice + ':%')).fetchone() is not None
+
+
+def _notice_delivered(ctx, inc, key, ref):
+    wait = _diagnostic_wait(ctx, inc['id'])
+    if wait and wait['key'] == key:
+        if wait['state'] == 'publishing':
+            wait.update(state='waiting', root=ref, verified_ms=ctx.now)
+            _diagnostic_wait(ctx, inc['id'], wait)
+    else:
+        ctx.alert('rcv-owner:%d' % inc['id'],
+                  'Recovery for task %s card %s run %d is unfinished: the default coordinator retains '
+                  'the same approved repair. A technical notice is not completion; verify capable-owner '
+                  'progress or submit the exact bound genuinely human-required action, without repeat '
+                  'development approval. Original wake/send budgets and deadline remain spent.' %
+                  (inc['task'], inc['card'], inc['run_id']), inc['task'])
+
+
+def _cancelled_notice(ctx, key):
+    rows = ctx.c.execute("SELECT idem_key,state,result_ref,outcome FROM outbox WHERE idem_key IN (?,?)",
+                         (key, key + '#cu')).fetchall()
+    return (any(r['idem_key'] == key for r in rows)
+            and all(r['state'] == 'cancelled_stale' and not r['result_ref'] and r['outcome'] != 'ABANDONED'
+                    for r in rows))
+
+
+def _reconcile_cancelled_question(ctx, inc):
+    """Retire only an exact known-unsent cancelled question; uncertain/applied effects still reconcile."""
+    wait = _diagnostic_wait(ctx, inc['id'])
+    if not wait or wait['state'] != 'publishing' or wait.get('root') or recovery_abandoned(ctx.c, inc):
+        return wait
+    if not _cancelled_notice(ctx, wait['key']):
+        return wait
+    ctx.c.execute('INSERT OR IGNORE INTO meta(key,value) VALUES (?,?)',
+                  ('diagnostic_wait_history:%d:%s' % (inc['id'], wait['key']),
+                   json.dumps(wait, sort_keys=True)))
+    wait.update(state='superseded')
+    return _diagnostic_wait(ctx, inc['id'], wait)
+
+
+def _notice_pending(ctx, tid, inc):
+    key = _notice_key(tid, inc, ctx.c)
+    if _cancelled_notice(ctx, key):
+        return False
+    wait = _diagnostic_wait(ctx, inc['id'])
+    if wait and wait['key'] == key and wait['state'] in ('answered', 'superseded'):
+        return False
+    row = ctx.c.execute("SELECT state,result_ref,payload_sha256 FROM outbox WHERE idem_key=?", (key,)).fetchone()
+    if row is None:
+        return False
+    if row["state"] == "done" and row["result_ref"]:
+        proof = ctx.c.execute("SELECT value FROM meta WHERE key=?", ("recovery_verified:" + key,)).fetchone()
+        if proof and json.loads(proof[0]) == {"ref": row["result_ref"], "sha256": row["payload_sha256"]}:
+            _notice_delivered(ctx, inc, key, row['result_ref'])
+            return bool(wait and wait['key'] == key)
+        item = ctx.item(tid, "comment", row["result_ref"])
+        seen = ctx.obs.comments.get((tid, "comment", row["result_ref"]))
+        mirror = ctx.c.execute("SELECT body FROM outbox WHERE idem_key=?", (key + "#cu",)).fetchone()
+        if (item and item["author_id"] == ctx.cfg.bot_user_id and not item["deleted"] and seen and mirror
+                and seen[1] == json.loads(mirror[0])["text"]):
+            _notice_delivered(ctx, inc, key, row['result_ref'])
+            return bool(wait and wait['key'] == key)
+    return True
+
+
+def _recovery_delivery_progress(ctx, tid):
+    """A failed carrier may hold execution; only reconcile its exact informational notice while held."""
+    t = ctx.task(tid)
+    if not t["hold_reason"] or t["terminal"] or _recovery_cutover(ctx) is None:
+        return
+    for row in ctx.c.execute("SELECT body FROM outbox WHERE task=? AND kind='cu_comment'"
+                             " AND idem_key LIKE '%:recovery-notice:%' AND state='done'", (tid,)).fetchall():
+        payload = json.loads(row[0])
+        if payload.get("recovery_delivery_hold") != t["hold_reason"]:
+            continue
+        inc = ctx.c.execute("SELECT * FROM recoveries WHERE id=? AND state='open'", (payload["recovery_notice"],)).fetchone()
+        if inc:
+            _notice_pending(ctx, tid, dict(inc))
 
 
 def _supersede_recoveries(ctx, tid):

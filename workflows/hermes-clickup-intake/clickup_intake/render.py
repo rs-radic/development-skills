@@ -1,8 +1,8 @@
 """Trusted, deterministic text for the Kanban and ClickUp sides (plan r5 §6-§9, §10.2).
 
 No LLM. Untrusted ClickUp text appears only inside one random-nonce envelope per file or
-comment. Every ClickUp post goes through ``prepare_clickup_post`` (§9 outbound filter, 9,000
-character cap, ``ref: cu-<sha12>`` footer used by the §10.2 ambiguity reconciliation).
+comment. Every ClickUp post goes through ``prepare_clickup_post`` (9,000-character cap and
+``ref: cu-<sha12>`` footer used by the §10.2 ambiguity reconciliation). Content filtering is retired.
 """
 
 import datetime
@@ -115,7 +115,8 @@ def recovery_card_body(p):
     """Carrier body (r3 §6): binding, W's own blocked reason (clipped) and the fixed coordinator procedure.
     The reason is clipped to 4,000 characters and then, on a whole-character boundary, to the bytes the complete
     binding and procedure leave under the 16 KB UTF-8 body bound (r3 §8); nothing else is ever shortened."""
-    tpl = _template("recovery_card.md")
+    tpl = _template("preworker_card.md" if p.get("class") == "approval_staging" else
+                    "diagnostic_card.md" if p.get("class") == "diagnostic" else "recovery_card.md")
     fields = dict({k: p[k] for k in ("task", "card", "run_id", "event_kind", "event_created_s", "block_kind", "class",
                                      "reason_sha256", "approval_id", "rev", "plan_sha256", "attempt", "adopted")},
                   source_status=p.get("source_status"), check_command=recovery_check_command(p["card"], p["run_id"]))
@@ -375,44 +376,14 @@ def plan_attachment_name(rev, plan_sha, idem_key):
     return f"plan-r{rev}-{plan_sha[:12]}-{_ref12(idem_key)[:6]}.md"
 
 
-# --------------------------------------------------------------------------- outbound filter (§9)
-# A password label blocks only when the token after it is shaped like a credential value: at least 6
-# characters, with a letter plus a digit or symbol, or made only of digits and symbols (with a digit).
-# Labels and prose ("Password: r3 didn't...", "Password: required", "password: <customer-supplied>")
-# are not credential disclosure.
-_PASSWORD_SYMBOLS = set("!@#$%^&*+=~|\\")
-
-_OUTBOUND = [
-    ("api_key", re.compile(r"\bpk_[A-Za-z0-9_]{10,}")),
-    ("private_key", re.compile(r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----")),
-    ("connection_string", re.compile(r"(?i)\b(?:server|data source|host)\s*=[^;\n]*;[^\n]*\b(?:password|pwd)\s*=")),
-    ("password", re.compile(r"(?i)\b(?:password|passwd|pwd)\s*[=:][*_`]*\s*(\S+)")),
-    ("credential_url", re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^/\s:@]+:[^@\s/]+@")),
-    ("secret_path", re.compile(r"(?i)(?:\.dpapi\b|hermes[\\/]+secrets\b|dedicated-panel-clickup[\\/])")),
-]
-
-
-def _credential_value(token):
-    value = token.lstrip("\"'`*_([").rstrip("\"'`*_)].,;:!?")
-    if len(value) < 6:
-        return False
-    if any(c.isalpha() for c in value):
-        return any(c.isdigit() or c in _PASSWORD_SYMBOLS for c in value)
-    # Numeric PINs/BMC passwords ("123456", "1234!@"); ranges and dates ("12-128", "2026-10-16") are not.
-    return any(c.isdigit() for c in value) and all(c.isdigit() or c in _PASSWORD_SYMBOLS for c in value)
-
+# --------------------------------------------------------------------------- retired outbound content filter
 
 def check_outbound(text, secrets=()):
-    """Return None when ``text`` may be posted to ClickUp, else the blocked pattern class (never the match)."""
-    for s in secrets:
-        if s and s in text:
-            return "token"
-    for reason, pattern in _OUTBOUND:
-        if reason == "password":
-            if any(_credential_value(m.group(1)) for m in pattern.finditer(text)):
-                return reason
-        elif pattern.search(text):
-            return reason
+    """Compatibility hook: content filtering was removed by the owner.
+
+    Keep existing callers and persisted recovery paths compatible. This hook does not change
+    destination authorization, approval gates, attachment integrity or transport handling.
+    """
     return None
 
 
@@ -427,7 +398,7 @@ class ClickUpPost(NamedTuple):
 
 
 def prepare_clickup_post(text, idem_key, *, task_id, secrets=(), attachment_stem="clickup-reply"):
-    """Filter, footer and cap one ClickUp post. A rejection means: no post, task ``hold``, one alert."""
+    """Footer and cap one ClickUp post; content filtering is retired."""
     reason = check_outbound(text, secrets)
     if reason:
         return ClickUpPost(False, reason, True, f"ClickUp outbound filter hold: task {task_id} ({reason}); "

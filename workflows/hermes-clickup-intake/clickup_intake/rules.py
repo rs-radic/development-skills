@@ -283,6 +283,42 @@ def marker(gate, task, rev, sha):
     return f"CLICKUP-TICKET-CHECK v1 gate={gate} task={task} rev={rev} sha={sha}"
 
 
+# Workflow repair r3 §3.1: exact approved-amendment binding lines (whole lines, never prose).
+INCORPORATES = re.compile(r"CLICKUP-INCORPORATES v1 blocker=([1-9][0-9]{0,8}) question=(t_[0-9a-f]{8})"
+                          r" card=(t_[0-9a-f]{8}) gen=([1-9][0-9]{0,8})")
+ADOPTION_LINE = re.compile(r"CLICKUP-INCORPORATES v1 blocker=([1-9][0-9]{0,8}) question=(t_[0-9a-f]{8})"
+                           r" card=(t_[0-9a-f]{8}) gen=([1-9][0-9]{0,8}) relay=([A-Za-z0-9-]{1,80})"
+                           r" resolution_sha256=([0-9a-f]{64}) task=(\S+) approval=([1-9][0-9]{0,8})"
+                           r" rev=([1-9][0-9]{0,8}) sha=([0-9a-f]{64})")
+INCORPORATES_MAX = 20
+
+
+def _lines(text):
+    return [ln[:-1] if ln.endswith("\r") else ln for ln in text.split("\n")]
+
+
+def parse_incorporates(text):
+    """(markers, ignored): at most ``INCORPORATES_MAX`` plan markers in file order, and the count beyond it."""
+    out = []
+    for ln in _lines(text):
+        m = INCORPORATES.fullmatch(ln)
+        if m:
+            out.append({"blocker": int(m[1]), "question": m[2], "card": m[3], "gen": int(m[4])})
+    return out[:INCORPORATES_MAX], max(0, len(out) - INCORPORATES_MAX)
+
+
+def adoption_line(blocker, question, card, gen, relay, resolution_sha256, task, approval, rev, sha):
+    """The exact §3.1 operator line for live values, or None when a value cannot form a valid line."""
+    line = ("CLICKUP-INCORPORATES v1 blocker=%s question=%s card=%s gen=%s relay=%s resolution_sha256=%s task=%s"
+            " approval=%s rev=%s sha=%s" % (blocker, question, card, gen, relay, resolution_sha256, task, approval,
+                                            rev, sha))
+    return line if ADOPTION_LINE.fullmatch(line) else None
+
+
+def has_line(text, line):
+    return line in _lines(text)
+
+
 def guarded(show, gate, task, rev, sha):
     """Promotion card parented on the gate with the exact marker line in its body (§8.4 step 4)."""
     body = ((show or {}).get("task") or {}).get("body") or ""

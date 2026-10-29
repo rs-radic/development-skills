@@ -1,6 +1,18 @@
 # Publication boundary and verification
 
-## Source lineage
+## Current refresh and evidence boundary
+
+This refresh pins the host-side intake source at **`2a8fe198bf00aa719d6a7e53833799587172ad6d`**, following `149042d7edbfd2b279f00164d66e685d30da8119`. The source handoff reports the active release payload normalized to those bytes; release directory labels are not treated as commit identity. Public runtime/template comparisons must allow only the declared synthetic constants and generic operator/project bindings, not algorithm changes.
+
+The current behavior includes amendment-answer continuation, exact expired-ticket retry, stalled-transition diagnostics with verified question delivery, bounded pre-worker approval-staging recovery, same-pass/post-anchor fence freshness and retirement of the general outbound content filter. A narrow explicit retry reuses an old never-sent filtered publication chain. Transport, destination, integrity, generation, approval and specialized question-protocol checks remain.
+
+The source lane reports **148 focused tests and independent review** for its latest change, plus publication of the same previously reviewed plan after filter retirement. Those are reported source observations, not a current public full-suite pass, a new plan approval, or universal live recovery evidence. The prior public **642-test** result belongs to the older revision. Do not carry either number forward as the current public result.
+
+The installed Hermes source inspected for this refresh is **`1f91da2a277093c6909542d8c725c0c52fae4628`**. Static inspection confirms the documented cron parser flags and the native snapshot's resolver/update/read-contract files. That is not a real-CLI or native snapshot test result. Compatibility tests must use the actual selected installation, interpreter, native schema and profile scope. The older Hermes reference below is historical only.
+
+**Retained historical tests need an explicit qualification:** upstream kept old general-filter rejection/correction expectations in `test_s3_kanban.py` and `test_s4_composition.py` even though `render.check_outbound` now returns no rejection. Preserve those assertions and identify their exact test IDs when reporting an execution/selection; do not weaken tests or call a bounded compatible selection the full suite. `test_outbound_content_policy.py` and `test_filtered_publication_retry.py` assert the new intended behavior. Counts, failures, exclusions and current public execution belong in a separate bound publication receipt.
+
+## Historical source lineage
 
 This package was extracted from the host-side ClickUp intake at source commit `f24c844cd9833993359b46357affd9fdd7c5b4b0`, not from the managed application's repository. The source deployment used Windows and Hermes commit `1fd18277267152893a8a24792b79213e7ca3f899` (`rc.13-v0.21.7`). Its runtime was already installed before this public extraction.
 
@@ -12,7 +24,7 @@ The next refresh pins source commit `aa3cbe67c99822399487bc5e3776ffac50aeb8c7`, 
 
 The technical-recovery refresh pins source commit `149042d7edbfd2b279f00164d66e685d30da8119`, compared with the previous public source `aa3cbe67c99822399487bc5e3776ffac50aeb8c7`. It adds separately enabled, approval-bound recovery incidents, operator-wake carriers, read-only admission, bounded ACK/retry/escalation handling, and disable/rollback checks. The source lane reported an isolated run of 628 tests with zero skips and 22 forced-exit cases. These are **reported source-isolation results**, not new public-package execution results. At this publication handoff the source entry selected the pinned revision, but live recovery acceptance was still in progress; this package does not claim a completed live rollout or a successful end-to-end operator exchange.
 
-The source deployment's active entry selects an immutable release. The public package instead preserves the tracked flat-layout entry and uses offline preparation to produce a **new** disabled staging copy. Unversioned files beside a deployed loader are not necessarily active. Publication does not switch that loader, upgrade an existing installation or change its state. A preceding source-only template change for a private project's current-development policy is not imported into the generic public request/orchestrator templates.
+The source deployment's active entry selects an immutable release. The public package instead preserves the tracked flat-layout entry and uses offline preparation to produce a **new** disabled staging copy. Unversioned files beside a deployed loader are not necessarily active. Publication does not switch that loader, upgrade an existing installation or change its state. For the older publication, a preceding source-only template change for a private project's current-development policy was not imported into the generic public request/orchestrator templates; the current candidate includes a generic, operator-bound v2 policy.
 
 The public copy preserves the polling, strict parsing, durable generation/approval state, outbox/recovery logic, ticket checks, API safeguards and internal protocol/idempotency names. Public adaptations are limited to:
 
@@ -33,34 +45,76 @@ The original regression suite covers foundational types/configuration/store, par
 
 The refresh extends this coverage:
 
-- `tests/test_s2_workflow.py` and `tests/test_s4_composition.py`: canonical/structured receipt acceptance, disagreement/malformed receipt refusal, unchanged status on refusal, and bounded filter correction/hold recovery across restarts and delayed delivery.
-- `tests/test_s3_kanban.py`: benign password prose versus credential-shaped values and generated promotion-card receipt requirements.
-- `tests/test_question_relay.py`: question-card identity/triage, closure and generation-bound resolution, first delivery/correction, multiple answers, ACK/fence/park ordering, review-lane preservation, holds, terminal/superseded cases, ambiguous-effect readback and private-text rejection.
+- `tests/test_s2_workflow.py` and `tests/test_s4_composition.py`: canonical/structured receipt acceptance, disagreement/malformed receipt refusal and unchanged status on refusal. Retained filter correction/hold tests describe the historical policy and require the explicit qualification above.
+- `tests/test_s3_kanban.py`: generated promotion-card receipt requirements, plus retained historical general-filter expectations that do not describe the current no-op hook.
+- `tests/test_question_relay.py`: question-card identity/triage, closure and generation-bound resolution, first delivery/correction, multiple answers, ACK/fence/park ordering, review-lane preservation, holds, terminal/superseded cases, ambiguous-effect readback and specialized question-text rejection. This is not evidence of a general outbound secret filter.
 - `tests/test_question_release.py`: fence observation cadence, enable-dependent protocol rendering, idempotent adoption comments and controlled disable/drain behavior.
 - `tests/test_activation.py`: locked feature commands, additive schema, rollback refusal conditions and old-reader compatibility on a populated candidate database.
 - `tests/test_recovery.py`: actionable typed stops and exclusions, current-approval/lineage membership, event/reason/approval admission bindings, body bounds, carrier effects and stale/final-ACK send gates, recurrence/wake budgets, working ACKs, handoff tracking, adoption and disable behavior.
 - `tests/test_recovery_activation.py`: locked recovery commands versus lock-free read-only admission, rollback refusal, prior-reader compatibility with the question relay enabled, and feature-off lifecycle equivalence.
 - `tests/test_recovery_cli.py`: real local carrier creation/subscription/completion and silent archival, delayed/duplicate admission refusal with unchanged state, and the delegated-child mutation refusal plus source guard audit. These are not live notifier delivery or worker-model tests.
+- `tests/test_amendment*.py`: exact reviewed-plan/receipt bindings, generation and authority changes, guarded native continuation, separate activation and rollback admission.
+- `tests/test_ticket_lease_recovery.py` and `test_ticket_lease_native.py`: exact lease-expired stop, current ticket/parents/marker, one same-card continuation, readback, changed-state refusal and abandonment.
+- `tests/test_stalled_*.py`, `test_three_native_waits.py`, `test_recovery_two_outcomes.py`: native stopped-work/obligation selection, live-owner versus dead-claim evidence, bounded diagnostic questions, exact delivery/readback, reply/classification/answer routing, cancellations, fallback and accounting.
+- `tests/test_preworker*.py`: truthful no-native-run approval anchors, partial staging, complete current source/ancestor snapshots, bounded reads, fresh effect admission and preserved logical budgets. The native projection is compared to the actual Hermes producer, not just a same-schema fake.
+- `tests/test_same_pass_fence_delivery.py` and `test_post_anchor_fence_observation.py`: first-complete-scan release, real post-anchor full/light observation, shared budgets and negative controls for partial/stale/activity/held/unobserved cases.
+- `tests/test_outbound_content_policy.py` and `test_filtered_publication_retry.py`: retired general content checks, preserved human approval, exact never-sent chain retry and refusal of changed/ambiguous/attempted work.
 
 The rollback test's `BASELINE_SHA` remains `b665a985434e296f5b3fd796dc34357d0d6464ba` as provenance. Its **executable input** is the bundled `tests/fixtures/rollback_base/` tree (15 Python package modules and five templates), with the same public sanitization as the package. The loader copies that fixture instead of requiring private source Git history. It does not restore any installed runtime or database. Old-reader success on finalized relay rows is not evidence that a downgrade with pending relay work is safe.
 
 The recovery compatibility fixture records source baseline `2d53206cb907ae7d1f2e3e8ca0ce0e5170f217fd` as provenance. Its executable input is `tests/fixtures/recovery_base/`: 15 package modules and seven templates with a verified fixture manifest. The recovery activation test copies those checked local bytes instead of running a private-history archive command. The earlier `rollback_base` fixture remains separate and unchanged. Neither fixture is an operational rollback tool.
 
-`tests/test_public_prepare.py` adds offline preparation checks, including required `blocker_triage.md`, `question_protocol.md` and `recovery_card.md` templates. Missing recovery-template refusal is exercised before staging, while successful preparation verifies the 25-file payload and every manifest byte/hash. All earlier assertions remain in place. These are not live ClickUp tests. The preparation utility must not read a credential, contact an API, activate cron or overwrite an installation. Its output remains disabled/shadow and flat-layout, with no state database, question-relay activation or technical-recovery activation copied from another installation.
+The amendment compatibility fixture `tests/fixtures/amendment_base/` contains 23 checked payload files (15 modules and eight templates) from public commit `45f7c252df27451248047b25218faf9f8b334417`, corresponding to source `149042d7edbfd2b279f00164d66e685d30da8119`. Its manifest records both identities and exact sizes/hashes; the test loader verifies those bytes before use. It is not installed by preparation and is not an operational rollback tool. The public runtime names `45f7c252df27` as its fixed rollback binding.
+
+`tests/test_public_prepare.py` checks the complete 30-file payload: 18 package modules, ten templates, entry script and configuration, plus a separate manifest. It requires `preworker.py`, `preworker_snapshot.py`, `stalled.py`, `diagnostic_card.md` and `preworker_card.md` in addition to the previously required files. Missing-source refusal precedes staging; the success case asserts the exact closure and every manifest size/hash. Earlier safety, constant-substitution and AST-equivalence assertions remain. Preparation must not read credentials, contact an API, run Hermes, activate cron or overwrite an installation. Output stays disabled/shadow and flat-layout, with no state database or feature activation. The focused preparation run on this refresh executed 14 tests successfully; that is not a full-suite, native-CLI or live ClickUp result.
 
 Tests are intended to run from this package directory with:
 
 ```powershell
 $env:CLICKUP_INTAKE_TEST_HERMES_EXE = '<absolute path to the compatible hermes.exe>'
 $env:PYTHONDONTWRITEBYTECODE = '1'
-python -B -m unittest discover -s tests -v
+python -B -c "import os,sys,unittest; from clickup_intake import main; main.HERMES_EXE=os.environ['CLICKUP_INTAKE_TEST_HERMES_EXE']; unittest.main(module=None, argv=['unittest','discover','-s','tests','-v',*sys.argv[1:]])"
 ```
 
-The recovery CLI source audit requires a **full public Git clone** containing `532c102bdaa5bf2f7238f37973ce9e0563ddf0a9`, the prior public baseline. It compares that commit with the candidate's tracked and untracked files under this package, preserving the original forbidden-mutation assertions. A source ZIP or shallow clone without the baseline cannot run this audit. The bundled recovery fixture removes the other test's private-history dependency; it does not replace the public Git baseline needed by this source audit.
+The test command binds the selected executable only inside the test process, including native-schema readers that derive their source root from `main.HERMES_EXE`. It does not edit the runtime, installation or live configuration. A plain discovery command with an installation elsewhere may fail on the inert `C:/Hermes` example path. Extra unittest arguments can be appended to select a focused module.
+
+Use a **full public Git clone** retaining `532c102bdaa5bf2f7238f37973ce9e0563ddf0a9` and `45f7c252df27451248047b25218faf9f8b334417`. Public audit/baseline loaders must resolve to those public blobs or explicitly bundled sanitized fixtures, never private deployment history. The recovery CLI audit includes candidate tracked and untracked files. A ZIP or shallow clone may be insufficient. The two earlier fixture directories remain compatibility inputs, not operational rollback tools. Check each current test loader for its exact baseline; a provenance SHA in a fixture is not automatically a required Git object.
 
 Use a clean, disposable testing context. Run all real-CLI cases serially: both the older CLI contracts and new recovery CLI cases share a fixed temporary home. To exercise the new cases separately, with the same executable override, run `python -B -m unittest discover -s tests -p test_recovery_cli.py -v` only when no other suite owns that home. A terminated test can leave its own `tests/.tmp` home; verify no associated test process is active before removing that exact fixture. Never run a broad cleanup over another Hermes installation.
 
-Report public execution separately from source evidence. If older real-CLI tests are not rerun, name those exact test IDs as not run and bind any reused evidence to unchanged test code and relevant runtime contracts. A passing subset or an opt-in case that returned early is not a complete-suite pass. New recovery CLI cases require their own actual execution; their presence in the source lane's result is not a public-package test receipt.
+Report public execution separately from source evidence. Name exact selected, failing, excluded and not-run test IDs and bind reused evidence to unchanged test code and relevant runtime contracts. A passing subset or an opt-in case that returned early is not a complete-suite pass. New CLI/native snapshot cases require their own actual execution; source-lane evidence is not a public-package receipt. Retained historical policy conflicts must remain visible rather than being converted into current PASS by omission.
+
+See [known test qualifications](known-test-failures.md) for the separately verified source-versus-public failures and final execution status.
+
+## Retained filter-era expectations
+
+The following exact test IDs are retained unchanged. They assert the retired filter or a feedback path triggered by its rejection. Record their actual outcomes separately from current-policy tests; never suppress an unrelated failure or report a complete green suite when any retained test failed. The current no-filter and never-sent retry behavior is checked by `test_outbound_content_policy` and `test_filtered_publication_retry`.
+
+```text
+test_s3_kanban.OutboundFilterTest.test_benign_password_prose_does_not_mask_other_secret_classes
+test_s3_kanban.OutboundFilterTest.test_each_secret_class_holds_with_alert_and_no_echo
+test_s3_kanban.OutboundFilterTest.test_in_memory_token_is_blocked_even_without_pk_shape
+test_s3_kanban.OutboundFilterTest.test_password_values_still_hold_without_echo
+test_s3_kanban.OutboundFilterTest.test_secret_beyond_the_cap_is_still_caught
+test_s4_composition.OutboundFilterCompositionTest.test_filtered_planner_text_holds_the_task_and_posts_nothing
+test_s4_composition.OutboundFilterFeedbackTest.test_bound_hold_survives_death_right_after_the_last_rejected_draft_is_recorded
+test_s4_composition.OutboundFilterFeedbackTest.test_crash_at_every_point_sends_one_feedback_and_one_wake
+test_s4_composition.OutboundFilterFeedbackTest.test_exact_header_correction_by_a_run_that_started_before_the_feedback_is_not_woken_or_held
+test_s4_composition.OutboundFilterFeedbackTest.test_feedback_names_the_clickup_out_header_the_correction_starts_with
+test_s4_composition.OutboundFilterFeedbackTest.test_feedback_seen_by_an_intervening_relay_run_is_not_woken_again
+test_s4_composition.OutboundFilterFeedbackTest.test_feedback_waits_for_a_readable_request_card
+test_s4_composition.OutboundFilterFeedbackTest.test_feedback_waits_for_a_running_planner_and_wakes_it_once
+test_s4_composition.OutboundFilterFeedbackTest.test_feedback_without_the_rejected_comment_in_view_still_names_the_clickup_out_header
+test_s4_composition.OutboundFilterFeedbackTest.test_output_for_another_relay_does_not_discharge_the_missing_correction
+test_s4_composition.OutboundFilterFeedbackTest.test_rejected_draft_is_returned_to_the_planner_and_the_safe_rewrite_is_posted
+test_s4_composition.OutboundFilterFeedbackTest.test_relay_answer_before_a_delayed_feedback_comment_is_not_taken_for_the_missing_correction
+test_s4_composition.OutboundFilterFeedbackTest.test_relay_run_that_started_before_a_delayed_feedback_comment_does_not_count_as_its_correction
+test_s4_composition.OutboundFilterFeedbackTest.test_uncorrected_hold_is_restart_safe
+test_s4_composition.OutboundFilterFeedbackTest.test_unreachable_hold_survives_death_right_after_the_wake_is_failed
+test_s4_composition.OutboundFilterFeedbackTest.test_unreachable_planner_is_a_visible_hold
+test_s4_composition.OutboundFilterFeedbackTest.test_woken_planner_that_parks_without_a_correction_is_a_visible_hold
+test_s4_composition.OutboundFilterFeedbackTest.test_woken_planner_that_starts_with_the_filter_line_is_a_visible_hold
+```
 
 ## Limits that remain
 

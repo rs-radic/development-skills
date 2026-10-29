@@ -763,7 +763,8 @@ class EngineOutcomeTest(unittest.TestCase):
         rec.scan(178)
         self.assertEqual((rec.incidents()[0]["state"], rec.alerts()), ("handed_off", []))
         rec.scan(3)
-        self.assertEqual(rec.incidents()[0]["state"], "escalated")
+        # Owner-approved delivery contract: this engine-only harness has not verified ClickUp delivery.
+        self.assertEqual(rec.incidents()[0]["state"], "handed_off")
         [text] = rec.alerts()
         self.assertIn("handed off, no worker started", text)
         self.assertEqual(len(rec.rcv()), 3)  # no re-wake while handed off
@@ -798,7 +799,7 @@ class EngineOutcomeTest(unittest.TestCase):
                 rec.h.clock.advance(1)
             rec.blocked()
         rec.scan(1)
-        self.assertEqual([i["state"] for i in rec.incidents()], ["resumed"] * 3 + ["escalated"])
+        self.assertEqual([i["state"] for i in rec.incidents()], ["resumed"] * 3 + ["open"])
         self.assertEqual(len(rec.rcv()), 9)
         [text] = rec.alerts()
         self.assertIn("incident cap reached", text)
@@ -820,11 +821,9 @@ class EngineScheduleTest(unittest.TestCase):
             self.assertEqual(self.attempts(rec), want, minutes)
             self.assertEqual((rec.incidents()[0]["state"], rec.alerts()), ("open", []))
         rec.at(d, 361)
-        self.assertEqual(rec.incidents()[0]["state"], "escalated")
+        self.assertEqual(rec.incidents()[0]["state"], "open")  # notice queued, not yet read back
         [text] = rec.alerts()
-        self.assertTrue(text.startswith("ClickUp recovery needs owner attention: %s run %d (capability, ClickUp %s r1)"
-                                        " not resumed after 3 AI wakes. Reason: " % (rec.W, rec.incidents()[0]["run_id"],
-                                                                                      T)), text)
+        self.assertIn("not resumed after 3 AI wakes; originating-task notice queued, delivery not yet verified", text)
         n = len(rec.h.rows())
         rec.at(d, 400)
         rec.at(d, 3000)
@@ -852,7 +851,7 @@ class EngineScheduleTest(unittest.TestCase):
         rec.at(d, 24 * 60 - 1)
         self.assertEqual(rec.incidents()[0]["state"], "open")
         rec.at(d, 24 * 60 + 1)
-        self.assertEqual(rec.incidents()[0]["state"], "escalated")
+        self.assertEqual(rec.incidents()[0]["state"], "open")  # no verified ClickUp observation in this harness
         self.assertEqual(len(rec.alerts()), 1)
         self.assertLessEqual(max(self.attempts(rec)), 3)
 
@@ -874,10 +873,9 @@ class EngineScheduleTest(unittest.TestCase):
         rec.at(d, 24 * 60)
         inc = rec.incidents()[0]
         self.assertEqual((inc["state"], inc["attempts"], self.attempts(rec), len(rec.rcv())),
-                         ("escalated", 1, [1], wake_rows))
+                         ("open", 1, [1], wake_rows))
         [text] = rec.alerts()
-        self.assertTrue(text.startswith("ClickUp recovery needs owner attention: %s run %d (capability, ClickUp %s r1)"
-                                        " not resumed after 1 AI wakes. Reason: " % (rec.W, r, T)), text)
+        self.assertIn("not resumed after 1 AI wakes; originating-task notice queued, delivery not yet verified", text)
         self.assertLessEqual(len(text), 600)
         n = len(rec.h.rows())
         for minute in (24 * 60, 24 * 60 + 1, 3000):
@@ -891,7 +889,7 @@ class EngineScheduleTest(unittest.TestCase):
                 r = rec.blocked()
                 rec.w.ack(rec.W, r, disposition)
                 rec.scan(1)
-                self.assertEqual(rec.incidents()[0]["state"], "escalated")
+                self.assertEqual(rec.incidents()[0]["state"], "open")  # ACK is not a ClickUp delivery receipt
                 [text] = rec.alerts()
                 self.assertIn(why, text)
                 rec.scan(200)

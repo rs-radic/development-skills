@@ -129,9 +129,10 @@ def build_payload(settings):
         "engine.py": {"REQUEST_SKILLS": tuple(settings["request_skills"])},
     }
     module_names = {"__init__", "clickup_api", "clickup_effects", "config", "contracts", "engine",
-                    "kanban_port", "main", "observe", "parse", "ports", "render", "rules", "store", "ticket"}
-    template_names = {"approval_record", "blocker_triage", "gate_card", "orchestrator_card",
-                      "question_protocol", "recovery_card", "request_card", "ticket_recheck_paragraph"}
+                    "kanban_port", "main", "observe", "parse", "ports", "preworker", "preworker_snapshot",
+                    "render", "rules", "stalled", "store", "ticket"}
+    template_names = {"approval_record", "blocker_triage", "diagnostic_card", "gate_card", "orchestrator_card",
+                      "preworker_card", "question_protocol", "recovery_card", "request_card", "ticket_recheck_paragraph"}
     for directory, names, suffix in (("clickup_intake", module_names, ".py"),
                                      ("templates", template_names, ".md")):
         if any(not (PACKAGE_ROOT / directory / (name + suffix)).is_file() for name in names):

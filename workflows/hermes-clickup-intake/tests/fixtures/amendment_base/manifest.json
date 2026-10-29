@@ -1,0 +1,122 @@
+{
+  "source_revision": "149042d7edbfd2b279f00164d66e685d30da8119",
+  "public_fixture_base": "45f7c252df27451248047b25218faf9f8b334417",
+  "description": "Immutable public pre-amendment package from pinned Git blobs; test-only, not installed. Existing rollback_base and recovery_base remain unchanged.",
+  "files": [
+    {
+      "path": "clickup_intake/__init__.py",
+      "size": 78,
+      "sha256": "c2a21626caa64f014b719ba806dd2547aacad1178196c5647ec7a9830eceb3ac"
+    },
+    {
+      "path": "clickup_intake/clickup_api.py",
+      "size": 14518,
+      "sha256": "f27c429cfd9e48f62512c686ac70693303d0ba01b3c52ef988ae8e58923a5e86"
+    },
+    {
+      "path": "clickup_intake/clickup_effects.py",
+      "size": 11922,
+      "sha256": "a4df85b38b787d3fe868026eaec8d43894bb79ef9078116f50a5adbc4b0e950c"
+    },
+    {
+      "path": "clickup_intake/config.py",
+      "size": 6386,
+      "sha256": "bdd2c6caac3f606d8d2cb22a1c153cf1b8b703d5bb7a8555b369b6f7f35ee5f3"
+    },
+    {
+      "path": "clickup_intake/contracts.py",
+      "size": 5097,
+      "sha256": "251f5a781b3fa0c4c36416246f6263829302295fda1f36a6bc3e3536616db787"
+    },
+    {
+      "path": "clickup_intake/engine.py",
+      "size": 116719,
+      "sha256": "cda340d9c387bde21e0ed7699b4fd8909505570a2633a341975251e96bf63706"
+    },
+    {
+      "path": "clickup_intake/kanban_port.py",
+      "size": 33751,
+      "sha256": "17b8e348ecb8594226bf0c941c080d78bb6d570980efbe92187c3faf61fe9d73"
+    },
+    {
+      "path": "clickup_intake/main.py",
+      "size": 99185,
+      "sha256": "a9a5c4741165ca4bed821189397795f360598aa28efbe7630b8c19d82126ecb7"
+    },
+    {
+      "path": "clickup_intake/observe.py",
+      "size": 26848,
+      "sha256": "840fce963f0c709e76ff28fd32feac0a74dc2467b88641cb9350379334c4fe18"
+    },
+    {
+      "path": "clickup_intake/parse.py",
+      "size": 4207,
+      "sha256": "0b357f4572f5237aeb3136abf126a70bb0955c40a0023f4dcfdd49bae39b04f4"
+    },
+    {
+      "path": "clickup_intake/ports.py",
+      "size": 1535,
+      "sha256": "41fe961d6afc70f3d55dbf7db1a9bae469915612d239f04d3124542cfb7d32fa"
+    },
+    {
+      "path": "clickup_intake/render.py",
+      "size": 21931,
+      "sha256": "4a0c6d96c3743de14f590bb6be219a5054e60e0ff151e365d0e480abd2209b95"
+    },
+    {
+      "path": "clickup_intake/rules.py",
+      "size": 14219,
+      "sha256": "4f9034aa61d5b0cb7f0cad8a2d912326840f982f3a53771f4536241009c628f5"
+    },
+    {
+      "path": "clickup_intake/store.py",
+      "size": 17880,
+      "sha256": "c8cfec727880735cb5cd850bc27349954bb1a77001dbd82278a060dadc6783e9"
+    },
+    {
+      "path": "clickup_intake/ticket.py",
+      "size": 3367,
+      "sha256": "0e2d36c1cc325e893bbf82a306cf58027bc6c73342904a1598f3a69f98d0c141"
+    },
+    {
+      "path": "templates/approval_record.md",
+      "size": 803,
+      "sha256": "66fc4c8af2c28d5b04db0999433418881838103c74f0dc77aabe65a4dab3a1c9"
+    },
+    {
+      "path": "templates/blocker_triage.md",
+      "size": 2246,
+      "sha256": "186de7d7f4d0a685dc0753d1e835ac90b8a8a53add52f8a6f053fb297799ec69"
+    },
+    {
+      "path": "templates/gate_card.md",
+      "size": 895,
+      "sha256": "eeaf7ef02e939f370ffa2d02d17fde6179b0ab8b671182522cf978e3920df947"
+    },
+    {
+      "path": "templates/orchestrator_card.md",
+      "size": 2705,
+      "sha256": "50a73ecd7bb2838440f043ac1d7e5e0cf6f6bc40775f169d5430e56710e871ba"
+    },
+    {
+      "path": "templates/question_protocol.md",
+      "size": 3549,
+      "sha256": "ff598fbe1d247099d9755bdc01db2d424031e5e76efc5ba8439418f6264e465c"
+    },
+    {
+      "path": "templates/recovery_card.md",
+      "size": 8714,
+      "sha256": "a14d64159696dcd1af51e423b8f0fc56dad9e5bc0f8e6313bb54f5f67720d813"
+    },
+    {
+      "path": "templates/request_card.md",
+      "size": 3003,
+      "sha256": "9c91322f79f76c34a3dc6a68b6f4cf8c762aba922226fab2a8016ff611f14047"
+    },
+    {
+      "path": "templates/ticket_recheck_paragraph.md",
+      "size": 398,
+      "sha256": "a957fd57b2736c5bfd17905e2f7e7029d9e99c0b09311cfd27f0531ee2748b63"
+    }
+  ]
+}

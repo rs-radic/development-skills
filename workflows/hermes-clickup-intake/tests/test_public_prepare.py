@@ -244,7 +244,9 @@ assert not output.exists(), "partial staging was left behind"
 
     def test_missing_runtime_source_refuses_before_creating_stage(self):
         for relative in ("clickup_intake/main.py", "clickup_intake/ports.py", "templates/request_card.md",
-                         "templates/blocker_triage.md", "templates/question_protocol.md", "templates/recovery_card.md"):
+                         "templates/blocker_triage.md", "templates/question_protocol.md", "templates/recovery_card.md",
+                         "clickup_intake/preworker.py", "clickup_intake/preworker_snapshot.py",
+                         "clickup_intake/stalled.py", "templates/diagnostic_card.md", "templates/preworker_card.md"):
             with self.subTest(missing=relative):
                 source = self.package / relative
                 content = source.read_bytes()
@@ -402,8 +404,24 @@ module["prepare"](settings, pathlib.Path(sys.argv[3]))
         payload = sorted(p.relative_to(self.output).as_posix() for p in self.output.rglob("*")
                          if p.is_file() and p.name != "manifest.json")
         self.assertEqual(manifest["algorithm"], "sha256")
-        self.assertEqual(manifest["file_count"], 25)
+        expected_modules = {"__init__", "clickup_api", "clickup_effects", "config", "contracts", "engine",
+                            "kanban_port", "main", "observe", "parse", "ports", "preworker",
+                            "preworker_snapshot", "render", "rules", "stalled", "store", "ticket"}
+        expected_templates = {"approval_record", "blocker_triage", "diagnostic_card", "gate_card",
+                              "orchestrator_card", "preworker_card", "question_protocol", "recovery_card",
+                              "request_card", "ticket_recheck_paragraph"}
+        expected_payload = {
+            "scripts/clickup_dedicated_panel_intake.py", "integrations/clickup-dedicated-panel/config.json",
+            *("scripts/clickup_intake/" + name + ".py" for name in expected_modules),
+            *("scripts/templates/" + name + ".md" for name in expected_templates),
+        }
+        self.assertEqual(set(payload), expected_payload)
+        self.assertEqual(manifest["file_count"], len(expected_payload))
         self.assertIn("scripts/templates/recovery_card.md", payload)
+        for name in ("preworker", "preworker_snapshot", "stalled"):
+            self.assertIn("scripts/clickup_intake/" + name + ".py", payload)
+        for name in ("diagnostic_card", "preworker_card"):
+            self.assertIn("scripts/templates/" + name + ".md", payload)
         self.assertEqual(manifest["file_count"], len(payload))
         self.assertEqual([entry["path"] for entry in manifest["files"]], payload)
         for entry in manifest["files"]:

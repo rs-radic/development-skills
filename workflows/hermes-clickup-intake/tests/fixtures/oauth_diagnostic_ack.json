@@ -1,0 +1,1731 @@
+{
+  "task": {
+    "clickup_task_id": "86pub00003",
+    "eligible": 1,
+    "requester_id": 900000101,
+    "phase": "development",
+    "last_status_seen": "implementing",
+    "list_fp": "ab0000000000000000000000000000000000000000000000000000000000005e",
+    "content_hash": "ab0000000000000000000000000000000000000000000000000000000000003f",
+    "attach_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "quiet_until_ms": 1792794639223,
+    "input_gen": 4,
+    "classified_gen": 4,
+    "scope_gen": 4,
+    "published_rev": 6,
+    "published_sha256": "3c59864c5be7c65a71d0ebfb3b78871d7c207e89a656b108ffbcb3496be32a3d",
+    "published_accounts_gen": 4,
+    "next_rev": null,
+    "last_status_written": null,
+    "last_light_ms": 1792854879424,
+    "last_full_ms": 1792854879424,
+    "last_task_get_ms": 1792854879424,
+    "full_cursor": null,
+    "full_started_ms": 1792854879424,
+    "barrier_ok_ms": 1792853920124,
+    "hold_reason": null,
+    "terminal": 0
+  },
+  "approvals": [
+    {
+      "id": 18,
+      "task": "86pub00003",
+      "rev": 5,
+      "accounts_gen": 3,
+      "comment_id": "9900000000000027",
+      "author_id": 900000101,
+      "author_name": "Approver One",
+      "comment_date": 1792774344518,
+      "text_hash": "ab0000000000000000000000000000000000000000000000000000000000005a",
+      "plan_sha256": "ab00000000000000000000000000000000000000000000000000000000000023",
+      "state": "revoked",
+      "orchestrator_card": "t_ab000066",
+      "gate_card": "t_ab000068",
+      "clickup_gates": "{\"plan_revision\": 5, \"plan_sha256\": \"ab00000000000000000000000000000000000000000000000000000000000023\", \"final_e2e\": \"t_ab0000a5\", \"promotion\": \"t_ab000003\", \"cleanup\": \"t_ab000078\", \"lineage\": [\"t_ab0000b2\", \"t_ab00001b\", \"t_ab000055\", \"t_ab000019\", \"t_ab0000a5\", \"t_ab000003\", \"t_ab000078\"]}",
+      "ticket_epoch": 0,
+      "ticket_input_gen": null,
+      "ticket_renewed_ms": null,
+      "revoked_reason": "superseded",
+      "revoked_ms": 1792795119449,
+      "audit_stamp_state": "none",
+      "promoted_sha": null
+    },
+    {
+      "id": 20,
+      "task": "86pub00003",
+      "rev": 6,
+      "accounts_gen": 4,
+      "comment_id": "9900000000000037",
+      "author_id": 900000101,
+      "author_name": "Approver One",
+      "comment_date": 1792794211052,
+      "text_hash": "ab00000000000000000000000000000000000000000000000000000000000063",
+      "plan_sha256": "3c59864c5be7c65a71d0ebfb3b78871d7c207e89a656b108ffbcb3496be32a3d",
+      "state": "started",
+      "orchestrator_card": "t_ab00002f",
+      "gate_card": "t_ab000032",
+      "clickup_gates": "{\"plan_revision\": 6, \"plan_sha256\": \"3c59864c5be7c65a71d0ebfb3b78871d7c207e89a656b108ffbcb3496be32a3d\", \"final_e2e\": \"t_ab0000a5\", \"promotion\": \"t_ab000072\", \"cleanup\": \"t_ab000078\", \"lineage\": [\"t_ab0000b2\", \"t_ab00001b\", \"t_ab000055\", \"t_ab000019\", \"t_ab0000a5\", \"t_ab000003\", \"t_ab000078\", \"t_ab000072\"]}",
+      "ticket_epoch": 0,
+      "ticket_input_gen": null,
+      "ticket_renewed_ms": null,
+      "revoked_reason": null,
+      "revoked_ms": null,
+      "audit_stamp_state": "none",
+      "promoted_sha": null
+    }
+  ],
+  "cards": [
+    {
+      "card_id": "t_ab00000b",
+      "task": "86pub00003",
+      "role": "request",
+      "seq": 1,
+      "rev": null,
+      "approval_id": null,
+      "last_run_id": null,
+      "wait_run_id": null,
+      "created_key": "clickup-dp:86pub00003:req:1"
+    },
+    {
+      "card_id": "t_ab000026",
+      "task": "86pub00003",
+      "role": "request",
+      "seq": 2,
+      "rev": null,
+      "approval_id": null,
+      "last_run_id": null,
+      "wait_run_id": null,
+      "created_key": "clickup-dp:86pub00003:req:2"
+    },
+    {
+      "card_id": "t_ab000068",
+      "task": "86pub00003",
+      "role": "gate",
+      "seq": null,
+      "rev": 5,
+      "approval_id": 18,
+      "last_run_id": null,
+      "wait_run_id": null,
+      "created_key": "clickup-dp:86pub00003:gate:r5:g3"
+    },
+    {
+      "card_id": "t_ab000066",
+      "task": "86pub00003",
+      "role": "orchestrator",
+      "seq": null,
+      "rev": 5,
+      "approval_id": 18,
+      "last_run_id": null,
+      "wait_run_id": null,
+      "created_key": "clickup-dp:86pub00003:orch:r5:g3"
+    },
+    {
+      "card_id": "t_ab00009b",
+      "task": "86pub00003",
+      "role": "request",
+      "seq": 3,
+      "rev": null,
+      "approval_id": null,
+      "last_run_id": null,
+      "wait_run_id": null,
+      "created_key": "clickup-dp:86pub00003:req:3"
+    },
+    {
+      "card_id": "t_ab000032",
+      "task": "86pub00003",
+      "role": "gate",
+      "seq": null,
+      "rev": 6,
+      "approval_id": 20,
+      "last_run_id": null,
+      "wait_run_id": null,
+      "created_key": "clickup-dp:86pub00003:gate:r6:g4"
+    },
+    {
+      "card_id": "t_ab00002f",
+      "task": "86pub00003",
+      "role": "orchestrator",
+      "seq": null,
+      "rev": 6,
+      "approval_id": 20,
+      "last_run_id": null,
+      "wait_run_id": null,
+      "created_key": "clickup-dp:86pub00003:orch:r6:g4"
+    }
+  ],
+  "blockers": [
+    {
+      "id": 6,
+      "task": "86pub00003",
+      "question_card": "t_ab00003f",
+      "card": "t_ab00001b",
+      "run_id": 1263,
+      "created_ms": 1792785879591,
+      "body_sha256": "ab00000000000000000000000000000000000000000000000000000000000048",
+      "approval_id": 18,
+      "phase_at_detect": "development",
+      "restore_status": "implementing",
+      "stage": "technical",
+      "boundary": 1,
+      "state": "scope_change",
+      "relay_ref": "86pub00003-s3-k6-w0",
+      "request_card": "t_ab00009b",
+      "question_key": "clickup-dp:86pub00003:bq:technical:6:89a44dfc2988",
+      "closure_item": "9900000000000033",
+      "closure_gen": 4,
+      "pending_relay": "86pub00003-s3-g4-w1271",
+      "resolution_relay": null,
+      "resolution_card": null,
+      "resolution_gen": null,
+      "resolution_body": null,
+      "resolution_authority": null,
+      "release_key": null,
+      "release_gen": null,
+      "delivered_gen": null,
+      "delivered_sha256": null,
+      "origin_lane": "work",
+      "updated_ms": 1792792359857
+    }
+  ],
+  "fences": [],
+  "incident": {
+    "id": 8,
+    "task": "86pub00003",
+    "card": "t_ab00001b",
+    "run_id": 1263,
+    "event_kind": "stalled_work",
+    "event_created_s": 1792785381,
+    "block_kind": "diagnostic",
+    "class": "diagnostic",
+    "reason_sha256": "cdcb6d02a0fd810ee08dde972ed9750c18a7c4aaa7bdb5cf26fadaa42fb43a50",
+    "approval_id": 20,
+    "approval_rev": 6,
+    "plan_sha256": "3c59864c5be7c65a71d0ebfb3b78871d7c207e89a656b108ffbcb3496be32a3d",
+    "adopted": 0,
+    "state": "open",
+    "attempts": 2,
+    "next_ms": 1792855059341,
+    "escalate_ms": null,
+    "abs_ms": 1792930659341,
+    "detected_ms": 1792844259341,
+    "updated_ms": 1792850259680
+  },
+  "meta": {
+    "amendment_cutover_ms": {
+      "ms": 1792715797928,
+      "drain_sha256": "ab0000000000000000000000000000000000000000000000000000000000000e"
+    },
+    "blocker_closed_cards": [
+      "t_ab000003",
+      "t_ab000006",
+      "t_ab000007",
+      "t_ab00000c",
+      "t_ab00000e",
+      "t_ab000012",
+      "t_ab000013",
+      "t_ab000014",
+      "t_ab000015",
+      "t_ab000016",
+      "t_ab00001a",
+      "t_ab00001d",
+      "t_ab00001f",
+      "t_ab000020",
+      "t_ab000023",
+      "t_ab000024",
+      "t_ab000025",
+      "t_ab00002b",
+      "t_ab00002c",
+      "t_ab00002d",
+      "t_ab00002f",
+      "t_ab000030",
+      "t_ab000034",
+      "t_ab000035",
+      "t_ab000036",
+      "t_ab00003a",
+      "t_ab00003b",
+      "t_ab00003c",
+      "t_ab00003d",
+      "t_ab00003e",
+      "t_ab000040",
+      "t_ab000041",
+      "t_ab000042",
+      "t_ab000043",
+      "t_ab000047",
+      "t_ab00004c",
+      "t_ab00004d",
+      "t_ab00004f",
+      "t_ab000051",
+      "t_ab000052",
+      "t_ab000054",
+      "t_ab000058",
+      "t_ab000059",
+      "t_ab00005a",
+      "t_ab00005b",
+      "t_ab00005c",
+      "t_ab00005d",
+      "t_ab00005f",
+      "t_ab000060",
+      "t_ab000061",
+      "t_ab000062",
+      "t_ab000063",
+      "t_ab000066",
+      "t_ab000069",
+      "t_ab00006c",
+      "t_ab00006d",
+      "t_ab00006f",
+      "t_ab000070",
+      "t_ab000074",
+      "t_ab000076",
+      "t_ab00007b",
+      "t_ab00007e",
+      "t_ab00007f",
+      "t_ab000080",
+      "t_ab000081",
+      "t_ab000082",
+      "t_ab000085",
+      "t_ab000086",
+      "t_ab000087",
+      "t_ab00008a",
+      "t_ab00008b",
+      "t_ab00008f",
+      "t_ab000092",
+      "t_ab000093",
+      "t_ab000094",
+      "t_ab000098",
+      "t_ab000099",
+      "t_ab00009a",
+      "t_ab00009c",
+      "t_ab0000a2",
+      "t_ab0000a4",
+      "t_ab0000a6",
+      "t_ab0000a7",
+      "t_ab0000a8",
+      "t_ab0000aa",
+      "t_ab0000ab",
+      "t_ab0000ac",
+      "t_ab0000ad",
+      "t_ab0000ae",
+      "t_ab0000af",
+      "t_ab0000b0",
+      "t_ab0000b1",
+      "t_ab0000b2"
+    ],
+    "blocker_cutover_ms": 1792396913177,
+    "closed_cards": [
+      "t_ab000010",
+      "t_ab000011",
+      "t_ab000017",
+      "t_ab000021",
+      "t_ab000027",
+      "t_ab000028",
+      "t_ab00002a",
+      "t_ab000037",
+      "t_ab000048",
+      "t_ab000049",
+      "t_ab000056",
+      "t_ab000064",
+      "t_ab00006b",
+      "t_ab00006e",
+      "t_ab00007d",
+      "t_ab00008c",
+      "t_ab000095",
+      "t_ab0000a0",
+      "t_ab0000a3",
+      "t_ab0000a9"
+    ],
+    "recovery_closed_cards": [
+      "t_ab000003",
+      "t_ab000006",
+      "t_ab000007",
+      "t_ab00000c",
+      "t_ab00000e",
+      "t_ab000012",
+      "t_ab000013",
+      "t_ab000014",
+      "t_ab000015",
+      "t_ab000016",
+      "t_ab00001a",
+      "t_ab00001e",
+      "t_ab00001f",
+      "t_ab000020",
+      "t_ab000023",
+      "t_ab000024",
+      "t_ab000025",
+      "t_ab00002b",
+      "t_ab00002c",
+      "t_ab00002d",
+      "t_ab00002f",
+      "t_ab000030",
+      "t_ab000034",
+      "t_ab000035",
+      "t_ab000036",
+      "t_ab00003a",
+      "t_ab00003c",
+      "t_ab00003d",
+      "t_ab00003e",
+      "t_ab000040",
+      "t_ab000041",
+      "t_ab000042",
+      "t_ab000043",
+      "t_ab000047",
+      "t_ab00004c",
+      "t_ab00004d",
+      "t_ab00004f",
+      "t_ab000051",
+      "t_ab000052",
+      "t_ab000054",
+      "t_ab000058",
+      "t_ab000059",
+      "t_ab00005a",
+      "t_ab00005b",
+      "t_ab00005c",
+      "t_ab00005d",
+      "t_ab00005f",
+      "t_ab000060",
+      "t_ab000061",
+      "t_ab000062",
+      "t_ab000063",
+      "t_ab000066",
+      "t_ab000069",
+      "t_ab00006c",
+      "t_ab00006d",
+      "t_ab00006f",
+      "t_ab000070",
+      "t_ab000074",
+      "t_ab000076",
+      "t_ab00007b",
+      "t_ab00007e",
+      "t_ab00007f",
+      "t_ab000080",
+      "t_ab000081",
+      "t_ab000082",
+      "t_ab000085",
+      "t_ab000086",
+      "t_ab000087",
+      "t_ab00008a",
+      "t_ab00008b",
+      "t_ab00008f",
+      "t_ab000092",
+      "t_ab000093",
+      "t_ab000094",
+      "t_ab000098",
+      "t_ab000099",
+      "t_ab00009a",
+      "t_ab00009c",
+      "t_ab0000a2",
+      "t_ab0000a4",
+      "t_ab0000a6",
+      "t_ab0000a7",
+      "t_ab0000a8",
+      "t_ab0000aa",
+      "t_ab0000ab",
+      "t_ab0000ac",
+      "t_ab0000ad",
+      "t_ab0000ae",
+      "t_ab0000af",
+      "t_ab0000b0",
+      "t_ab0000b1",
+      "t_ab0000b2"
+    ],
+    "recovery_cutover_ms": 1792608552020
+  },
+  "shows": {
+    "t_ab000003": {
+      "task": {
+        "id": "t_ab000003",
+        "status": "archived",
+        "assignee": "integrator",
+        "created_at": 1792782586,
+        "body": ""
+      },
+      "parents": [
+        "t_ab000066",
+        "t_ab000068",
+        "t_ab0000a5"
+      ],
+      "children": [
+        "t_ab000078"
+      ],
+      "runs": [],
+      "events": [],
+      "comments": []
+    },
+    "t_ab00000b": {
+      "task": {
+        "id": "t_ab00000b",
+        "status": "done",
+        "assignee": "plan-reviewer",
+        "created_at": 1792713604,
+        "body": ""
+      },
+      "parents": [],
+      "children": [],
+      "runs": [
+        {
+          "id": 1185,
+          "profile": "planner",
+          "step_key": null,
+          "status": "scheduled",
+          "outcome": "scheduled",
+          "summary": null,
+          "error": null,
+          "metadata": null,
+          "worker_pid": null,
+          "started_at": 1792715792,
+          "ended_at": 1792715988
+        },
+        {
+          "id": 1230,
+          "profile": "planner",
+          "step_key": null,
+          "status": "review",
+          "outcome": "review_requested",
+          "summary": null,
+          "error": null,
+          "metadata": {
+            "clickup_task": "86pub00003",
+            "plan_revision": 1,
+            "plan_attachment": "clickup-plan-r1.md",
+            "plan_sha256": "ab00000000000000000000000000000000000000000000000000000000000020",
+            "accounts_gen": 1,
+            "baseline_dev_sha": "ab00000000000000000000000000000000000026",
+            "canonical_skill_sha256": "ab00000000000000000000000000000000000000000000000000000000000061",
+            "hotspots": [
+              "Public fixture content.                     ",
+              "Public fixture content.                  "
+            ],
+            "worker_session_id": "fixture-session"
+          },
+          "worker_pid": null,
+          "started_at": 1792755072,
+          "ended_at": 1792756278
+        },
+        {
+          "id": 1231,
+          "profile": "plan-reviewer",
+          "step_key": null,
+          "status": "ready",
+          "outcome": "changes_requested",
+          "summary": null,
+          "error": null,
+          "metadata": null,
+          "worker_pid": null,
+          "started_at": 1792756329,
+          "ended_at": 1792756621
+        },
+        {
+          "id": 1232,
+          "profile": "planner",
+          "step_key": null,
+          "status": "review",
+          "outcome": "review_requested",
+          "summary": null,
+          "error": null,
+          "metadata": {
+            "clickup_task": "86pub00003",
+            "plan_revision": 2,
+            "plan_attachment": "clickup-plan-r2.md",
+            "plan_sha256": "ab00000000000000000000000000000000000000000000000000000000000075",
+            "accounts_gen": 1,
+            "baseline_dev_sha": "ab00000000000000000000000000000000000026",
+            "canonical_skill_sha256": "ab00000000000000000000000000000000000000000000000000000000000061",
+            "resolves": [
+              "R1",
+              "R2",
+              "R3"
+            ],
+            "supersedes": "Public fixture content.             ",
+            "hotspots": [
+              "Public fixture content.                     ",
+              "Public fixture content.                  ",
+              "Public fixture content."
+            ],
+            "worker_session_id": "fixture-session"
+          },
+          "worker_pid": null,
+          "started_at": 1792756662,
+          "ended_at": 1792757591
+        },
+        {
+          "id": 1233,
+          "profile": "plan-reviewer",
+          "step_key": null,
+          "status": "ready",
+          "outcome": "changes_requested",
+          "summary": null,
+          "error": null,
+          "metadata": null,
+          "worker_pid": null,
+          "started_at": 1792757650,
+          "ended_at": 1792757813
+        },
+        {
+          "id": 1234,
+          "profile": "planner",
+          "step_key": null,
+          "status": "review",
+          "outcome": "review_requested",
+          "summary": null,
+          "error": null,
+          "metadata": {
+            "clickup_task": "86pub00003",
+            "plan_revision": 3,
+            "plan_attachment": "clickup-plan-r3.md",
+            "plan_sha256": "ab0000000000000000000000000000000000000000000000000000000000006f",
+            "accounts_gen": 1,
+            "baseline_dev_sha": "ab00000000000000000000000000000000000026",
+            "canonical_skill_sha256": "ab00000000000000000000000000000000000000000000000000000000000061",
+            "rollback_reference_sha256": "ab0000000000000000000000000000000000000000000000000000000000005c",
+            "resolves": [
+              "R4"
+            ],
+            "preserves": [
+              "R1",
+              "R2",
+              "R3"
+            ],
+            "supersedes": "Public fixture content.             ",
+            "hotspots": [
+              "Public fixture content.                     ",
+              "Public fixture content.                  ",
+              "Public fixture content."
+            ],
+            "artifacts": [
+              "C:/Hermes/fixtures/artifact.md"
+            ],
+            "worker_session_id": "fixture-session"
+          },
+          "worker_pid": null,
+          "started_at": 1792757833,
+          "ended_at": 1792758049
+        },
+        {
+          "id": 1235,
+          "profile": "plan-reviewer",
+          "step_key": null,
+          "status": "done",
+          "outcome": "completed",
+          "summary": null,
+          "error": null,
+          "metadata": {
+            "review_outcome": "PASS",
+            "clickup_task": "86pub00003",
+            "plan_revision": 3,
+            "plan_attachment": "clickup-plan-r3.md",
+            "plan_sha256": "ab0000000000000000000000000000000000000000000000000000000000006f",
+            "reviewed_sha256": "ab0000000000000000000000000000000000000000000000000000000000006f",
+            "artifact_path": "C:/Hermes/fixtures/artifact.md",
+            "artifact_bytes": 52113,
+            "summary_characters": 1999,
+            "accounts_gen": 1,
+            "resolved_findings": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "findings": [],
+            "review_comment_id": 3895,
+            "baseline_dev_sha": "ab00000000000000000000000000000000000026",
+            "canonical_skill_sha256": "ab00000000000000000000000000000000000000000000000000000000000061",
+            "reviewer_checks": [
+              "Public fixture content.                                                                           ",
+              "Public fixture content.                                             ",
+              "Public fixture content.                                                                 ",
+              "Public fixture content.                                                                        ",
+              "Public fixture content.                                                                       ",
+              "Public fixture content.                                                                   ",
+              "Public fixture content.                                                                                      ",
+              "Public fixture content.                                                                          "
+            ],
+            "sources": [
+              "Public fixture content.",
+              "Public fixture content.",
+              "Public fixture content. ",
+              "Public fixture content. ",
+              "Public fixture content.                                    ",
+              "Public fixture content.    ",
+              "Public fixture content. References: ab00000000000000000000000000000000000026",
+              "Public fixture content.             ",
+              "Public fixture content.                   "
+            ],
+            "limits": [
+              "Public fixture content.                                                                                          ",
+              "Public fixture content. Diagnostic vocabulary: owner.                            ",
+              "Public fixture content. Diagnostic vocabulary: connection.                                      ",
+              "Public fixture content. Diagnostic vocabulary: approval owner."
+            ],
+            "changed_product_files": [],
+            "changed_repository_refs": [],
+            "review_scratch_removed": true,
+            "worker_session_id": "fixture-session"
+          },
+          "worker_pid": null,
+          "started_at": 1792758079,
+          "ended_at": 1792758307
+        }
+      ],
+      "events": [],
+      "comments": []
+    },
+    "t_ab000019": {
+      "task": {
+        "id": "t_ab000019",
+        "status": "todo",
+        "assignee": "integrator",
+        "created_at": 1792782547,
+        "body": ""
+      },
+      "parents": [
+        "t_ab000055",
+        "t_ab000066"
+      ],
+      "children": [
+        "t_ab0000a5"
+      ],
+      "runs": [],
+      "events": [],
+      "comments": []
+    },
+    "t_ab00001b": {
+      "task": {
+        "id": "t_ab00001b",
+        "status": "todo",
+        "assignee": "implementor",
+        "created_at": 1792782523,
+        "body": ""
+      },
+      "parents": [
+        "t_ab00003f",
+        "t_ab000066"
+      ],
+      "children": [
+        "t_ab000055"
+      ],
+      "runs": [
+        {
+          "id": 1263,
+          "profile": "implementor",
+          "step_key": null,
+          "status": "blocked",
+          "outcome": "blocked",
+          "summary": null,
+          "error": null,
+          "metadata": null,
+          "worker_pid": null,
+          "started_at": 1792782740,
+          "ended_at": 1792785381
+        }
+      ],
+      "events": [
+        {
+          "kind": "claimed",
+          "payload": {
+            "run_id": 1263
+          },
+          "created_at": 1792782740,
+          "run_id": 1263
+        },
+        {
+          "kind": "dependency_wait",
+          "payload": {
+            "reason": "CLICKUP-QUESTION           ",
+            "kind": "dependency",
+            "source_status": "ready"
+          },
+          "created_at": 1792785381,
+          "run_id": 1263
+        },
+        {
+          "kind": "commented",
+          "payload": {
+            "author": "orchestrator",
+            "len": 1619
+          },
+          "created_at": 1792798245,
+          "run_id": null
+        },
+        {
+          "kind": "commented",
+          "payload": {
+            "author": "coordinator",
+            "len": 830
+          },
+          "created_at": 1792852988,
+          "run_id": null
+        }
+      ],
+      "comments": [
+        {
+          "author": "coordinator",
+          "body": "CLICKUP-RECOVERY-ACK v1 card=t_ab00001b run=1263 disposition=cannot_act\nCLICKUP-RECOVERY-DETAIL v1 failed=missing_transition attempted=inspection next=integration_repair\nPublic fixture content. Required operator action: repair the structured Diagnostic vocabulary: cannot approval.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ",
+          "created_at": 1792852988
+        }
+      ]
+    },
+    "t_ab000026": {
+      "task": {
+        "id": "t_ab000026",
+        "status": "done",
+        "assignee": "plan-reviewer",
+        "created_at": 1792761867,
+        "body": ""
+      },
+      "parents": [],
+      "children": [],
+      "runs": [
+        {
+          "id": 1245,
+          "profile": "planner",
+          "step_key": null,
+          "status": "scheduled",
+          "outcome": "scheduled",
+          "summary": null,
+          "error": null,
+          "metadata": null,
+          "worker_pid": null,
+          "started_at": 1792763062,
+          "ended_at": 1792763868
+        },
+        {
+          "id": 1248,
+          "profile": "planner",
+          "step_key": null,
+          "status": "review",
+          "outcome": "review_requested",
+          "summary": null,
+          "error": null,
+          "metadata": {
+            "clickup_task": "86pub00003",
+            "plan_revision": 4,
+            "plan_attachment": "clickup-plan-r4.md",
+            "plan_sha256": "ab0000000000000000000000000000000000000000000000000000000000001d",
+            "accounts_gen": 3,
+            "plan_bytes": 62674,
+            "source_dev": "ab0000000000000000000000000000000000003c",
+            "planning_only": true,
+            "canonical_qa_skill": "C:/Hermes/fixtures/artifact.md",
+            "prior_plan_sha256": "ab0000000000000000000000000000000000000000000000000000000000006f",
+            "executed_tests": [],
+            "notes": "Public fixture content. Diagnostic vocabulary: approval owner.                                                                    ",
+            "artifacts": [
+              "C:/Hermes/fixtures/artifact.md"
+            ],
+            "worker_session_id": "fixture-session"
+          },
+          "worker_pid": null,
+          "started_at": 1792771692,
+          "ended_at": 1792772030
+        },
+        {
+          "id": 1250,
+          "profile": "plan-reviewer",
+          "step_key": null,
+          "status": "ready",
+          "outcome": "changes_requested",
+          "summary": null,
+          "error": null,
+          "metadata": null,
+          "worker_pid": null,
+          "started_at": 1792772062,
+          "ended_at": 1792772319
+        },
+        {
+          "id": 1251,
+          "profile": "planner",
+          "step_key": null,
+          "status": "review",
+          "outcome": "review_requested",
+          "summary": null,
+          "error": null,
+          "metadata": {
+            "clickup_task": "86pub00003",
+            "plan_revision": 5,
+            "plan_attachment": "clickup-plan-r5.md",
+            "plan_sha256": "ab00000000000000000000000000000000000000000000000000000000000023",
+            "plan_bytes": 74928,
+            "accounts_gen": 3,
+            "source_dev": "ab0000000000000000000000000000000000003c",
+            "prior_plan_sha256": "ab0000000000000000000000000000000000000000000000000000000000001d",
+            "planning_only": true,
+            "canonical_qa_skill": "C:/Hermes/fixtures/artifact.md",
+            "executed_checks": [
+              "Public fixture content.                                     ",
+              "Public fixture content. Diagnostic vocabulary: permission.",
+              "Public fixture content.                              ",
+              "Public fixture content.                               "
+            ],
+            "executed_product_tests": [],
+            "resolved_review_findings": [
+              "R5"
+            ],
+            "notes": "Public fixture content. Diagnostic vocabulary: approval owner.                                                                            ",
+            "artifacts": [
+              "C:/Hermes/fixtures/artifact.md"
+            ],
+            "worker_session_id": "fixture-session"
+          },
+          "worker_pid": null,
+          "started_at": 1792772372,
+          "ended_at": 1792772651
+        },
+        {
+          "id": 1252,
+          "profile": "plan-reviewer",
+          "step_key": null,
+          "status": "done",
+          "outcome": "completed",
+          "summary": null,
+          "error": null,
+          "metadata": {
+            "review_outcome": "PASS",
+            "clickup_task": "86pub00003",
+            "plan_revision": 5,
+            "plan_attachment": "clickup-plan-r5.md",
+            "plan_sha256": "ab00000000000000000000000000000000000000000000000000000000000023",
+            "reviewed_sha256": "ab00000000000000000000000000000000000000000000000000000000000023",
+            "artifact_path": "C:/Hermes/fixtures/artifact.md",
+            "artifact_bytes": 74928,
+            "summary_characters": 1723,
+            "accounts_gen": 3,
+            "review_comment_id": 3941,
+            "resolved_findings": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "findings": [],
+            "baseline_dev_sha": "ab0000000000000000000000000000000000003c",
+            "reviewer_checks": [
+              "Public fixture content.                                      ",
+              "Public fixture content.                                              ",
+              "Public fixture content.                                    ",
+              "Public fixture content.                                      ",
+              "Public fixture content. Diagnostic vocabulary: ticket.                                            ",
+              "Public fixture content.                             ",
+              "Public fixture content. Diagnostic vocabulary: permission.                    ",
+              "Public fixture content.                                            ",
+              "Public fixture content.                                                                            "
+            ],
+            "request_envelope_checks": {
+              "required_fields_upper_bound_bytes": 9794,
+              "serialized_query_bytes": 12288,
+              "request_target_bytes": 12313,
+              "decoded_callback_characters": 2048,
+              "decoded_state_characters": 1024,
+              "roundtrip_passed": true,
+              "xml_parsed": true
+            },
+            "sources": [
+              "Public fixture content.",
+              "Public fixture content.",
+              "Public fixture content.",
+              "Public fixture content.",
+              "Public fixture content. ",
+              "Public fixture content. ",
+              "Public fixture content. ",
+              "Public fixture content. References: t_ab00000b",
+              "Public fixture content. References: t_ab000081",
+              "Public fixture content. References: ab0000000000000000000000000000000000003c",
+              "Public fixture content.             ",
+              "Public fixture content.                           ",
+              "Public fixture content.                      ",
+              "Public fixture content.",
+              "Public fixture content.                                                              "
+            ],
+            "limits": [
+              "Public fixture content.                                                    ",
+              "Public fixture content.                                                                       ",
+              "Public fixture content.                                          ",
+              "Public fixture content. Diagnostic vocabulary: owner.                    "
+            ],
+            "changed_product_files": [],
+            "changed_repository_refs": [],
+            "review_scratch_removed": true,
+            "worker_session_id": "fixture-session"
+          },
+          "worker_pid": null,
+          "started_at": 1792772690,
+          "ended_at": 1792772911
+        }
+      ],
+      "events": [],
+      "comments": []
+    },
+    "t_ab00002f": {
+      "task": {
+        "id": "t_ab00002f",
+        "status": "done",
+        "assignee": "orchestrator",
+        "created_at": 1792796402,
+        "body": ""
+      },
+      "parents": [],
+      "children": [
+        "t_ab000072"
+      ],
+      "runs": [
+        {
+          "id": 1282,
+          "profile": "orchestrator",
+          "step_key": null,
+          "status": "blocked",
+          "outcome": "blocked",
+          "summary": null,
+          "error": null,
+          "metadata": null,
+          "worker_pid": null,
+          "started_at": 1792798099,
+          "ended_at": 1792798384
+        },
+        {
+          "id": 1284,
+          "profile": "orchestrator",
+          "step_key": null,
+          "status": "done",
+          "outcome": "completed",
+          "summary": null,
+          "error": null,
+          "metadata": {
+            "clickup_gates": {
+              "plan_revision": 6,
+              "plan_sha256": "3c59864c5be7c65a71d0ebfb3b78871d7c207e89a656b108ffbcb3496be32a3d",
+              "final_e2e": "t_ab0000a5",
+              "promotion": "t_ab000072",
+              "cleanup": "t_ab000078",
+              "lineage": [
+                "t_ab0000b2",
+                "t_ab00001b",
+                "t_ab000055",
+                "t_ab000019",
+                "t_ab0000a5",
+                "t_ab000003",
+                "t_ab000078",
+                "t_ab000072"
+              ]
+            },
+            "governing_inputs": {
+              "plan_bytes": 89996,
+              "plan_sha256": "3c59864c5be7c65a71d0ebfb3b78871d7c207e89a656b108ffbcb3496be32a3d",
+              "approval_bytes": 843,
+              "approval_sha256": "ab00000000000000000000000000000000000000000000000000000000000016",
+              "approval_comment": "9900000000000037",
+              "accounts_gen": 4,
+              "canonical_paths": [
+                "C:/Hermes/fixtures/artifact.md",
+                "C:/Hermes/fixtures/artifact.md",
+                "C:/Hermes/fixtures/artifact.md"
+              ],
+              "canonical_files_match_verified_prior_proof": true
+            },
+            "amendment": {
+              "superseded_promotion": "t_ab000003",
+              "superseded_promotion_verified_status": "archived",
+              "replacement_promotion": "t_ab000072",
+              "replacement_parents": [
+                "t_ab00002f",
+                "t_ab0000a5",
+                "t_ab000032"
+              ],
+              "sole_cleanup": "t_ab000078",
+              "replacement_to_cleanup_edge_verified": true,
+              "new_promotion_requires_exact_ticket_marker_and_top_level_full_promoted_sha": true,
+              "A_native_SPEC_preserved": true,
+              "B_saved_checkpoint_preserved": "ab00000000000000000000000000000000000059",
+              "B_continuation": "Public fixture content.                                                                                                                                                                                             ",
+              "existing_card_bodies_rewritten": false,
+              "duplicate_cards_created": 0
+            },
+            "current_dev_baseline": {
+              "observed_utc": "2026-10-23T23:45:42.629971+00:00",
+              "remote_dev_sha": "ab0000000000000000000000000000000000003c",
+              "remote_master_sha": "ab0000000000000000000000000000000000003c",
+              "served_path": "C:/Hermes/fixtures/project",
+              "served_sha": "ab0000000000000000000000000000000000003c",
+              "models_sha256": "ab0000000000000000000000000000000000000000000000000000000000000d",
+              "notifications_sha256": "ab0000000000000000000000000000000000000000000000000000000000004c",
+              "accepted_receipt": "Public fixture content. References: t_ab000081",
+              "accepted_receipt_sha256": "ab00000000000000000000000000000000000000000000000000000000000014",
+              "catalog_evidence": "Public fixture content. Diagnostic vocabulary: connection.                                                                                                                                                               ",
+              "source_and_runtime_unchanged": true
+            },
+            "verification": {
+              "resume_checks_passed": 94,
+              "resume_checks_failed": 0,
+              "prior_orchestration_checks_passed": 97,
+              "all_lineage_protocols_and_canonical_paths_verified": true,
+              "amendment_comments_hash_verified": true,
+              "active_subscriptions": "Public fixture content. Diagnostic vocabulary: default.                                         ",
+              "own_regenerable_verifier_removed": true,
+              "own_lifecycle_directory_empty": true,
+              "final_directory_absence_owned_by": "t_ab000078",
+              "cleanup_handoff_comment": 4070,
+              "verifier_corrections": "Public fixture content.                                                                                                                                                                                                                 "
+            },
+            "evidence": [
+              {
+                "attachment_id": 3521,
+                "filename": "r6-orchestration-final-proof-run1282.json.gz",
+                "bytes": 3542,
+                "sha256": "ab00000000000000000000000000000000000000000000000000000000000013",
+                "readback_verified": true
+              },
+              {
+                "attachment_id": 3522,
+                "filename": "r6-resume-verification-run1284.json.gz",
+                "bytes": 3466,
+                "sha256": "ab00000000000000000000000000000000000000000000000000000000000010",
+                "readback_verified": true
+              }
+            ],
+            "boundaries": "Public fixture content.                                                                                                                                                                                            ",
+            "worker_session_id": "fixture-session"
+          },
+          "worker_pid": null,
+          "started_at": 1792799023,
+          "ended_at": 1792799185
+        }
+      ],
+      "events": [],
+      "comments": []
+    },
+    "t_ab000032": {
+      "task": {
+        "id": "t_ab000032",
+        "status": "blocked",
+        "assignee": null,
+        "created_at": 1792795712,
+        "body": ""
+      },
+      "parents": [],
+      "children": [
+        "t_ab000072"
+      ],
+      "runs": [],
+      "events": [],
+      "comments": []
+    },
+    "t_ab00003f": {
+      "task": {
+        "id": "t_ab00003f",
+        "status": "blocked",
+        "assignee": "clickup-intake",
+        "created_at": 1792785374,
+        "body": ""
+      },
+      "parents": [],
+      "children": [
+        "t_ab00001b"
+      ],
+      "runs": [],
+      "events": [],
+      "comments": []
+    },
+    "t_ab000055": {
+      "task": {
+        "id": "t_ab000055",
+        "status": "todo",
+        "assignee": "quality-security-reviewer",
+        "created_at": 1792782533,
+        "body": ""
+      },
+      "parents": [
+        "t_ab00001b",
+        "t_ab000066",
+        "t_ab0000b2"
+      ],
+      "children": [
+        "t_ab000019"
+      ],
+      "runs": [],
+      "events": [],
+      "comments": []
+    },
+    "t_ab000066": {
+      "task": {
+        "id": "t_ab000066",
+        "status": "done",
+        "assignee": "orchestrator",
+        "created_at": 1792779126,
+        "body": ""
+      },
+      "parents": [],
+      "children": [
+        "t_ab000003",
+        "t_ab000019",
+        "t_ab00001b",
+        "t_ab000055",
+        "t_ab000078",
+        "t_ab0000a5",
+        "t_ab0000b2"
+      ],
+      "runs": [
+        {
+          "id": 1261,
+          "profile": "orchestrator",
+          "step_key": null,
+          "status": "done",
+          "outcome": "completed",
+          "summary": null,
+          "error": null,
+          "metadata": {
+            "clickup_gates": {
+              "plan_revision": 5,
+              "plan_sha256": "ab00000000000000000000000000000000000000000000000000000000000023",
+              "final_e2e": "t_ab0000a5",
+              "promotion": "t_ab000003",
+              "cleanup": "t_ab000078",
+              "lineage": [
+                "t_ab0000b2",
+                "t_ab00001b",
+                "t_ab000055",
+                "t_ab000019",
+                "t_ab0000a5",
+                "t_ab000003",
+                "t_ab000078"
+              ]
+            },
+            "graph": {
+              "A": "t_ab0000b2",
+              "B": "t_ab00001b",
+              "Q": "t_ab000055",
+              "I": "t_ab000019",
+              "E": "t_ab0000a5",
+              "P": "t_ab000003",
+              "X": "t_ab000078",
+              "gate": "t_ab000068",
+              "parallel": "Public fixture content.                                                                      ",
+              "startup_reconciliation_owner": "t_ab000019",
+              "promotion_handback_owner": "t_ab000003",
+              "source_workspace_model": "Public fixture content.                                                                                        "
+            },
+            "governing_inputs": {
+              "plan_bytes": 74928,
+              "plan_sha256": "ab00000000000000000000000000000000000000000000000000000000000023",
+              "approval_bytes": 843,
+              "approval_sha256": "ab0000000000000000000000000000000000000000000000000000000000006e",
+              "approver": "900000101",
+              "approval_comment": "9900000000000027",
+              "accounts_gen": 3,
+              "canonical_paths": [
+                "C:/Hermes/fixtures/artifact.md",
+                "C:/Hermes/fixtures/artifact.md",
+                "C:/Hermes/fixtures/artifact.md"
+              ],
+              "canonical_sha256": {
+                "qa": "ab00000000000000000000000000000000000000000000000000000000000061",
+                "current_dev": "ab0000000000000000000000000000000000000000000000000000000000001e",
+                "release": "ab00000000000000000000000000000000000000000000000000000000000077"
+              }
+            },
+            "current_dev_baseline": {
+              "observed_utc": "2026-10-23T19:07:29Z",
+              "remote_dev_sha": "ab0000000000000000000000000000000000003c",
+              "remote_master_sha": "ab0000000000000000000000000000000000007c",
+              "plan_to_dispatch_drift": "Public fixture content.               ",
+              "served_path": "C:/Hermes/fixtures/project",
+              "served_sha": "ab0000000000000000000000000000000000003c",
+              "iis": "Public fixture content.                                                                           ",
+              "models_sha256": "ab0000000000000000000000000000000000000000000000000000000000000d",
+              "notifications_sha256": "ab0000000000000000000000000000000000000000000000000000000000004c",
+              "accepted_receipt": "C:/Hermes/fixtures/artifact.txt",
+              "receipt_bytes": 7406,
+              "receipt_sha256": "ab00000000000000000000000000000000000000000000000000000000000014",
+              "reused_evidence": "Public fixture content.                                                                                                         ",
+              "database": "Public fixture content. Diagnostic vocabulary: default.                                         ",
+              "fresh_readonly_checks": "Public fixture content. Diagnostic vocabulary: ticket permission.                                                                                                                                                                                                                                                                           ",
+              "get_device_access_list_sha256": "Public fixture content.                                         ",
+              "sql_writes": 0,
+              "runtime_changes": 0
+            },
+            "verification": {
+              "assertions_passed": 74,
+              "assertions_failed": 0,
+              "all_seven_native_show_readbacks": true,
+              "exact_question_protocol_each_body": true,
+              "canonical_paths_and_baseline_each_body": true,
+              "skill_pins_installed_for_assignees": true,
+              "subscriptions": "Public fixture content. Diagnostic vocabulary: default.                                                                                           ",
+              "promotion_exact_marker_and_paragraph": true,
+              "promotion_full_top_level_promoted_sha_required": true,
+              "final_cleanup_exact_absence_journal": true,
+              "initial_source_paths_and_refs_absent": true,
+              "approval_gate_untouched": true,
+              "own_probe_files_removed": 4,
+              "own_scratch_directory_empty": true,
+              "product_tests": "Public fixture content.                           "
+            },
+            "hotspots": [
+              "Public fixture content.                     ",
+              "Public fixture content.                  ",
+              "Public fixture content."
+            ],
+            "boundaries": "Public fixture content.                                                                                                                                    ",
+            "worker_session_id": "fixture-session"
+          },
+          "worker_pid": null,
+          "started_at": 1792782309,
+          "ended_at": 1792782696
+        }
+      ],
+      "events": [],
+      "comments": []
+    },
+    "t_ab000068": {
+      "task": {
+        "id": "t_ab000068",
+        "status": "archived",
+        "assignee": null,
+        "created_at": 1792777739,
+        "body": ""
+      },
+      "parents": [],
+      "children": [
+        "t_ab000003"
+      ],
+      "runs": [],
+      "events": [],
+      "comments": []
+    },
+    "t_ab000072": {
+      "task": {
+        "id": "t_ab000072",
+        "status": "todo",
+        "assignee": "integrator",
+        "created_at": 1792798228,
+        "body": ""
+      },
+      "parents": [
+        "t_ab00002f",
+        "t_ab000032",
+        "t_ab0000a5"
+      ],
+      "children": [
+        "t_ab000078"
+      ],
+      "runs": [],
+      "events": [],
+      "comments": []
+    },
+    "t_ab000078": {
+      "task": {
+        "id": "t_ab000078",
+        "status": "todo",
+        "assignee": "integrator",
+        "created_at": 1792782605,
+        "body": ""
+      },
+      "parents": [
+        "t_ab000003",
+        "t_ab000066",
+        "t_ab000072"
+      ],
+      "children": [],
+      "runs": [],
+      "events": [],
+      "comments": []
+    },
+    "t_ab00009b": {
+      "task": {
+        "id": "t_ab00009b",
+        "status": "done",
+        "assignee": "plan-reviewer",
+        "created_at": 1792788568,
+        "body": ""
+      },
+      "parents": [],
+      "children": [],
+      "runs": [
+        {
+          "id": 1271,
+          "profile": "planner",
+          "step_key": null,
+          "status": "scheduled",
+          "outcome": "scheduled",
+          "summary": null,
+          "error": null,
+          "metadata": null,
+          "worker_pid": null,
+          "started_at": 1792789707,
+          "ended_at": 1792789789
+        },
+        {
+          "id": 1277,
+          "profile": "planner",
+          "step_key": null,
+          "status": "review",
+          "outcome": "review_requested",
+          "summary": null,
+          "error": null,
+          "metadata": {
+            "clickup_task": "86pub00003",
+            "plan_revision": 6,
+            "plan_attachment": "clickup-plan-r6.md",
+            "plan_sha256": "3c59864c5be7c65a71d0ebfb3b78871d7c207e89a656b108ffbcb3496be32a3d",
+            "accounts_gen": 4,
+            "plan_bytes": 89996,
+            "incorporates": [
+              {
+                "blocker": 6,
+                "question": "t_ab00003f",
+                "card": "t_ab00001b",
+                "gen": 4
+              }
+            ],
+            "decision_comments": [
+              "9900000000000032",
+              "9900000000000033"
+            ],
+            "original_plan_sha256": "ab00000000000000000000000000000000000000000000000000000000000023",
+            "scope": "Public fixture content. Diagnostic vocabulary: approval.                                                                                                                                                                                                  ",
+            "fresh_baseline": {
+              "observed_utc": "2026-10-23T21:52:23Z",
+              "remote_dev": "ab0000000000000000000000000000000000003c",
+              "remote_master": "ab0000000000000000000000000000000000003c",
+              "served_sha": "ab0000000000000000000000000000000000003c",
+              "catalog_observed_utc": "2026-10-23T21:52:51Z",
+              "baseline_changed": false
+            },
+            "execution_boundaries": "Public fixture content. Diagnostic vocabulary: approval.                                                                                                                                                                                                        ",
+            "artifacts": [
+              "C:/Hermes/fixtures/artifact.md"
+            ],
+            "worker_session_id": "fixture-session"
+          },
+          "worker_pid": null,
+          "started_at": 1792792282,
+          "ended_at": 1792792500
+        },
+        {
+          "id": 1278,
+          "profile": "plan-reviewer",
+          "step_key": null,
+          "status": "done",
+          "outcome": "completed",
+          "summary": null,
+          "error": null,
+          "metadata": {
+            "review_outcome": "PASS",
+            "clickup_task": "86pub00003",
+            "plan_revision": 6,
+            "plan_attachment": "clickup-plan-r6.md",
+            "plan_sha256": "3c59864c5be7c65a71d0ebfb3b78871d7c207e89a656b108ffbcb3496be32a3d",
+            "reviewed_sha256": "3c59864c5be7c65a71d0ebfb3b78871d7c207e89a656b108ffbcb3496be32a3d",
+            "artifact_path": "C:/Hermes/fixtures/artifact.md",
+            "artifact_bytes": 89996,
+            "summary_characters": 1545,
+            "accounts_gen": 4,
+            "review_comment_id": 4051,
+            "findings": [],
+            "decision_comments": [
+              "9900000000000031",
+              "9900000000000032",
+              "9900000000000033",
+              "9900000000000026"
+            ],
+            "incorporates": [
+              {
+                "blocker": 6,
+                "question": "t_ab00003f",
+                "card": "t_ab00001b",
+                "gen": 4
+              }
+            ],
+            "reviewer_checks": [
+              "Public fixture content.                                                                                  ",
+              "Public fixture content.                                                                                                                                  ",
+              "Public fixture content.                                                                                                       ",
+              "Public fixture content.                                                                                                                            ",
+              "Public fixture content.                                                                                                      ",
+              "Public fixture content. Diagnostic vocabulary: ticket permission.                                                                                                ",
+              "Public fixture content.                                                                                      ",
+              "Public fixture content. Diagnostic vocabulary: permission.                                                                                       "
+            ],
+            "saved_B": {
+              "head": "ab00000000000000000000000000000000000059",
+              "tree": "ab00000000000000000000000000000000000055",
+              "base": "ab0000000000000000000000000000000000003c",
+              "original_test_unchanged": true,
+              "issuer_sole_substitution_verified": true,
+              "base_issuer_sha256": "ab00000000000000000000000000000000000000000000000000000000000057",
+              "candidate_issuer_sha256": "ab0000000000000000000000000000000000000000000000000000000000006b",
+              "original_grant_test_sha256": "ab00000000000000000000000000000000000000000000000000000000000065",
+              "sql_parser_sha256": "ab0000000000000000000000000000000000000000000000000000000000003b"
+            },
+            "fresh_baseline": {
+              "remote_dev": "ab0000000000000000000000000000000000003c",
+              "remote_master": "ab0000000000000000000000000000000000003c",
+              "served_sha": "ab0000000000000000000000000000000000003c",
+              "served_path": "C:/Hermes/fixtures/project",
+              "models_sha256": "ab0000000000000000000000000000000000000000000000000000000000000d",
+              "notifications_sha256": "ab0000000000000000000000000000000000000000000000000000000000004c",
+              "catalog_observed_utc": "2026-10-23T21:57:59.5729563Z",
+              "catalog_target": "Public fixture content. Diagnostic vocabulary: default.",
+              "catalog_result": "Public fixture content.                                                             ",
+              "accepted_handback": "Public fixture content. References: t_ab000081"
+            },
+            "graph": {
+              "A": "t_ab0000b2",
+              "B": "t_ab00001b",
+              "Q": "t_ab000055",
+              "I": "t_ab000019",
+              "E": "t_ab0000a5",
+              "P": "t_ab000003",
+              "X": "t_ab000078",
+              "A_native_spec": "Public fixture content.",
+              "B_native_spec": "Public fixture content. Diagnostic vocabulary: approval.",
+              "existing_execution_cards_changed": false,
+              "final_cleanup_still_required": true
+            },
+            "limits": [
+              "Public fixture content.                                                                                                                         ",
+              "Public fixture content. Diagnostic vocabulary: approval owner.                                   ",
+              "Public fixture content.                                                           ",
+              "Public fixture content.                                          "
+            ],
+            "changed_product_files": [],
+            "changed_repository_refs": [],
+            "review_scratch_removed": [
+              "Public fixture content.",
+              "Public fixture content.",
+              "Public fixture content."
+            ],
+            "worker_session_id": "fixture-session"
+          },
+          "worker_pid": null,
+          "started_at": 1792792527,
+          "ended_at": 1792792729
+        }
+      ],
+      "events": [],
+      "comments": []
+    },
+    "t_ab0000a5": {
+      "task": {
+        "id": "t_ab0000a5",
+        "status": "todo",
+        "assignee": "e2e-tester",
+        "created_at": 1792782566,
+        "body": ""
+      },
+      "parents": [
+        "t_ab000019",
+        "t_ab000066"
+      ],
+      "children": [
+        "t_ab000003",
+        "t_ab000072"
+      ],
+      "runs": [],
+      "events": [],
+      "comments": []
+    },
+    "t_ab0000b2": {
+      "task": {
+        "id": "t_ab0000b2",
+        "status": "done",
+        "assignee": "spec-reviewer",
+        "created_at": 1792782482,
+        "body": ""
+      },
+      "parents": [
+        "t_ab000066"
+      ],
+      "children": [
+        "t_ab000055"
+      ],
+      "runs": [
+        {
+          "id": 1262,
+          "profile": "implementor",
+          "step_key": null,
+          "status": "review",
+          "outcome": "review_requested",
+          "summary": null,
+          "error": null,
+          "metadata": {
+            "approval": {
+              "approval_sha256": "ab0000000000000000000000000000000000000000000000000000000000006e",
+              "plan_sha256": "ab00000000000000000000000000000000000000000000000000000000000023",
+              "revision": 5
+            },
+            "base": "ab0000000000000000000000000000000000003c",
+            "branch": "Public fixture content. References: 86pub00003",
+            "build": {
+              "models": "Public fixture content.                                                                                       ",
+              "models_sha256": "ab00000000000000000000000000000000000000000000000000000000000060",
+              "notifications": "Public fixture content.                                            ",
+              "notifications_sha256": "ab0000000000000000000000000000000000000000000000000000000000005f",
+              "precompile": "Public fixture content.                                                                                                                       "
+            },
+            "changed_files": [
+              "Public fixture content.",
+              "Public fixture content.                                   ",
+              "Public fixture content.                                        ",
+              "Public fixture content.",
+              "Public fixture content.        ",
+              "Public fixture content.           ",
+              "Public fixture content.                  ",
+              "Public fixture content.                     ",
+              "Public fixture content.",
+              "Public fixture content.        ",
+              "Public fixture content.           ",
+              "Public fixture content.                           ",
+              "Public fixture content.                     ",
+              "Public fixture content.                     "
+            ],
+            "cleanup": {
+              "final_gate": "t_ab000078",
+              "journal_comments": [
+                4008,
+                4019
+              ],
+              "retained": "Public fixture content.                                                                                                                                                                      ",
+              "staging_removed": "Public fixture content.                                                                                                                                                                            "
+            },
+            "evidence": {
+              "bundle": "Public fixture content. Diagnostic vocabulary: oauth.",
+              "bytes": 70107,
+              "entries": 68,
+              "sha256": "ab00000000000000000000000000000000000000000000000000000000000022",
+              "contents": "Public fixture content.                                                                                                                                           "
+            },
+            "head": "ab0000000000000000000000000000000000000f",
+            "hotspots": [
+              "Public fixture content.                     ",
+              "Public fixture content.                  ",
+              "Public fixture content."
+            ],
+            "remote_verified": true,
+            "tests": {
+              "existing_regressions": "Public fixture content.                                                                                                                                                                            ",
+              "new": "Public fixture content.                                                                                                                          ",
+              "preserved_failures": "Public fixture content.                                                                                                                                                                                                                                                                        ",
+              "regression_counts": "Public fixture content.                                                                                                                                                                                                                               ",
+              "tdd": "Public fixture content.                                                                                         "
+            },
+            "rollback_sql": {
+              "command": "Public fixture content.                                                                                                         ",
+              "down_sha256": "ab0000000000000000000000000000000000000000000000000000000000006a",
+              "exit": 0,
+              "forward_sha256": "ab00000000000000000000000000000000000000000000000000000000000027",
+              "results": "Public fixture content.                                                                                                                                                                                                                                                                                          "
+            },
+            "scope": "Public fixture content. Diagnostic vocabulary: permission.                                                                                    ",
+            "tree": "ab00000000000000000000000000000000000050",
+            "visual_qa": "Public fixture content. References: t_ab0000a5 Diagnostic vocabulary: permission.                                                                            ",
+            "worktree": "C:/Hermes/fixtures/project",
+            "artifacts": [
+              "C:/Hermes/fixtures/artifact.zip",
+              "C:/Hermes/fixtures/artifact.json"
+            ],
+            "worker_session_id": "fixture-session"
+          },
+          "worker_pid": null,
+          "started_at": 1792782740,
+          "ended_at": 1792784816
+        },
+        {
+          "id": 1266,
+          "profile": "spec-reviewer",
+          "step_key": null,
+          "status": "done",
+          "outcome": "completed",
+          "summary": null,
+          "error": null,
+          "metadata": {
+            "review_outcome": "approved",
+            "review_round": 1,
+            "review_lens": "Public fixture content.            ",
+            "base": "ab0000000000000000000000000000000000003c",
+            "head": "ab0000000000000000000000000000000000000f",
+            "tree": "ab00000000000000000000000000000000000050",
+            "branch": "Public fixture content. References: 86pub00003",
+            "worktree": "C:/Hermes/fixtures/project",
+            "remote_readback": {
+              "dev": "ab0000000000000000000000000000000000003c",
+              "feature": "ab0000000000000000000000000000000000000f",
+              "master": "ab0000000000000000000000000000000000007c"
+            },
+            "reviewer_checks": {
+              "changed_paths": 14,
+              "existing_tests_modified_or_deleted": 0,
+              "new_tests": 3,
+              "new_admin_contracts": "22/22 pass",
+              "compiled_production_uri_cases": "Public fixture content.                                 ",
+              "migration_offline": "Public fixture content. Diagnostic vocabulary: connection.",
+              "core": "Public fixture content.                               ",
+              "page": "Public fixture content.                                        ",
+              "other_regressions": "Public fixture content. Example catalog                                                                                                                    ",
+              "build": "Public fixture content.                                                                                                                    ",
+              "raw_source_unchanged": 3004,
+              "shared_authorization": "Public fixture content.                                                                                                                                ",
+              "sql_evidence": "Public fixture content.                                                                                                                                                                                                                   ",
+              "baseline_failures": "Public fixture content.                                                                                                                                                                                                                              "
+            },
+            "findings": [],
+            "verification_limits": [
+              "Public fixture content. References: t_ab0000a5                                                                                                                    ",
+              "Public fixture content.                                                                                                                                                            ",
+              "Public fixture content.                                                                             "
+            ],
+            "evidence": {
+              "directory": "C:/Hermes/fixtures/project",
+              "review_bundle": "Public fixture content.",
+              "review_bundle_sha256": "ab00000000000000000000000000000000000000000000000000000000000053",
+              "review_bundle_bytes": 30533,
+              "review_bundle_entries": 28,
+              "native_index_attachment_id": 3478,
+              "implementor_bundle": "Public fixture content. Diagnostic vocabulary: oauth.",
+              "implementor_bundle_sha256": "ab00000000000000000000000000000000000000000000000000000000000022",
+              "implementor_payload_hashes_verified": 67
+            },
+            "cleanup": {
+              "review_scratch_absent": "C:/Hermes/fixtures/project",
+              "review_precompile_absent": "C:/Hermes/fixtures/project",
+              "source_still_clean": true,
+              "source_and_refs_needed_by": "Q/I/E/P",
+              "final_cleanup_gate": "t_ab000078",
+              "journal_comments": [
+                4023,
+                4024,
+                4026
+              ],
+              "final_cleanup_not_complete": true
+            },
+            "hotspots": [
+              "Public fixture content.                     ",
+              "Public fixture content.                  ",
+              "Public fixture content."
+            ],
+            "scope": "Public fixture content.                                                                                                                 ",
+            "artifacts": [
+              "C:/Hermes/fixtures/artifact.zip"
+            ],
+            "worker_session_id": "fixture-session"
+          },
+          "worker_pid": null,
+          "started_at": 1792784863,
+          "ended_at": 1792785334
+        }
+      ],
+      "events": [],
+      "comments": []
+    }
+  },
+  "plans": {
+    "t_ab00009b": {
+      "name": "clickup-plan-r6.md",
+      "sha256": "3c59864c5be7c65a71d0ebfb3b78871d7c207e89a656b108ffbcb3496be32a3d",
+      "bytes_b64": "IyMgQ2xpY2tVcCBzdW1tYXJ5CgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogYXBwcm92YWwuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4KCiMgUHVibGljIGZpeHR1cmUgc2VjdGlvbiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IG9hdXRoLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogYXBwcm92YWwuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IG9hdXRoLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBvYXV0aC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgojIyMgUHVibGljIGZpeHR1cmUgc2VjdGlvbiAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IGFwcHJvdmFsLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogb2F1dGguICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogY29ubmVjdGlvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiB0aWNrZXQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBzdXBwb3J0ZWQgYXBwcm92YWwgb3duZXIuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IHBlcm1pc3Npb24uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogYXBwcm92YWwuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IHRfYWIwMDAwMWIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKCkNMSUNLVVAtSU5DT1JQT1JBVEVTIHYxIGJsb2NrZXI9NiBxdWVzdGlvbj10X2FiMDAwMDNmIGNhcmQ9dF9hYjAwMDAxYiBnZW49NAoKUHVibGljIGZpeHR1cmUgY29udGVudC4KCiMjIFB1YmxpYyBmaXh0dXJlIHNlY3Rpb24gUmVmZXJlbmNlczogODZwdWIwMDAwMyAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gIApQdWJsaWMgZml4dHVyZSBjb250ZW50LgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogc3VwcG9ydGVkLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IG9hdXRoLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogYXBwcm92YWwuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgojIyMgUHVibGljIGZpeHR1cmUgc2VjdGlvbiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IGFwcHJvdmFsLiAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IHN1cHBvcnRlZC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBwZXJtaXNzaW9uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogcGVybWlzc2lvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogc3VwcG9ydGVkLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKIyMjIFB1YmxpYyBmaXh0dXJlIHNlY3Rpb24KClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgojIyBQdWJsaWMgZml4dHVyZSBzZWN0aW9uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKCiMjIyBQdWJsaWMgZml4dHVyZSBzZWN0aW9uICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IGFiMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM2MgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gUmVmZXJlbmNlczogYWIwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAzYyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiB0aWNrZXQgZGVmYXVsdCBwZXJtaXNzaW9uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IGFiMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM2UgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gUmVmZXJlbmNlczogYWIwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA2NSBhYjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDNiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgojIyMgUHVibGljIGZpeHR1cmUgc2VjdGlvbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IGFiMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM2MgYWIwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA3YyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IHRfYWIwMDAwODEgYWIwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxNCBEaWFnbm9zdGljIHZvY2FidWxhcnk6IHRpY2tldCBwZXJtaXNzaW9uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IGFiMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMGQgYWIwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0YyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBkZWZhdWx0LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IHRpY2tldCBjb25uZWN0aW9uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IGFiMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwNDkgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IGFiMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDkgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBSZWZlcmVuY2VzOiBhYjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDFmICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBSZWZlcmVuY2VzOiBhYjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDJkICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IGFiMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwNjEgYWIwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxZSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IG93bmVyLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IG93bmVyLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogb3duZXIuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IHRpY2tldCBwZXJtaXNzaW9uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKCiMjIFB1YmxpYyBmaXh0dXJlIHNlY3Rpb24gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IG9hdXRoLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBvYXV0aC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50Lj8gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IHRpY2tldCBjb25uZWN0aW9uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogY2Fubm90IGNvbm5lY3Rpb24uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgojIyBQdWJsaWMgZml4dHVyZSBzZWN0aW9uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4KUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogZGVmYXVsdC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogcGVybWlzc2lvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LgoKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgojIyBQdWJsaWMgZml4dHVyZSBzZWN0aW9uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IG9hdXRoLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IGNhbm5vdCBvYXV0aC4/ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50Lj8gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBvYXV0aC4/ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgojIyBQdWJsaWMgZml4dHVyZSBzZWN0aW9uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IHN1cHBvcnRlZC4/ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBzdXBwb3J0ZWQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBsaW1pdC4/ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiBSZWZlcmVuY2VzOiBhYjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDM4IERpYWdub3N0aWMgdm9jYWJ1bGFyeTogZGVmYXVsdC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50Lj8gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IG9hdXRoIHRpbWVvdXQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IHN1cHBvcnRlZCBvd25lci4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBsaW1pdC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4KUHVibGljIGZpeHR1cmUgY29udGVudC4KUHVibGljIGZpeHR1cmUgY29udGVudC4KUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gIApQdWJsaWMgZml4dHVyZSBjb250ZW50LgpQdWJsaWMgZml4dHVyZSBjb250ZW50LgpQdWJsaWMgZml4dHVyZSBjb250ZW50LgpQdWJsaWMgZml4dHVyZSBjb250ZW50LgoKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBvd25lci4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogcGVybWlzc2lvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKCiMjIFB1YmxpYyBmaXh0dXJlIHNlY3Rpb24gCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBwZXJtaXNzaW9uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKIyMjIFB1YmxpYyBmaXh0dXJlIHNlY3Rpb24gICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IGRlZmF1bHQgY29ubmVjdGlvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogZGVmYXVsdC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBjb25uZWN0aW9uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogc2FmZXR5LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBjYXBhYmlsaXR5LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBkZWZhdWx0LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50Lj8gICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IGNhbm5vdC4gICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBwZXJtaXNzaW9uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBwZXJtaXNzaW9uLiAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKIyMjIFB1YmxpYyBmaXh0dXJlIHNlY3Rpb24KClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LgpQdWJsaWMgZml4dHVyZSBjb250ZW50LgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogY29ubmVjdGlvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IG9hdXRoLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4/ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogY29ubmVjdGlvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogb2F1dGguICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBvYXV0aC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogY29ubmVjdGlvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50Lj8gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogY29ubmVjdGlvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogY29ubmVjdGlvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKCiMjIyBQdWJsaWMgZml4dHVyZSBzZWN0aW9uICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogcGVybWlzc2lvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogY2Fubm90LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKIyMgUHVibGljIGZpeHR1cmUgc2VjdGlvbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogYXBwcm92YWwuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKCiMjIyBQdWJsaWMgZml4dHVyZSBzZWN0aW9uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IHRfYWIwMDAwMWIgYWIwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA1OSBhYjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDU1IGFiMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM2MgODZwdWIwMDAwMyBEaWFnbm9zdGljIHZvY2FidWxhcnk6IG93bmVyIG9hdXRoLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IGFiMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwNTcKUHVibGljIGZpeHR1cmUgY29udGVudC4gUmVmZXJlbmNlczogYWIwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA2YiAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IGFiMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwNjUgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4KUHVibGljIGZpeHR1cmUgY29udGVudC4/ICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LgpQdWJsaWMgZml4dHVyZSBjb250ZW50Lj8gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LgoKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4KClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogcGVybWlzc2lvbiBjb25uZWN0aW9uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKCiMjIyBQdWJsaWMgZml4dHVyZSBzZWN0aW9uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IHRfYWIwMDAwYTUgYWIwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAzYiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IG93bmVyLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IGNvbm5lY3Rpb24uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogb3duZXIgY29ubmVjdGlvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4KUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LgoKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBjYW5ub3QgY29ubmVjdGlvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKIyMjIFB1YmxpYyBmaXh0dXJlIHNlY3Rpb24gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IHRfYWIwMDAwYjIgdF9hYjAwMDAxYiB0X2FiMDAwMDU1IHRfYWIwMDAwMTkgdF9hYjAwMDBhNSB0X2FiMDAwMDAzIHRfYWIwMDAwNzggdF9hYjAwMDAzZiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IGFwcHJvdmFsLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogcGVybWlzc2lvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKIyMgUHVibGljIGZpeHR1cmUgc2VjdGlvbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IGNvbm5lY3Rpb24uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBvYXV0aC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBjb25uZWN0aW9uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IHN1cHBvcnRlZCBjcmVkZW50aWFsLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4KUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBhcHByb3ZhbCBvd25lciBjb25uZWN0aW9uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogb2F1dGguICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogcGVybWlzc2lvbi4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IG93bmVyLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBhcHByb3ZhbCBvd25lciBwZXJtaXNzaW9uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgojIyBQdWJsaWMgZml4dHVyZSBzZWN0aW9uICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4KUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBvYXV0aC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiBEaWFnbm9zdGljIHZvY2FidWxhcnk6IG9hdXRoLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCgpQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKCiMjIyBQdWJsaWMgZml4dHVyZSBzZWN0aW9uIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogYXBwcm92YWwuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIFJlZmVyZW5jZXM6IHRfYWIwMDAwNzggRGlhZ25vc3RpYyB2b2NhYnVsYXJ5OiBhcHByb3ZhbC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gUmVmZXJlbmNlczogODZwdWIwMDAwMyBEaWFnbm9zdGljIHZvY2FidWxhcnk6IGNhbm5vdCBvYXV0aC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogc3VwcG9ydGVkLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoKIyMgUHVibGljIGZpeHR1cmUgc2VjdGlvbiAgICAgICAgICAgICAgICAgICAKClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuCiMjIyBQdWJsaWMgZml4dHVyZSBzZWN0aW9uClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogcGVybWlzc2lvbiBvYXV0aC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogb2F1dGguICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuCgojIyBQdWJsaWMgZml4dHVyZSBzZWN0aW9uIAoKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKUHVibGljIGZpeHR1cmUgY29udGVudC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApQdWJsaWMgZml4dHVyZSBjb250ZW50LiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgClB1YmxpYyBmaXh0dXJlIGNvbnRlbnQuIERpYWdub3N0aWMgdm9jYWJ1bGFyeTogc3VwcG9ydGVkIGNhbm5vdC4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCg=="
+    }
+  },
+  "provenance": {
+    "kind": "Sanitized native-shape regression projection from pinned source tests",
+    "source_revision": "2a8fe198bf00aa719d6a7e53833799587172ad6d",
+    "sanitized": true,
+    "limits": "Synthetic public identities and policy prose; original nulls, types, order, actors and matching relations retained. Not evidence of live execution."
+  }
+}

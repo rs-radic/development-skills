@@ -534,9 +534,11 @@ def observe_scan(transport, store, config, now_ms, filtered=True, guard=None):
         # r11 §3.3: an open or releasing fence joins the live cadence; r12 §3.3: parks read no ClickUp data.
         live |= {r[0] for r in store.conn.execute(
             "SELECT DISTINCT task FROM fences WHERE kind='fence' AND state IN ('open', 'releasing')")}
+    from . import stalled  # informational own-carrier failure is the only held-task observation exception
+    informational = stalled.held_notice_tasks(store.conn)
     rows = [dict(r) for r in store.conn.execute(
-        "SELECT * FROM tasks WHERE terminal=0 AND (hold_reason IS NULL OR hold_reason='') AND phase IS NOT NULL")
-        if r["phase"] not in NO_READ_PHASES]
+        "SELECT * FROM tasks WHERE terminal=0 AND phase IS NOT NULL")
+        if r["phase"] not in NO_READ_PHASES and (not r["hold_reason"] or r["clickup_task_id"] in informational)]
 
     plan = []  # (priority, sort key, task id, ops)
     for row in rows:

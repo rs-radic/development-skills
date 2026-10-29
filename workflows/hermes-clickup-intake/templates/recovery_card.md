@@ -28,30 +28,33 @@ The check is fail-closed only: it can stop you, it never authorizes anything tha
 ## 2. Read
 
 - `hermes kanban --board <configured-board> show ${card} --json`: body, comments, the run ${run_id} summary, referenced handoff files and the approved plan attachments.
-- The operator-supplied, approved project workflow and its operator recovery procedure. Locate these through the installation's own policy references, not another project's or worker profile's private paths.
-- The project's approved plan and exact recovery handoff, including any required attachment paths, sizes and SHA-256 hashes. Verify the bytes before relying on them. See `docs/recovery.md` in this package for the required contract.
+- The operator-supplied canonical project workflow, current-dev-baseline.md procedure and recovery contract. Verify the referenced approved plan, handoff and attachment paths/sizes/SHA-256 before relying on them.
 
-Replace `<configured-board>` in commands with the board name from this installation. Your authority is approval A* plus an explicitly adopted owner recovery rule. This package grants neither. If either is absent or the exact operation is not already authorized, classify (B) or (C); do not mutate the board.
+Replace `<configured-board>` with this installation's board. Your authority is current approval A* and the explicitly operator-adopted recovery scope; a wake grants none. The package supplies neither project approval nor a standing authorization.
 
 ## 3. Classify and own operations
 
 - (A) Technical continuation within A*: the worker's requested operations are already authorized by the approved plan or amendment, or by the orchestrator card's approved routing.
-- (B) Owner-only: a new product choice, scope expansion, ungranted authority, approval/ticket problem, or a security or containment waiver.
-- (C) Cannot act: the needed operation is outside the permitted set below, a precondition fails, or this context also lacks the capability or credential.
+- (B) Owner-only: an actual missing product/security/authority decision or resource unavailable within current approvals, not ordinary authorized technical/ticket repair.
+- (C) Technical gap: a precondition/capability fails. Retain ownership and route it to the existing capable owner; this is not a terminal outcome.
 
-For (A) you perform only operator-only operations (verbs absent from a dispatcher worker's tools), and each only when all hold: W's handoff (block reason, comment or referenced handoff file) names the operation and its exact target; A* authorizes it; its exact content is fixed by that authority (an attachment: the exact approved bytes with SHA-256 verified; an archive: a card that W owns under A*, that the authority names for archive or replacement, and that has no run); every ordering precondition stated by the handoff or plan holds now on the board and has been read back. The permitted operator-only verbs are exactly: `archive` of such a card; `attach` of exact approved bytes to a card W owns under A*; the state-appropriate resume of W (section 4).
+For (A), use the supported normal lifecycle under A* and the operator-adopted recovery scope, not a fixed verb list. The operator-adopted recovery scope must be explicitly verified for this installation; admission, ownership, ordering, receipt and safety guards remain. Before each mutation verify current authority, exact owned lineage/target/content, W's explicit handoff and every ordering precondition on the board. An attachment still requires exact approved bytes/SHA-256; archiving a superseded replacement still requires its named ownership and no run. Use each original owner's role/tools; do not invent card bodies, graph changes, reassignment or completion.
 
-You never create, link, unlink, reassign, complete or edit the body of any card. You never touch CLICKUP-QUESTION, CLICKUP-FENCE, CLICKUP-PARK or gate cards, never contact ClickUp, and never approve or waive anything.
+Two outcomes only: authorized work actually proceeds through the same native owners, or a genuinely human-required question is delivered and read back with bound reply/wait/resume routing. A cannot_act/working ACK, dispatch request, canned operator-action notice or escalated status is intermediate, not completion. If a capability is unavailable, retain ownership and route the approved setup/repair to the existing capable owner; verify actual pickup/progress. Ask a human only for an actual missing decision, authority or resource unavailable within current approvals, not repeat business approval for technical bookkeeping.
+
+For the same existing startup/baseline card, apply the canonical current-dev-baseline.md recipe read above: exact approved plan/current-dev adoption and source handoff, idle DONE with no open run/holder/claim or healthy active descendants, existing unfinished source-parent TODO hold read back before source resume, native release only after complete handoff. Preserve owner/body/dependencies, history/evidence/counters, cleanup and normal invalidation; reuse verified remote/served SHA, DLL and database proof, with no SQL replay or unnecessary rebuild/site switch. No blanket DONE reopening. Never manufacture CURRENT, reset incidents or replay stale/terminal/superseded/unknown carriers.
+
+You never touch CLICKUP-QUESTION, CLICKUP-FENCE, CLICKUP-PARK or gate cards outside their true supported owner; never bypass review/test/approval/security gates, contact ClickUp, invent approval/resolution/credentials or waive anything. No direct lifecycle SQL, private status helpers, worker-guard removal or core/config/profile changes.
 
 Everything else returns to W:
 
 - Operations within W's own tools (create, link, comment, own-card attach): W performs them after it resumes.
 - Deferred operator-only operations, whose precondition W's own work will satisfy: list them in the receipt. W does its part, then blocks again with exactly `kanban_block(kind="capability", reason="CLICKUP-RECOVERY-REQUEST <operations and exact targets>; <now-satisfied precondition>")`. That block is a new bound incident and a new wake.
-- Operator-only operations whose content the authority does not fix (for example an unspecified body edit): you do not author them. Existing-card amendments use W's comment route with exact path/size/SHA references to approved attachments; if W still needs an operator write it requests it in a new capability block with the exact content.
-- Assembly hold for a new card that consumes a deferred operator input: when W must create a card that would be dispatchable at once (no unfinished parent) and whose required input or cleanup/journal target is supplied only by a deferred operator-only operation, W creates it with `parents=["<W>"]`, here `parents=["${card}"]`, and no other parent. Native creation lands it in `todo` while W is not done, so the dispatcher cannot claim it; W's own `kanban_complete`, after W has read back those inputs, is its only release. `initial_status=blocked` is never used for this (a worker cannot unblock it and you have no unblock verb for it). You never release, unblock or link that card. In a later stage verify the hold before attaching or archiving anything: status `todo`, parents exactly [W], no runs, no `ready` or `claimed` event. A card that is unheld or was already dispatched is (C) with the exact gap, and you make no mutation.
+- Unfixed content (for example an unspecified body edit): do not author it. Existing-card amendments use W's comment route with exact path/size/SHA references to approved attachments. Route an exact authorized supported write through its existing capable owner; authority and ordering must be read back first.
+- Assembly hold for a new card that consumes a deferred operator input: when W must create a card that would be dispatchable at once (no unfinished parent) and whose required input or cleanup/journal target is supplied only by a deferred operator-only operation, W creates it with `parents=["<W>"]`, here `parents=["${card}"]`, and no other parent. Native creation lands it in `todo` while W is not done, so the dispatcher cannot claim it; W's own `kanban_complete`, after W has read back those inputs, is its only release. `initial_status=blocked` is never used for this (a worker cannot unblock it and this assembly hold requires native parent release). You never release, unblock or link that card. In a later stage verify the hold before attaching or archiving anything: status `todo`, parents exactly [W], no runs, no `ready` or `claimed` event. A card that is unheld or was already dispatched is (C) with the exact gap, and you make no mutation.
 - Staged handoffs: perform an operator-only operation only once its stated ordering precondition holds now (for example a replacement promotion linked to cleanup before the superseded promotion is archived). Until then it is deferred and the receipt states the exact re-request and W's completion condition (the readbacks W must make before `kanban_complete`).
 
-If nothing is executable now, nothing can be returned to W and nothing can be deferred, the incident is (C).
+If nothing is executable now, retain the same-owner recovery obligation: arrange the capable-owner continuation or the exact genuinely human-required question; an inability label does not finish it.
 
 ## 4. Receipt and native resume of W
 
@@ -69,7 +72,9 @@ Never resume W before the executable operator-only operations are done, and neve
 
 ## 5. Owner-only or cannot act
 
-For (B) or (C) do not decide and do not resume W. Post on W a comment whose first line is exactly `CLICKUP-RECOVERY-ACK v1 card=${card} run=${run_id} disposition=owner` (or `disposition=cannot_act`), followed by the precise question or gap. For (B) ask the owner one precise question in this channel. If (A) work will take longer than one hour, first post `CLICKUP-RECOVERY-ACK v1 card=${card} run=${run_id} disposition=working` to defer re-wakes.
+For (B), do not invent the decision or resume W. Post the bound `CLICKUP-RECOVERY-ACK v1 card=${card} run=${run_id} disposition=owner` with the exact missing decision, checks, choices/consequences and next action. Use the existing integration-owned originating-task question route; verify delivery/readback, the exact reply target and explicit wait/answer/resume route before treating this as a human wait. Never contact ClickUp directly or invent a question resolution.
+
+For (C), do not repeat the unchanged refused call or finalize cannot_act. Record the exact gap and capable-owner handoff with `CLICKUP-RECOVERY-ACK v1 card=${card} run=${run_id} disposition=working`; retain ownership until actual authorized continuation or a verified genuinely human-required question. Use the same working ACK if bounded work will take longer than one hour. A missing supported delivery/transition needs the original capable owner, not a fabricated successful escalation.
 
 ## Never
 
@@ -78,4 +83,4 @@ For (B) or (C) do not decide and do not resume W. Post on W a comment whose firs
 - use `delegate_task` or any worker for these mutations (those contexts are fenced);
 - complete W on the worker's behalf.
 
-Preserve run ${run_id}, its failure and all evidence. Success is W's resumed worker (a new run) or its remaining dependency gate, observed by the intake; your reply is not the success criterion.
+Preserve run ${run_id}, its failure and all evidence. Verify actual same-owner work proceeding (including a required baseline worker), or the exact delivered human question with its bound wait/resume route. A dependency label, ACK or your reply alone is not success.

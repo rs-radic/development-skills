@@ -21,8 +21,9 @@ ClickUp: “Approve plan r1 for development” → orchestration → implementat
 - The poller, durable SQLite state/outbox, ClickUp transport and strict approval parser.
 - Worker templates for planning, orchestration, an approval gate and the final promotion check.
 - Optional human-decision questions from development/review workers back to the originating ClickUp task, with generation-bound answers, answer fences and a bounded parking protocol.
-- Separately optional technical-blocker recovery: bounded, incident-bound operator wakes for approved work, with read-only admission checks. It starts disabled and requires your own approved recovery contract.
-- Credential-shaped outbound-text filtering with bounded correction feedback to the planner; canonical and compatible structured promotion receipts.
+- Separately optional recovery for approved-work stops, stalled transitions and pre-worker approval staging, with bounded operator wakes, read-only admission and verified originating-task questions. It starts disabled and requires your own approved recovery contract.
+- Separately gated amendment-answer continuation, exact expired-ticket recovery, and canonical/compatible structured promotion receipts.
+- The former general outbound content filter is **retired**. Workers must still keep secrets private; transport/destination, integrity, approval and specific question-protocol checks remain.
 - Plan-publication recovery from an explicit, artifact-bound reviewer PASS when a planner used legacy request metadata; current-input and development-approval checks remain in place.
 - Original regression tests with synthetic identities instead of deployment data.
 - An **offline preparation tool** that substitutes your paths, IDs, approvers and planning skills into a new staging directory, leaving the supplied runtime algorithms intact.
@@ -33,7 +34,7 @@ No live configuration, credentials, task history, private project skills, state 
 ## Requirements and compatibility
 
 1. **Windows** with Python. Windows current-user DPAPI protects the ClickUp token; the poller also uses `msvcrt` locking and Windows process identity APIs. Linux/macOS runtime support is not implemented. The runtime uses the Python standard library only.
-2. **A compatible Hermes installation with Kanban and no-agent cron.** The originating deployment was audited against Hermes commit `1fd18277267152893a8a24792b79213e7ca3f899` (`rc.13-v0.21.7`). This is a tested source reference, not a claim that any upstream release with a similar version has identical contracts. Run the supplied real-CLI tests against your installation first. The optional question relay also requires native dependency waits, scratch question/fence/park cards and the exported run/event fields described in the protocol. See [compatibility contracts](docs/protocol.md#hermes-contracts).
+2. **A compatible Hermes installation with Kanban and no-agent cron.** The installed source inspected for this refresh is Hermes commit `1f91da2a277093c6909542d8c725c0c52fae4628`; the older `1fd18277267152893a8a24792b79213e7ca3f899` reference is historical. Source inspection is not a compatibility-test pass or a claim that similarly named releases share these contracts. Run the supplied real-CLI and native-snapshot tests against your installation first. The optional question relay also requires native dependency waits, scratch question/fence/park cards and the exported run/event fields described in the protocol. Pre-worker handling additionally imports the installed native Kanban resolver/read contract via the configured executable’s standard `<root>/venv/Scripts/hermes.exe` layout and reads a transactionally consistent, read-only native SQLite snapshot; a standalone executable shim or alternate layout is not automatically compatible. See [compatibility contracts](docs/protocol.md#hermes-contracts).
 3. Your own Kanban board and `planner`, `plan-reviewer`, `orchestrator`, implementation, review, E2E and integration profiles. Configure model credentials and the dispatcher separately. The [other Hermes workflow in this repository](../hermes-approval-gated-kanban/README.md) explains the overall topology but is a separately dated snapshot, not an installer or guaranteed configuration match.
 4. A **project-specific approved development workflow**. Workers must know the repository, safe worktree policy, test requirements, independent reviews, `dev` promotion, package contents and final cleanup. Optional technical recovery additionally requires an approved, narrowly scoped operator contract and a capable non-worker coordinator. This package does not grant deployment/recovery authority or supply private project instructions.
 5. One ClickUp list, an account/token for the poller, known numeric ClickUp user IDs for approvers, and a Discord channel for passive progress notices if enabled. See [ClickUp authentication](https://developer.clickup.com/docs/authentication). This implementation uses a locally provisioned token; it has no OAuth onboarding or token-refresh service. It is not a multi-tenant application.
@@ -84,7 +85,7 @@ Prepare a **new, absent directory outside both the checkout and your Hermes home
 python tools/prepare.py --settings C:/Private/clickup-installation.json --output C:/Staging/clickup-intake
 ```
 
-The tool validates configuration and source substitution, produces a hash manifest, and refuses an existing destination. It does **not** call Hermes or ClickUp, read credentials, install files or create a scheduler job. Initial configuration is always disabled/shadow, with notifications, automatic handoff and automatic gate completion off, and `cutover_ms: null`. The optional question relay and technical recovery also start off: their separate activation timestamps live in the state database, which preparation does not create. The prepared payload has 25 files, including all eight worker templates, plus `manifest.json`.
+The tool validates configuration and source substitution, produces a hash manifest, and refuses an existing destination. It does **not** call Hermes or ClickUp, read credentials, install files or create a scheduler job. Initial configuration is always disabled/shadow, with notifications, automatic handoff and automatic gate completion off, and `cutover_ms: null`. The optional question relay, amendment continuation and technical recovery also start off: their activation records live in the state database, which preparation does not create. The exact required closure is 18 package modules, ten templates, the entry script and configuration: 30 payload files plus `manifest.json`. The manifest count is computed from the payload, and preparation refuses missing required files before creating the output.
 
 Generated layout:
 
@@ -102,7 +103,7 @@ The generated files contain your private deployment metadata. Do not commit or s
 
 ## 3. Install disabled and provision the token
 
-Back up your own deployment first. For a **new** installation, copy the generated `scripts` contents and integration directory into the same relative locations under `hermes_home`. Check for collisions first: do not overwrite an existing `templates` file, state database, integration configuration or poller. The templates must sit alongside the package; moving them breaks imports. Include `blocker_triage.md`, `question_protocol.md` and `recovery_card.md` as well as the original templates.
+Back up your own deployment first. For a **new** installation, copy the generated `scripts` contents and integration directory into the same relative locations under `hermes_home`. Check for collisions first: do not overwrite an existing `templates` file, state database, integration configuration or poller. The templates must sit alongside the package; moving them breaks imports. Include all ten templates, especially `blocker_triage.md`, `question_protocol.md`, `recovery_card.md`, `diagnostic_card.md` and `preworker_card.md`; install the complete package, including `preworker.py`, `preworker_snapshot.py` and `stalled.py`.
 
 **This flat-layout copy procedure is not an in-place upgrade.** The supplied entry resolves configuration from its installation root, not the current working directory. An existing entry may instead select an immutable release; replacing its adjacent, unversioned files would then leave the active code unchanged. Before an authorized upgrade, resolve the entry's actual imported package/template paths and explicit configuration root, preserve local bindings and state, and test a separate copy. This package supplies neither a release switcher nor an automatic upgrade/rollback installer; do not overwrite a live release with prepared files.
 
@@ -161,6 +162,17 @@ C:/Hermes/hermes-agent/venv/Scripts/python.exe C:/Hermes/scripts/clickup_dedicat
 
 New orchestrator bodies rendered while the feature is enabled require every descendant/amendment card to carry the question protocol. `protocol-comment` instead queues one idempotent protocol comment for each currently eligible, non-done/non-archived watched card of an unheld, nonterminal ClickUp task, never the approval gate. It does not rewrite card bodies or prove that a running worker adopted the instructions. Both commands take the integration lock and can initialize local state even when polling is disabled; neither reads the ClickUp token. Queued comments require a subsequent enabled **live** scan to be sent. See [worker questions and answers](docs/protocol.md#human-decision-question-relay) before enabling.
 
+### Optional: enable amendment-answer continuation
+
+Amendment continuation has a third, separate state-backed gate. After the question relay is enabled and a separately reviewed drain/cutover receipt exists, the authorized operator may run:
+
+```text
+blockers amendment-status
+blockers amendment-enable --drain-sha <receipt-SHA256>
+```
+
+The digest must be 64 lowercase hex characters; the command records it, not the receipt's contents or approval. Repeating enable preserves the first record. Reviewed plan markers can then bind an existing material question to a newer, explicitly approved revision without creating a duplicate work graph. This does not reuse old development approval or infer missing human answers. Manual historical adoption and rollback admission controls are deliberately separate writer commands; follow [amendment continuation](docs/amendments.md), not a generic unblock recipe.
+
 ### Optional: adopt technical-blocker recovery
 
 Leave this separate feature **disabled** unless an operator has approved the project's recovery authority and supplied every reference required by `templates/recovery_card.md`: configured board, current approved plan/amendment, workflow/recovery instructions, exact paths and artifact hashes where required. The public template is not a substitute for that contract. The coordinator must be an authorized non-worker operator context, not a dispatcher worker or delegated child. Neither this preparation nor enabling the question relay enables recovery.
@@ -174,7 +186,7 @@ recovery adopt --card <work-card-id> --run <stopped-run-id>
 recovery status
 ```
 
-`enable` records/replaces `meta.recovery_cutover_ms`; new qualifying stop events at/after that cutoff become eligible. `adopt` records the exact existing card/run for a subsequent live scan; it does not itself send a wake or reopen a finalized incident. Do not use repeated `enable` as a status check. The intake wakes the coordinator through a separate unassigned carrier, not by restarting the worker. Recovery permits only approved archive/attachment operations and state-appropriate resumption of the same work card, with required receipt/ACK comments and repeated `recovery-check` admission. It cannot grant scope, bypass child-context guards, restart the gateway or write ClickUp from a worker. See [the full recovery contract, budgets and rollback procedure](docs/recovery.md).
+`enable` records/replaces `meta.recovery_cutover_ms`; new qualifying stop events at/after that cutoff become eligible. `adopt` records the exact existing card/run for a subsequent live scan; it does not itself send a wake or reopen a finalized incident. Do not use repeated `enable` as a status check. The intake wakes the coordinator through a separate unassigned carrier, not by restarting the worker. Recovery uses the project’s explicitly adopted, already-authorized native operations, with exact ownership/target/content/ordering checks, receipts and repeated `recovery-check` admission. It does not impose the superseded fixed archive/attach/resume-only list, and it does not authorize arbitrary operations. Approval-staging anchors have no native run and may proceed only through the normal intake staging path. It cannot grant scope, bypass child-context guards, restart the gateway or write ClickUp from a worker. See [the full recovery contract, budgets and rollback procedure](docs/recovery.md).
 
 ## 5. Schedule one scan per minute
 
@@ -219,11 +231,16 @@ Prefix these with `<python_exe> <installed-entry>`:
 | `blockers protocol-comment` | While relay is enabled, read eligible Kanban cards and queue protocol comments for existing work; no immediate external write. |
 | `blockers disable` | Stop new question detection/relay staging and queue its controlled drain/alerts; does not stop running workers or ordinary intake. |
 | `blockers rollback-preflight` | Check relay-specific rollback blockers under the lock; exit 0 with `rollback preflight OK`, otherwise exit 1 with reasons. |
+| `blockers amendment-status` | Lock-free, read-only amendment bindings/activation/admission/rollback status; missing state exits 2. |
+| `blockers amendment-enable --drain-sha <SHA256>` | Record first amendment enablement under the writer lock; relay must be enabled and admission open. |
+| `blockers adopt-amendment --blocker <N> --approval <N> --receipt <path> --receipt-sha <SHA256>` | Explicit historical binding with exact local receipt/hash and current native/approval checks; no immediate external write. |
+| `blockers rollback-prepare --target <supported-target>` | Transactionally check amendment rollback readiness, then close admission if ready. Only the installed fixed target is accepted. |
+| `blockers admission-open` | Reopen that local admission gate under the lock; not an install, approval or worker resume. |
 | `recovery enable` / `disable` | Set/replace the separate recovery cutoff, or disable incidents and retire unsent carrier effects; neither changes ordinary intake or the question relay. |
 | `recovery adopt --card <card> --run <run>` | Record one exact eligible existing incident; future live polling handles its wake. |
 | `recovery status` | Report recovery cutoff/state counts under the lock; may initialize local schema. |
 | `recovery rollback-check` | Recovery-only drain check under the lock: exit 0 with `recovery rollback-check OK`, otherwise exit 1. |
-| `recovery-check --card <card> --run <run>` | Read-only, no lock: exit 0 `CURRENT`, 3 `STALE`, or 2 `UNAVAILABLE`. A current incident is not authority to act. |
+| `recovery-check --card <card-or-approval-anchor> --run <run>` | Read-only, no lock: exit 0 `CURRENT`, 3 `STALE`, or 2 `UNAVAILABLE`. Diagnostics may read multiple native obligations; staging uses a native read snapshot. Run 0 is an explicit no-worker binding, never a fabricated run. A current incident is not authority to act. |
 | `outbox resend <id>` | Rearm failed/ambiguous work for a later scan; first verify whether the external effect already happened. |
 | `outbox abandon <id>` | Cancel unresolved work; preserve successful effects. |
 | `ticket-check --gate <card> --task <task> --rev <N> --sha <SHA256>` | Read local state and the gate. Only exit 0 with `VALID epoch=...` permits promotion; exit 3 is invalid. |
@@ -236,20 +253,26 @@ Before any separately authorized code rollback, run `blockers rollback-preflight
 
 State lives under `integrations/clickup-dedicated-panel`: SQLite DB/WAL/SHM, lock, staging and rotating logs. Back it up consistently while stopped; never publish it. Preserve unresolved staging: it can contain exact bytes needed for safe retry. Authentication failures, status mismatch and exhausted retries need investigation, not blind resends. No automatic production deployment is included.
 
+The retired content filter does not automatically revive an old rejected publication. `outbox resend <attachment-effect-id>` can rearm only the exact never-sent filtered attachment → comment → status chain after verifying unchanged task/generation, payload/preconditions, dependency order, zero sends and no transport mirrors. It preserves the reviewed bytes and accounting; later live polling still applies ordinary send gates. Changed, already attempted, abandoned, partially delivered or ambiguous work is not this recovery case. See [outbound content policy](docs/protocol.md#outbound-content-policy).
+
 Technical recovery has its own disable/drain and rollback check; passing it does not imply the question relay is safe to remove. Disabling recovery cannot recall a chat wake, stop a running worker or reverse a completed operator operation. See [technical recovery](docs/recovery.md#disable-drain-and-rollback).
 
 ## Tests and verification limits
+
+**This snapshot retains documented source-test failures.** See [actual execution results and exact failure IDs](docs/known-test-failures.md); it is not advertised as a green-suite release.
 
 From this package directory on Windows, set the test-only executable override and run:
 
 ```powershell
 $env:CLICKUP_INTAKE_TEST_HERMES_EXE = 'C:/Hermes/hermes-agent/venv/Scripts/hermes.exe'
 $env:PYTHONDONTWRITEBYTECODE = '1'
-python -B -m unittest discover -s tests -v
+python -B -c "import os,sys,unittest; from clickup_intake import main; main.HERMES_EXE=os.environ['CLICKUP_INTAKE_TEST_HERMES_EXE']; unittest.main(module=None, argv=['unittest','discover','-s','tests','-v',*sys.argv[1:]])"
 ```
 
-The rollback compatibility cases use the supplied sanitized `tests/fixtures/rollback_base/` and `tests/fixtures/recovery_base/` snapshots; they do not require access to the original private Git history. For `tests/test_recovery_cli.py`, use a full public Git clone containing commit `532c102bdaa5bf2f7238f37973ce9e0563ddf0a9`: its source audit compares the public candidate against that public baseline, including untracked candidate files. A ZIP export or shallow clone without that commit is insufficient.
+The test command binds the selected executable only inside the test process, including native-schema readers that derive their source root from `main.HERMES_EXE`. It does not edit the runtime, installation or live configuration. A plain discovery command with an installation elsewhere may fail on the inert `C:/Hermes` example path. Extra unittest arguments can be appended to select a focused module.
+
+The rollback compatibility cases use the supplied sanitized `tests/fixtures/rollback_base/` and `tests/fixtures/recovery_base/` snapshots. Other source audits/baseline loaders use public Git history or their explicitly named public fixtures, not private deployment history. Use a full public clone retaining `532c102bdaa5bf2f7238f37973ce9e0563ddf0a9` and `45f7c252df27451248047b25218faf9f8b334417`; a ZIP or shallow clone may not satisfy those audits. Consult the actual test loader and [verification notes](docs/verification.md) for each baseline.
 
 The real-CLI cases create **temporary Hermes homes/boards beneath `tests/.tmp`**; they do not start a gateway, call a model or contact ClickUp. Run them serially, never alongside another suite using that fixed home. Do not run inside a restricted live worker. They intentionally remove inherited Hermes routing variables from their own child processes to test an isolated home; that test isolation is not an operational guard-bypass recipe. Tests fail rather than pretending success if the CLI is missing or incompatible. If interrupted, verify no test process remains before removing its exact temporary home and retrying; never delete another test run's directory.
 
-The source includes isolated question/answer, correction, fence/park and technical-recovery detection, carrier, admission, budget, disable and rollback coverage. Those scenarios are not observations of a live human exchange or proof of a completed live recovery rollout. Publication verification and the source/publish boundary are recorded in [verification notes](docs/verification.md). Offline/fake-transport and local-CLI success is **not** proof of live ClickUp UI rendering, account permissions or production readiness. The originating installation's UI quote/reply-with-quote tests were explicitly not run; do not inherit that exception as your own test PASS.
+The source includes isolated amendment, question/answer, fence/park, expired-ticket, stalled-diagnostic, pre-worker-snapshot, carrier, admission, budget, disable and rollback coverage. The previously published 642-test result belongs to the older public revision, not this refreshed tree. Source-lane reports and current public execution must be recorded separately. Those scenarios are not observations of a live human exchange or proof of a completed live recovery rollout. Publication verification and the source/publish boundary are recorded in [verification notes](docs/verification.md). Offline/fake-transport and local-CLI success is **not** proof of live ClickUp UI rendering, account permissions or production readiness. The originating installation's UI quote/reply-with-quote tests were explicitly not run; do not inherit that exception as your own test PASS.

@@ -37,10 +37,10 @@ import shutil
 import sys
 import time
 
-from . import clickup_api, clickup_effects, engine, observe, render, rules
+from . import clickup_api, clickup_effects, engine, observe, render, rules, stalled
 from . import kanban_port as kp
 from .config import load_config
-from .contracts import EffectIntent, Outcome, Preconditions, RowState, load_preconditions
+from .contracts import EffectIntent, Outcome, Preconditions, RowState, TransportResult, load_preconditions
 from .parse import parse_comment
 from .store import Store, load_recovery_snapshot, load_ticket_snapshot, open_readonly, recovery_snapshot, \
     revoke_live_tickets
@@ -92,6 +92,240 @@ def _ok(r):
     return r is not None and r.outcome is Outcome.OK
 
 
+PLAN_NAME = re.compile(r"clickup-plan-r[1-9][0-9]*\.md")
+MARKER_SCAN_MAX = 1024 * 1024  # workflow repair r3 §3.1: files over 1 MiB are not scanned for markers
+ROLLBACK_TARGET = "45f7c252df27"  # public release of source 149042d: the built-in rollback target of this instance
+
+
+def _observed_attachment(a):
+    """``{name, sha256}`` of a stored attachment; a plan file also carries its r3 §3.1 ``incorporates`` markers."""
+    out = {"name": a.get("filename"), "sha256": a.get("sha256")}
+    data = a.get("data")
+    if isinstance(out["name"], str) and PLAN_NAME.fullmatch(out["name"]) and isinstance(data, bytes):
+        if len(data) > MARKER_SCAN_MAX:
+            out["incorporates_oversize"] = True
+        else:
+            out["incorporates"], ignored = rules.parse_incorporates(data.decode("utf-8", "replace"))
+            if ignored:
+                out["incorporates_ignored"] = ignored
+    return out
+
+
+# A fixed allowance counts attempted native reads, including failures, across the whole
+# target scan. Incomplete source/dependency discovery is checkpointed, not discarded.
+PREWORKER_READ_LIMIT = 64
+
+
+class _PreworkerReads:
+    def __init__(self, port, clock):
+        self.port, self.clock = port, clock
+        self.remaining = PREWORKER_READ_LIMIT
+        self.cache, self.current = {}, set()
+        self.exhausted = False
+        self.proof = None
+        self.binding = None
+
+    def seed(self, observations):
+        for key, value in observations.items():
+            if key not in self.cache:  # discovery only; never evidence at admission/effect
+                self.cache[key] = value
+
+    def saved(self):
+        return {k: v for k, v in self.cache.items() if v['value'] is not None}
+
+    def take(self):
+        if self.remaining <= 0:
+            self.exhausted = True
+            return False
+        self.remaining -= 1
+        return True
+
+    def invalidate(self, cards):
+        for card in cards:
+            for kind in ('show', 'attachments'):
+                key = kind + ':' + card
+                self.cache.pop(key, None)
+                self.current.discard(key)
+
+    def read(self, kind, card, fresh=False):
+        key = kind + ':' + card
+        if fresh and key not in self.current:
+            self.cache.pop(key, None)
+        if key in self.cache:
+            return self.cache[key]['value']
+        if not self.take():
+            return None
+        started = self.clock()
+        result = getattr(self.port, kind)(card)
+        value = result.json if _ok(result) else None
+        if self.clock() - started > 5 * 60_000:
+            value = None  # one overlong read is not a renewable complete observation
+        if kind == 'show':
+            if not isinstance(value, dict) or (value.get('task') or {}).get('id') != card:
+                value = None
+        elif not isinstance(value, list):
+            value = None
+        else:
+            observed = []
+            for att in value:
+                if not isinstance(att, dict) or not PLAN_NAME.fullmatch(str(att.get('filename', ''))):
+                    continue
+                try:
+                    with open(att['stored_path'], 'rb') as f:
+                        data = f.read(MARKER_SCAN_MAX + 1)
+                except (KeyError, OSError, TypeError):
+                    continue
+                if len(data) <= MARKER_SCAN_MAX:
+                    observed.append(_observed_attachment(dict(att, data=data, sha256=_sha(data))))
+            value = observed
+        self.current.add(key)
+        self.cache[key] = dict(at=self.clock(), value=value)
+        return value
+
+
+class _PreworkerTransport:
+    def __init__(self, inner, reader):
+        self.inner, self.reader = inner, reader
+
+    def request(self, *args, **kwargs):
+        if not self.reader.take():
+            return TransportResult(Outcome.RATE_LIMITED)
+        return self.inner.request(*args, **kwargs)
+
+
+def _preworker_binding(task, approval, state):
+    return _sha(json.dumps([approval, {k: task[k] for k in ('input_gen', 'scope_gen', 'classified_gen',
+        'published_rev', 'published_sha256', 'terminal', 'hold_reason')},
+        {k: state[k] for k in ('requests', 'sources', 'blockers', 'fences', 'stage_rows')}], sort_keys=True))
+
+
+def _preworker_discover(task, approval, state, reader, extra=(), recheck=False):
+    """Resolve the exact PASS source, then traverse every real required parent edge.
+
+    Cached continuation is approval/input-bound DISCOVERY ONLY. No cached show
+    authorizes an effect: _preworker_collect re-derives the full current closure.
+    """
+    from . import preworker
+    cards, atts, source = {}, {}, None
+    # A delivered publication is a locator, never PASS evidence. Revalidate its exact
+    # request/reviewer/attachment contract; do not reread unrelated historical requests.
+    hints = [p['card'] for p in state['sources'] if p.get('sha256') == approval['plan_sha256']
+             and p.get('card') in state['requests']]
+    candidates = list(dict.fromkeys(hints + state['requests']))
+    for card in candidates:
+        shown, attachments = reader.read('show', card), reader.read('attachments', card)
+        if shown is None or attachments is None:
+            return cards, atts, False
+        ev = preworker.source_evidence(shown, attachments, task['clickup_task_id'])
+        if ev and ev['rev'] == approval['rev'] and ev['sha256'] == approval['plan_sha256']:
+            if recheck:
+                reader.invalidate({card})
+            shown = reader.read('show', card, fresh=True)
+            attachments = reader.read('attachments', card, fresh=True)
+            ev = preworker.source_evidence(shown, attachments, task['clickup_task_id'])
+            if not ev or ev['rev'] != approval['rev'] or ev['sha256'] != approval['plan_sha256']:
+                return cards, atts, False
+            source = card
+            cards[card], atts[card] = shown, attachments
+            break
+    if source is None:
+        return cards, atts, False
+    roots = preworker.targets(approval, state) | {b['question_card'] for b in state['blockers']} | set(extra)
+    roots |= {f['fence_card'] for f in state['fences'] if f['state'] in ('open', 'releasing')}
+    if recheck:
+        reader.invalidate(roots)
+    if recheck:
+        return cards, atts, True  # complete closure comes from the read-only snapshot
+    pending, seen = roots | {source}, set()
+    while pending:
+        card = min(pending)
+        pending.remove(card)
+        if card in seen:
+            continue
+        seen.add(card)
+        shown = reader.read('show', card, fresh=card in roots)
+        if shown is None or not isinstance(shown.get('parents'), list):
+            return cards, atts, False
+        cards[card] = shown
+        parents = shown['parents']
+        if any(not isinstance(p, str) for p in parents):
+            return cards, atts, False
+        pending.update(set(parents) - seen)
+        if card == approval['orchestrator_card']:
+            gates = rules.gates_of(shown, approval['rev'], approval['plan_sha256'])
+            if gates:
+                pending.update({gates['promotion']} - seen)
+    return cards, atts, True
+
+
+def _preworker_collect(task, approval, state, reader, extra=(), recheck=False):
+    """Bounded discovery is not evidence: every accepted closure gets a new native snapshot."""
+    from . import preworker
+    direct = isinstance(reader.port, kp.KanbanCli)
+    if not direct:
+        _, _, complete = _preworker_discover(task, approval, state, reader, extra, recheck)
+        if not complete:
+            return {}, {}, False
+    factory = getattr(reader.port, '_preworker_snapshot', None)
+    if factory is None:
+        return {}, {}, False
+    roots = preworker.targets(approval, state) | {b['question_card'] for b in state['blockers']} | set(extra)
+    roots |= {f['fence_card'] for f in state['fences'] if f['state'] in ('open', 'releasing')}
+    if reader.proof is not None:
+        reader.proof.close()
+    reader.proof = proof = factory(roots | set(state['requests']), reader.take, reader.clock)
+    if proof is None:
+        return {}, {}, False
+    cards, atts, source = {}, {}, None
+    hints = [p['card'] for p in state['sources'] if p.get('sha256') == approval['plan_sha256']
+             and p.get('card') in state['requests']]
+    for card in dict.fromkeys(hints + state['requests']):
+        shown = proof.shows.get(card)
+        if shown is None:
+            continue
+        attachments = []
+        for att in proof.attachments.get(card, []):
+            if not PLAN_NAME.fullmatch(str(att.get('filename', ''))):
+                continue
+            try:
+                with open(att['stored_path'], 'rb') as stream:
+                    data = stream.read(MARKER_SCAN_MAX + 1)
+            except (KeyError, OSError, TypeError):
+                continue
+            if len(data) <= MARKER_SCAN_MAX:
+                attachments.append(_observed_attachment(dict(att, data=data, sha256=_sha(data))))
+        ev = preworker.source_evidence(shown, attachments, task['clickup_task_id'])
+        if ev and ev['rev'] == approval['rev'] and ev['sha256'] == approval['plan_sha256']:
+            for att in proof.attachments.get(card, []):
+                match = next((a for a in attachments if a['name'] == att.get('filename')
+                              and a['sha256'] == ev['sha256']), None)
+                if match is not None:
+                    proof.files[att['stored_path']] = match['sha256']
+            source, atts[card] = card, attachments
+            break
+    if source is None:
+        return {}, {}, False
+    pending, seen = roots | {source}, set()
+    while pending:
+        card = pending.pop()
+        if card in seen:
+            continue
+        seen.add(card)
+        shown = proof.shows.get(card)
+        if (not isinstance(shown, dict) or (shown.get('task') or {}).get('id') != card
+                or not isinstance(shown.get('parents'), list)
+                or any(not isinstance(p, str) for p in shown['parents'])):
+            return {}, {}, False
+        cards[card] = shown
+        pending.update(set(shown['parents']) - seen)
+        if card == approval['orchestrator_card']:
+            gates = rules.gates_of(shown, approval['rev'], approval['plan_sha256'])
+            if gates:
+                pending.update({gates['promotion']} - seen)
+    reader.binding = _preworker_binding(task, approval, state)
+    return cards, atts, proof.valid()
+
+
 # ----------------------------------------------------------------------------------------- capture
 class _Capture:
     """ClickUp transport view that records this scan's GET results for the engine (no persistence)."""
@@ -120,6 +354,9 @@ class Glue:
         self.comments, self.confirmed, self.roots = {}, set(), {}
         self.obs = engine.Observation(scan_started_ms=now)
         self._att = {}
+        self._att_failed = set()
+        self._diagnostic_refresh = {}  # at most one bounded target-local L per task per scan
+        self._preworker_reads = {}  # one shared native read allowance per task/scan
 
     # -- meta
     def meta(self, key, default=None):
@@ -186,9 +423,12 @@ class Glue:
         res = observe.observe_scan(_Capture(self.inner, self), self.store, self.cfg, self.now, guard=self.guard)
         n_guard = len(self.guard.alerts)
         self.alerts.extend(res.alerts)
+        self.early_progress(shadow=shadow)
         self.observe_cards()
+        self.recovery_readbacks()
         self.progress_pass()
         engine.evaluate(self.store, self.now, self.obs, self.cfg)
+        self._refresh_arriving_fences(res)
         if shadow:
             self.shadow_report(res)
         else:
@@ -198,6 +438,183 @@ class Glue:
         self.close_cards()
         self.sweep_staging()
         self.finish()
+
+    def early_progress(self, shadow=False):
+        """Current approved staging must not wait for unrelated historical native cards.
+
+        Only a completed L in this scan qualifies. Source search and dependency expansion
+        continue locally under a shared request allowance, never through unrelated history.
+        """
+        from . import preworker
+        self.obs = dataclasses.replace(self.obs, comments=dict(self.comments), confirmed=frozenset(self.confirmed))
+        apps = [dict(a) for a in self.c.execute("SELECT * FROM approvals WHERE state IN ('recorded','staged') ORDER BY id")]
+        if self.meta(engine.RECOVERY_KEY) is not None:
+            apps += [dict(a) for a in self.c.execute("SELECT a.* FROM approvals a WHERE a.state IN (%s) AND EXISTS"
+                     " (SELECT 1 FROM recoveries r WHERE r.approval_id=a.id AND r.class=? AND r.state='open')"
+                     % engine._in(engine.WATCHED_STATES), (preworker.CLASS,))]
+        for a in apps:
+            tid = a['task']
+            t = dict(self.c.execute('SELECT * FROM tasks WHERE clickup_task_id=?', (tid,)).fetchone())
+            if (tid not in self.confirmed or t['last_light_ms'] != self.now or t['terminal'] or t['hold_reason']
+                    or t['classified_gen'] != t['input_gen'] or not preworker.current_plan(t, a)
+                    or t['phase'] not in preworker.PHASES or not rules.barrier_ok(t, 0, self.store.clock(), self.now)
+                    or self.c.execute("SELECT 1 FROM approvals WHERE task=? AND id>? AND state IN (%s)" %
+                                      engine._in(engine.ACTIVE + engine.WATCHED_STATES), (tid, a['id'])).fetchone()):
+                continue
+            state = preworker.context(self.c, tid)
+            want = set()
+            if self.meta(engine.RECOVERY_KEY) is not None:
+                for inc in self.c.execute("SELECT * FROM recoveries WHERE approval_id=? AND class=? AND state='open'",
+                                          (a['id'], preworker.CLASS)):
+                    want |= {r[0] for r in self.c.execute("SELECT result_ref FROM outbox WHERE kind='kb_create'"
+                               " AND state='done' AND idem_key LIKE ? AND result_ref IS NOT NULL",
+                               (engine._rcv_key(tid, inc['card'], 0, 0)[:-1] + '%',))}
+            reader = self.preworker_reader(tid)
+            key = 'preworker_reads:%d' % a['id']
+            binding = _preworker_binding(t, a, state)
+            prior = self.meta(key) or {}
+            if prior.get('binding') == binding:
+                reader.seed(prior.get('observations', {}))
+            cards, atts, complete = _preworker_collect(t, a, state, reader, extra=want)
+            self.set_meta(key, None if complete else dict(binding=binding, observations=reader.saved()))
+            if not complete:
+                continue
+            now = self.store.clock()
+            if now - t['last_light_ms'] > 5 * 60_000:
+                if not self.diagnostic_input(tid, reader=reader):
+                    continue
+                # Only current roots need renewal; historical source candidates are not
+                # required obligations. A changed root adds its complete parent closure.
+                reader.invalidate(set(atts) | preworker.targets(a, state) |
+                                  {b['question_card'] for b in state['blockers']} |
+                                  {f['fence_card'] for f in state['fences'] if f['state'] in ('open', 'releasing')})
+                cards, atts, complete = _preworker_collect(t, a, state, reader, extra=want)
+                if not complete:
+                    continue
+            latest = dict(self.c.execute('SELECT * FROM tasks WHERE clickup_task_id=?', (tid,)).fetchone())
+            current_a = dict(self.c.execute('SELECT * FROM approvals WHERE id=?', (a['id'],)).fetchone())
+            if (_preworker_binding(latest, current_a, preworker.context(self.c, tid)) != binding
+                    or tid not in self.confirmed):
+                continue
+            t, a, now = latest, current_a, self.store.clock()
+            self.obs = dataclasses.replace(self.obs, cards=cards, attachments=atts,
+                comments=dict(self.comments), confirmed=frozenset(self.confirmed),
+                workers={c: p for c, w in cards.items() if (p := kp.worker_progress(w, now)) is not None})
+            ctx = engine._Ctx(self.store, now, self.obs, self.cfg)
+            if (now - t['last_light_ms'] > 5 * 60_000
+                    or reader.proof is None or not reader.proof.valid()
+                    or engine._pass_source(ctx, tid, a['rev'], a['plan_sha256']) is None):
+                continue
+            if a['state'] in preworker.STATES:
+                if preworker.inspect(t, a, state, cards, atts, now, self.now) is None:
+                    continue
+                engine._approvals(ctx, tid, early_only=a['id'])
+            current = ctx.approval(a['id'])
+            if current['state'] == 'released' and self.meta(engine.RECOVERY_KEY) is not None and self.c.execute(
+                    "SELECT 1 FROM recoveries WHERE approval_id=? AND class=? AND state='open'",
+                    (a['id'], preworker.CLASS)).fetchone():
+                # Only an already admitted early incident is monitored here. The existing
+                # start handler verifies completed orchestration/guarded promotion, not READY.
+                engine._start(ctx, tid, current)
+            self.obs = dataclasses.replace(self.obs, early_approvals=self.obs.early_approvals | {a['id']})
+            if self.meta(engine.RECOVERY_KEY) is not None:
+                for inc in map(dict, self.c.execute("SELECT * FROM recoveries WHERE approval_id=? AND class=?"
+                                                    " AND state='open'", (a['id'], preworker.CLASS)).fetchall()):
+                    with self.store.transaction():
+                        preworker.step(ctx, tid, ctx.task(tid), inc)
+                with self.store.transaction():
+                    preworker.detect(ctx, tid)
+            bases = engine._keys(tid, a)
+            notice = 'clickup-dp:%s:recovery-notice:%s:0' % (tid, preworker.anchor(a))
+            subscriptions = {'clickup-dp:%s:subscribe:%s' % (tid, card)
+                             for card in preworker.targets(a, preworker.context(self.c, tid))}
+            keys = {r['idem_key'] for r in map(dict, self.c.execute('SELECT * FROM outbox WHERE task=?', (tid,)))
+                    if any(r['idem_key'] == b or r['idem_key'].startswith(b + ':') for b in bases)
+                    or r['idem_key'] in subscriptions
+                    or r['idem_key'] == notice or r['idem_key'].startswith(notice + ':')
+                    or r['idem_key'].startswith(engine._rcv_key(tid, preworker.anchor(a), 0, 0)[:-1])}
+            if not shadow:
+                self.execute(only=keys)
+
+    def preworker_reader(self, tid):
+        if tid not in self._preworker_reads:
+            self._preworker_reads[tid] = _PreworkerReads(self.port, self.store.clock)
+        return self._preworker_reads[tid]
+
+    def _refresh_arriving_fences(self, observation):
+        """One real target-local F then L for an answered fence newer than this scan's coverage.
+
+        Keep scan membership and old timestamps intact. Resume an existing full cursor as-is;
+        only a completed post-anchor full and its later clean light can authorize release.
+        """
+        ctx = engine._Ctx(self.store, self.store.clock(), self.obs, self.cfg)
+        cut = engine._cutover_ms(ctx)
+        if cut is None:
+            return
+        attempted = set()
+        fences = self.c.execute("SELECT * FROM fences WHERE kind='fence' AND state='open'"
+                                " AND anchor_ms>? ORDER BY id", (self.obs.scan_started_ms,)).fetchall()
+        for f in map(dict, fences):
+            tid, anchor = f['task'], f['anchor_ms']
+            now = self.store.clock()
+            t = ctx.task(tid)
+            if (tid in attempted or now < anchor or t['terminal'] or t['hold_reason']
+                    or tid not in self.obs.confirmed or t['classified_gen'] != t['input_gen']
+                    or now < (t['quiet_until_ms'] or 0)):
+                continue
+            w, parent = self.obs.cards.get(f['card']), self.obs.cards.get(f['fence_card'])
+            if (not w or not parent or kp.protocol_parent(f['card'], w, parent, cut) != ('fence', 'record')):
+                continue
+            blockers = [dict(b) for b in self.c.execute(
+                "SELECT * FROM blockers WHERE card=? AND state NOT IN (%s)" % engine._in(engine.BLOCKER_FINAL),
+                (f['card'],))]
+            if any(self.obs.cards.get(b['question_card']) is None for b in blockers):
+                continue
+            answered = [b for b in blockers if rules.status(self.obs.cards[b['question_card']]) == 'done']
+            if (not answered or any(b['state'] != 'delivered' or not engine._settled(ctx, t, b) for b in answered)
+                    or rules.barrier_ok(t, anchor, now, self.obs.scan_started_ms)):
+                continue
+            attempted.add(tid)
+            transport = self.guard.transport(_Capture(self.inner, self), task=tid)
+            full = observe.full_pass(transport, self.store, self.cfg, tid, now)
+            observation.passes.append(full)
+            self.alerts.extend(full.alerts)
+            t = ctx.task(tid)
+            if (not full.complete or full.activity or full.hold or full.terminal or full.not_admitted
+                    or (t['full_started_ms'] or 0) < max(anchor, t['quiet_until_ms'] or 0)):
+                observation.deferred = True
+                continue
+            light = observe.light_pass(transport, self.store, self.cfg, tid, self.store.clock())
+            observation.passes.append(light)
+            self.alerts.extend(light.alerts)
+            if not light.complete or light.activity or light.hold or light.terminal or light.not_admitted:
+                observation.deferred = True
+                continue
+            self.obs = dataclasses.replace(self.obs, comments=dict(self.comments), confirmed=frozenset(self.confirmed))
+            # Only the existing fence evaluator is repeated, not task commands or the global scan.
+            engine._fences(engine._Ctx(self.store, self.store.clock(), self.obs, self.cfg), tid, discovered_now=True)
+        if attempted:
+            self.guard.note_deferred(observation.deferred)
+
+    def recovery_readbacks(self):
+        """Held tasks are not ordinarily polled. Reuse bounded transport readback for an accepted own-hold notice.
+        This reads only; it neither retries a write nor clears the failed carrier's execution hold."""
+        rows = self.c.execute("SELECT o.* FROM outbox o JOIN tasks t ON t.clickup_task_id=o.task WHERE"
+                              " o.kind='cu_comment' AND o.state='done' AND o.idem_key LIKE '%:recovery-notice:%'"
+                              " AND t.terminal=0 AND t.hold_reason IS NOT NULL").fetchall()
+        for row in map(dict, rows):
+            p, key = json.loads(row["body"]), row["idem_key"]
+            hold = self.c.execute("SELECT hold_reason FROM tasks WHERE clickup_task_id=?", (row["task"],)).fetchone()[0]
+            if not p.get("recovery_delivery_hold") or p["recovery_delivery_hold"] != hold or self.meta("recovery_verified:" + key):
+                continue
+            mirror = self.row(key + "#cu")
+            if mirror is None or mirror["state"] != "done":
+                continue
+            effect = clickup_effects._Effect(self.guard.transport(self.inner, task=row["task"]), self.store,
+                                              self.cfg, key + "#cu", self.now, lambda _: False)
+            found, complete = effect._find()
+            if complete and found is not None and found == row["result_ref"]:
+                self.set_meta("recovery_verified:" + key, {"ref": found, "sha256": row["payload_sha256"]})
 
     def progress_pass(self):
         """S2 consumes worker outputs before it records delivered relays. A first pass without cards or
@@ -212,7 +629,7 @@ class Glue:
             mark = self.c.execute("SELECT COALESCE(MAX(rowid), 0) FROM outbox").fetchone()[0]
             self.set_meta(PREPASS_KEY, mark)
         engine.evaluate(self.store, self.now,
-                        dataclasses.replace(self.obs, comments={}, cards={}, attachments={}), self.cfg)
+                        dataclasses.replace(self.obs, comments={}, cards={}, attachments={}, workers={}), self.cfg)
         with self.store.transaction() as c:
             c.execute("DELETE FROM outbox WHERE kind='alert' AND state='pending' AND rowid>? AND idem_key NOT LIKE ?"
                       " AND idem_key NOT LIKE ?", (mark, "clickup-dp:alert:blocker:%:disabled:delivered",
@@ -278,9 +695,14 @@ class Glue:
         atts = {}
         for card, role in want.items():
             if role == "request" and rules.status(cards.get(card)) == "done":
-                atts[card] = [{"name": a.get("filename"), "sha256": a.get("sha256")} for a in self.attachments(card)]
+                atts[card] = [_observed_attachment(a) for a in self.attachments(card)]
+                if card in self._att_failed:
+                    del atts[card]
+        workers = {card: proof for card, shown in cards.items()
+                   if (proof := kp.worker_progress(shown, self.store.clock())) is not None}
         self.obs = engine.Observation(scan_started_ms=self.now, comments=dict(self.comments), cards=cards,
-                                      attachments=atts, confirmed=frozenset(self.confirmed))
+                                      attachments=atts, confirmed=frozenset(self.confirmed), workers=workers,
+                                      early_approvals=self.obs.early_approvals)
 
     def protocol_targets(self):
         """r9 §7 D1-A: (task, card) for each watched card (never the gate) of non-terminal, unheld tasks whose fresh
@@ -321,6 +743,15 @@ class Glue:
                     shown = self._show(x)
                     if shown is not None:
                         cards[x] = shown
+        if self.c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='amendment_answers'").fetchone():
+            for pair in self.c.execute(  # workflow repair r3 §3.10: Q and W of every bound binding of a live task
+                    "SELECT x.question_card, x.card FROM amendment_answers x" + unheld
+                    + "t.terminal=0 AND x.state='bound' ORDER BY x.id").fetchall():
+                for x in pair:
+                    if x not in cards:
+                        shown = self._show(x)
+                        if shown is not None:
+                            cards[x] = shown
         if enabled:  # r9 §4.4 / r11 §3.5 (NA2): engine._dispose's terminal/superseded case reads Q itself,
             # also once Q is no longer a parent of W: a live unheld task's non-releasing blocker whose W is
             # done/archived (or cached closed) or whose approval is gone (W is then not watched: SPEC-R6-B2); and
@@ -353,9 +784,19 @@ class Glue:
         for tid, hold in self.c.execute("SELECT clickup_task_id, hold_reason FROM tasks ORDER BY clickup_task_id"):
             if tid in terminal or hold:
                 continue
-            for card in engine._watched(self, tid):
+            task = self.c.execute('SELECT * FROM tasks WHERE clickup_task_id=?', (tid,)).fetchone()
+            for card, approval in engine._watched(self, tid).items():
                 if card in closed:
-                    continue
+                    # A current approved owner may reopen its existing card. Historical closure is not
+                    # proof that its current native parents are empty; probe through this same bounded loop.
+                    if (task['phase'] not in engine.AMENDMENT_PHASES or approval['state'] not in engine.WATCHED_STATES
+                            or not rules.current(approval['accounts_gen'], task)):
+                        continue
+                    shown = cards.get(card) or self._show(card)
+                    if shown is None or rules.status(shown) in ('done', 'archived'):
+                        continue
+                    cards[card] = shown
+                    closed.remove(card)
                 if card not in cards:
                     shown = self._show(card)
                     if shown is None:
@@ -376,7 +817,7 @@ class Glue:
                         shown = self._show(p)
                         if shown is not None:
                             cards[p] = shown
-        if add - closed:
+        if set(self.meta(WATCHED_CLOSED_KEY, [])) != closed | add:
             self.set_meta(WATCHED_CLOSED_KEY, sorted(closed | add))
 
     def _observe_recovery(self, cards, terminal):
@@ -391,8 +832,25 @@ class Glue:
                                         ).fetchall():
             if tid in terminal or hold:
                 continue
+            for b in self.c.execute("SELECT question_card FROM blockers WHERE task=?", (tid,)):
+                if b[0] not in cards:
+                    shown = self._show(b[0])
+                    if shown is not None:
+                        cards[b[0]] = shown
             live = {r[0] for r in self.c.execute("SELECT card FROM recoveries WHERE task=? AND state IN (%s)"
                                                  % engine._in(engine.RECOVERY_LIVE), (tid,))}
+            from . import preworker
+            early = [dict(r) for r in self.c.execute(
+                "SELECT * FROM recoveries WHERE task=? AND class=? AND state IN ('open','handed_off')",
+                (tid, preworker.CLASS))]
+            for inc in early:
+                live.discard(inc['card'])  # logical approval anchor, not a native object to show
+                for ref, in self.c.execute("SELECT result_ref FROM outbox WHERE kind='kb_create' AND state='done'"
+                                          " AND idem_key LIKE ?", (engine._rcv_key(tid, inc['card'], 0, 0)[:-1] + '%',)):
+                    if ref and ref not in cards:
+                        shown = self._show(ref)
+                        if shown is not None:
+                            cards[ref] = shown
             for card in list(engine._recovery_members(self, tid)) + sorted(live):
                 if card in closed and card not in live:
                     continue
@@ -403,28 +861,86 @@ class Glue:
                     cards[card] = shown
                 if card not in live and rules.status(cards[card]) in ("done", "archived"):
                     add.add(card)
+                for parent in cards[card].get("parents") or []:
+                    if isinstance(parent, str) and parent not in cards:
+                        shown = self._show(parent)
+                        if shown is not None:
+                            cards[parent] = shown
         if add - closed:
             self.set_meta(RECOVERY_CLOSED_KEY, sorted(closed | add))
+
+    def diagnostic_input(self, tid, reader=None):
+        """Renew an expired diagnostic input lease with a real bounded L, never a timestamp write.
+        Reuse this scan's request budget and ordinary observer commits. New activity invalidates the
+        barrier/classification normally. Native checks follow and retain their post-I/O expiry.
+        """
+        t = self.c.execute("SELECT * FROM tasks WHERE clickup_task_id=?", (tid,)).fetchone()
+        now = self.store.clock()
+        if t is None or t['terminal'] or (t['hold_reason'] and tid not in stalled.held_notice_tasks(self.c)):
+            return False
+        if tid in self._diagnostic_refresh:
+            return self._diagnostic_refresh[tid]
+        if now - (t['last_light_ms'] or 0) <= 5 * 60_000:
+            return True
+        self.confirmed.discard(tid)  # the renewal must establish its own current home-list proof
+        transport = self.guard.transport(_Capture(self.inner, self), task=tid)
+        if reader is not None:
+            transport = _PreworkerTransport(transport, reader)
+        res = observe.light_pass(transport, self.store, self.cfg, tid, now)
+        self._diagnostic_refresh[tid] = res.complete and tid in self.confirmed
+        self.alerts.extend(res.alerts)
+        return self._diagnostic_refresh[tid]
+
+    def preworker_check(self, task, card, run, notice=False):
+        return _preworker_check(lambda: recovery_snapshot(self.c, task, card, run), self.port,
+                                card, run, self.store.clock, self.obs.scan_started_ms, notice=notice,
+                                handoff_unblock=self.cfg.handoff_unblock, reader=self.preworker_reader(task))
 
     def recovery_gate(self, row, p):
         """r3 §5.2 wake send gate: one fresh ``show W`` and the §6.1 admission over the live state, plus no final
         ACK. ``defer`` when W is unreadable or the task held; ``stale`` otherwise unless CURRENT."""
         q = p["params"]
         snap = recovery_snapshot(self.c, q["task"], q["card"], q["run_id"])
+        from . import preworker
+        if (snap.get('incident') or {}).get('class') == preworker.CLASS:
+            if not self.diagnostic_input(q['task'], reader=self.preworker_reader(q['task'])):
+                return 'defer'
+            verdict = self.preworker_check(q['task'], q['card'], q['run_id'])
+            return 'go' if verdict.code == 0 else 'defer' if verdict.code == 2 or verdict.text == 'held' else 'stale'
         snap["members"] = engine.recovery_members(q["task"], snap["approvals"], snap["orch"])
+        if ((snap.get("incident") or {}).get("class") == stalled.CLASS
+                and not self.diagnostic_input(q['task'])):
+            return 'defer'
         w = self._show(q["card"])
+        if (snap.get("incident") or {}).get("class") == stalled.CLASS:
+            _diagnostic_reads(snap, self.port, q["card"], w)
+            w = self._show(q["card"])
+            snap["shows"][q["card"]] = w
+            latest = recovery_snapshot(self.c, q["task"], q["card"], q["run_id"])
+            snap.update(latest)
+            snap["members"] = engine.recovery_members(q["task"], snap["approvals"], snap["orch"])
+            snap.update(now_ms=self.store.clock(), scan_started_ms=self.obs.scan_started_ms)
+            a = next((a for a in snap['approvals'] if a['id'] == (snap.get('incident') or {}).get('approval_id')), None)
+            if a is not None and not _diagnostic_complete(snap, q['card'], w, a):
+                return 'defer'
         verdict = kp.recovery_verdict(snap, w, q["card"], q["run_id"])
         if verdict.verdict == "UNAVAILABLE" or verdict.text == "held":
             return "defer"
         if verdict.code != 0:
             return "stale"
-        ack = kp.recovery_ack(w, q["card"], q["run_id"], snap["incident"]["event_created_s"])
-        return "stale" if ack["final"] else "go"
+        inc = snap['incident']
+        wait = snap.get('diagnostic_wait') or {}
+        after = wait.get('ack_s', -1) if wait.get('state') in ('answered', 'superseded') else -1
+        ack, comment = stalled.diagnostic_ack(w, inc, after)
+        question = stalled.question_projection(comment, inc) or stalled.legacy_question_projection(comment, inc)
+        return "stale" if ack["final"] == "owner" and question is not None else "go"
 
     def attachments(self, card):
         """``attachments --json`` of a card with the SHA-256 of each stored file (cached per scan)."""
         if card not in self._att:
             r = self.port.attachments(card)
+            if not _ok(r) or not isinstance(r.json, list):
+                self._att_failed.add(card)
             out = []
             for a in r.json if _ok(r) and isinstance(r.json, list) else ():
                 if isinstance(a, dict):
@@ -469,7 +985,7 @@ class Glue:
         if task:
             self.store.observe_commit(task, [], {"hold_reason": reason})
 
-    def execute(self, alerts_only=False):
+    def execute(self, alerts_only=False, only=None):
         """Run outbox rows in order (revocation audit stamps first), dependencies and preconditions first."""
         for _ in range(50):
             keys = [r[0] for r in self.c.execute(
@@ -477,6 +993,8 @@ class Glue:
                 " ORDER BY (idem_key LIKE '%%:stamp:%%:revoked') DESC, rowid" % ",".join("?" * len(FINAL)), FINAL)]
             progressed = False
             for key in keys:
+                if only is not None and key not in only:
+                    continue
                 row = self.row(key)
                 if alerts_only and row["kind"] != "alert":
                     continue
@@ -519,6 +1037,31 @@ class Glue:
         return rules.preconditions_ok(dict(t) if t else None, apps, pre, row["kind"], card, confirmed,
                                       blocker=dict(b) if b else None)
 
+    def preworker_stage_current(self, tid, approval):
+        from . import preworker
+        task = dict(self.c.execute('SELECT * FROM tasks WHERE clickup_task_id=?', (tid,)).fetchone())
+        approval = dict(approval)
+        state = preworker.context(self.c, tid)
+        binding = _preworker_binding(task, approval, state)
+        reader = self.preworker_reader(tid)
+        if (approval['id'] in self.obs.early_approvals and reader.binding == binding
+                and reader.proof is not None and reader.proof.valid()
+                and self.store.clock() - (task['last_light_ms'] or 0) <= 300000
+                and rules.barrier_ok(task, 0, self.store.clock(), self.obs.scan_started_ms)):
+            return True
+        if not self.diagnostic_input(tid, reader=reader):
+            return False
+        cards, atts, complete = _preworker_collect(task, approval, state, reader, recheck=True)
+        latest = dict(self.c.execute('SELECT * FROM tasks WHERE clickup_task_id=?', (tid,)).fetchone())
+        current = dict(self.c.execute('SELECT * FROM approvals WHERE id=?', (approval['id'],)).fetchone())
+        valid = (complete and _preworker_binding(latest, current, preworker.context(self.c, tid)) == binding
+                and reader.proof.valid() and self.store.clock() - (latest['last_light_ms'] or 0) <= 300000
+                and preworker.inspect(latest, current, state, cards, atts,
+                                                               self.store.clock(), self.obs.scan_started_ms) is not None)
+        if valid:
+            self.obs = dataclasses.replace(self.obs, early_approvals=self.obs.early_approvals | {approval['id']})
+        return valid
+
     def send_gate(self, row, drop_wait=False):
         """Immediately before every send and retry: the §10.1 precondition recheck ('cancel'), the final
         reply-destination check ('foreign': a reply root must be an observed top-level comment of this task,
@@ -527,12 +1070,110 @@ class Glue:
             return "cancel"
         p = json.loads(row["body"] or "{}")
         tid = json.loads(row["preconditions"])["task_id"]
+        aid = json.loads(row['preconditions']).get('approval_id')
+        if aid is not None:
+            a = self.c.execute('SELECT * FROM approvals WHERE id=?', (aid,)).fetchone()
+            if a and a['state'] in engine.preworker.STATES and any(
+                    row['idem_key'] == base or row['idem_key'].startswith(base + ':') for base in engine._keys(tid, a)):
+                t = self.c.execute('SELECT * FROM tasks WHERE clickup_task_id=?', (tid,)).fetchone()
+                if t['classified_gen'] != t['input_gen'] or engine.preworker.pending_question(self, aid):
+                    return 'defer'  # neither pending input nor a human wait authorizes stage writes
+                if (not engine.preworker.current_plan(t, a) or t['phase'] not in engine.preworker.PHASES
+                        or self.c.execute("SELECT 1 FROM approvals WHERE task=? AND id>? AND state IN (%s)" %
+                                          engine._in(engine.ACTIVE), (tid, aid)).fetchone()):
+                    return 'cancel'
+        if (self.meta(engine.RECOVERY_KEY) is not None
+                and aid is not None and a and a['state'] in engine.preworker.STATES
+                and any(row['idem_key'] == base or row['idem_key'].startswith(base + ':')
+                        for base in engine._keys(tid, a))
+                and not self.preworker_stage_current(tid, a)):
+            return 'defer'
         if row["kind"] == "cu_reply" and not self.c.execute(
                 "SELECT 1 FROM items WHERE task=? AND kind='comment' AND id=?", (tid, str(p.get("root")))).fetchone():
             return "foreign"
         t = self.c.execute("SELECT * FROM tasks WHERE clickup_task_id=?", (tid,)).fetchone()
         if not rules.send_barrier_ok(dict(t) if t else None, p, self.now, self.obs.scan_started_ms):
             return "defer"
+        if p.get("recovery_notice"):
+            return self.recovery_notice_gate(p["recovery_notice"], p.get("recovery_delivery_hold"))
+        return "go"
+
+    def recovery_notice_gate(self, iid, delivery_hold=None):
+        """Immediately before new sends/retries: current authority and freshly observed stopped work."""
+        inc = self.c.execute("SELECT * FROM recoveries WHERE id=?", (iid,)).fetchone()
+        if not inc or self.meta(engine.RECOVERY_KEY) is None:
+            return "cancel"
+        if inc['class'] == 'approval_staging':
+            if not self.diagnostic_input(inc['task'], reader=self.preworker_reader(inc['task'])):
+                return 'defer'
+            verdict = self.preworker_check(inc['task'], inc['card'], inc['run_id'], notice=True)
+            return 'go' if verdict.code == 0 else 'defer' if verdict.code == 2 or verdict.text == 'held' else 'cancel'
+        precise = inc['class'] == stalled.CLASS or engine._diagnostic_wait(self, inc['id']) is not None
+        if precise and not self.diagnostic_input(inc['task']):
+            return 'defer'
+        w = self._show(inc["card"])
+        if w is None:
+            return "defer"
+        snap = None
+        if precise:
+            snap = recovery_snapshot(self.c, inc['task'], inc['card'], inc['run_id'])
+            _diagnostic_reads(snap, self.port, inc['card'], w)
+            w = self._show(inc['card'])
+            snap['shows'][inc['card']] = w
+            latest = recovery_snapshot(self.c, inc['task'], inc['card'], inc['run_id'])
+            snap.update(latest)  # authority and required inputs may have changed during I/O
+            inc = snap.get('incident')
+            if not inc or inc['state'] != 'open' or snap.get('abandoned'):
+                return 'cancel'
+            if w is None:
+                return 'defer'
+        t = self.c.execute("SELECT * FROM tasks WHERE clickup_task_id=?", (inc["task"],)).fetchone()
+        if t is None or t["terminal"]:
+            return "cancel"
+        own_hold = (delivery_hold and t["hold_reason"] == delivery_hold and delivery_hold.startswith("outbox:")
+                    and delivery_hold[7:].startswith(engine._rcv_key(inc["task"], inc["card"], inc["run_id"], 0)[:-1])
+                    and self.state(delivery_hold[7:]) == "failed")
+        if t["hold_reason"] and not own_hold:
+            return "defer"
+        a = self.c.execute("SELECT * FROM approvals WHERE id=?", (inc["approval_id"],)).fetchone()
+        if (not a or (a["state"] not in engine.WATCHED_STATES and not
+                      (own_hold and a["state"] == "revoked" and a["revoked_reason"] == "hold"))
+                or not rules.current(a["accounts_gen"], t)
+                or a["rev"] != inc["approval_rev"] or a["plan_sha256"] != inc["plan_sha256"]
+                or (not own_hold and engine._recovery_members(self, inc["task"]).get(inc["card"], {}).get("id") != a["id"])):
+            return "cancel"
+        if self.c.execute("SELECT 1 FROM approvals WHERE task=? AND id>? AND state IN (%s)" %
+                          engine._in(engine.ACTIVE + engine.WATCHED_STATES), (inc["task"], a["id"])).fetchone():
+            return "cancel"
+        wait = engine._diagnostic_wait(self, inc['id']) or {}
+        handoff_run = (stalled.handoff(dict(t), a, inc, snap['shows'], snap, snap['attachments'])
+                       if snap is not None and wait.get('takeover') else None)
+        handoff_bound = handoff_run is not None and handoff_run == wait.get('question', {}).get('run')
+        if (((kp.latest_run_id(w) or 0) != inc["run_id"] or kp.card_status(w) in ("running", "review", "done", "archived")
+             or kp.open_run_ids(w)) and not handoff_bound):
+            return "cancel"
+        if handoff_bound and kp.worker_progress(w, self.store.clock()):
+            return 'cancel'  # a live owner needs no takeover; this never authorizes native release
+        if snap is not None:
+            now = self.store.clock()  # never evaluate a freshness lease with the pre-I/O scan clock
+            if (not rules.barrier_ok(t, 0, now, self.obs.scan_started_ms)
+                    or now - (t['last_light_ms'] or 0) > 5 * 60_000
+                    or not _diagnostic_complete(snap, inc['card'], w, a)):
+                return 'defer'
+            observed_task = dict(t, hold_reason=None) if own_hold else dict(t)
+            wait = engine._diagnostic_wait(self, inc['id']) or {}
+            if (wait.get('takeover') and
+                    (handoff_bound
+                     or (kp.recovery_outcome(w, inc['run_id'], inc['event_created_s'])[0]
+                         in ('gated', 'handed_off')
+                         and all(kp.card_status(snap['shows'][p]) in ('done', 'archived') for p in w['parents'])
+                         and all(b['state'] in engine.BLOCKER_FINAL for b in snap['blockers'])
+                         and all(f['state'] in engine.FENCE_FINAL for f in snap['fences'])))):
+                return 'go'  # only publish the unavailable-owner question; never release ready/gated work
+            found = stalled.candidate(observed_task, a, inc['card'], snap['shows'], snap, snap['attachments'])
+            stopped = found if inc['class'] == stalled.CLASS else kp.recovery_incident(w)
+            if found is None or stopped is None or stopped['reason_sha256'] != inc['reason_sha256']:
+                return 'cancel'
         return "go"
 
     def refuse(self, row, gate):
@@ -610,10 +1251,14 @@ class Glue:
                 return True
             with self.store.transaction() as c:
                 for mkey, kind, target, body in built:
-                    c.execute("INSERT OR IGNORE INTO outbox(idem_key, task, kind, target, payload_sha256, body,"
+                    inserted = c.execute("INSERT OR IGNORE INTO outbox(idem_key, task, kind, target, payload_sha256, body,"
                               " preconditions, depends_on) VALUES (?,?,?,?,?,?,?,?)",
                               (mkey, tid, kind, target, _sha(json.dumps(body, sort_keys=True)),
                                json.dumps(body, sort_keys=True), row["preconditions"], "[]"))
+                    if inserted.rowcount and p.get('recovery_notice') and row['attempts']:
+                        # A replacement of a known-unsent stale notice keeps its actual spent send budget/backoff.
+                        c.execute("UPDATE outbox SET attempts=?,next_attempt_ms=?,first_send_ms=?,state='retry_wait'"
+                                  " WHERE idem_key=?", (row['attempts'], row['next_attempt_ms'], row['first_send_ms'], mkey))
             mirrors = [m[0] for m in built]
         cur = next((m for m in mirrors if self.state(m) != "done"), mirrors[-1])
         mrow = self.row(cur)
@@ -621,7 +1266,7 @@ class Glue:
             return False
         if mrow["state"] == "pending" or (mrow["state"] == "retry_wait" and (mrow["next_attempt_ms"] or 0) <= self.now):
             gate = self.send_gate(row)  # the next step is a send or retry
-            if gate in ("defer", "foreign"):
+            if gate in ("defer", "foreign") or (p.get("recovery_notice") and gate != "go"):
                 return self.refuse(row, gate)
         before = (mrow["state"], mrow["attempts"], mrow["next_attempt_ms"])
         if mrow["state"] not in FINAL:
@@ -950,7 +1595,9 @@ class Glue:
         self.update(key, state="sending", attempts=attempts, first_send_ms=row["first_send_ms"] or self.now)
         self.port.on_spawn = lambda pid, st: self.update(key, child_pid=pid, child_start_time=st)
         try:
-            if kind == "kb_unblock" and p.get("expect_status") == "blocked":
+            if kind == "kb_unblock" and p.get("ticket_lease_retry"):
+                res = self.retry_ticket_lease(row, p, prior)
+            elif kind == "kb_unblock" and p.get("expect_status") == "blocked":
                 res = self.release(intent.target, prior)
             elif kind == "kb_attach" and p.get("template") == "context" and not p.get("card_role"):
                 res = self.attach_all(intent, prior)
@@ -971,6 +1618,15 @@ class Glue:
             self.update(key, state="failed", outcome=st.value)
             self.hold(json.loads(row["preconditions"])["task_id"], "outbox:" + key,
                       "Kanban %s outbox %s failed after %d attempts; task on hold" % (kind, key, attempts))
+            # Informational delivery only: preserve the hold and ticket revocation, never resume work.
+            if ":rcv:" in key:
+                for inc in map(dict, self.c.execute("SELECT * FROM recoveries WHERE task=? AND state='open'",
+                                                   (row["task"],)).fetchall()):
+                    if key.startswith(engine._rcv_key(row["task"], inc["card"], inc["run_id"], 0)[:-1]):
+                        with self.store.transaction():
+                            engine._escalate(engine._Ctx(self.store, self.now, self.obs, self.cfg), row["task"], inc,
+                                             "diagnostic wake delivery failed after bounded retries",
+                                             delivery_hold="outbox:" + key)
             return True
         nxt = self.now + KB_BACKOFF_MIN[attempts - 1] * 60_000 if st is RowState.RETRY_WAIT else self.now
         return self.update(key, state=st.value, outcome=st.value, next_attempt_ms=nxt)
@@ -989,6 +1645,73 @@ class Glue:
                     "blocker:%d:children" % b["id"], "question card %s for %s was completed with its answer while"
                     " other cards were linked to it (%s): they may have resumed with the answer for %s (protocol"
                     " violation)" % (q, b["card"], ", ".join(map(str, kids)), b["card"]), b["task"])
+
+    def retry_ticket_lease(self, row, p, prior):
+        """Resume only this exact expired stop, after fresh ticket and native-parent checks.
+
+        This is a same-card continuation, not promotion authority: the worker still runs ticket-check
+        immediately before its effect. Use the ordinary outbox, child journal, backoff and native unblock.
+        """
+        if prior is not None and kp.child_alive(*prior):
+            return kp.EffectResult(RowState.SENDING)
+        card, binding, stop = row["target"], p["ticket_lease_retry"], p["stop"]
+        show = self._show(card)
+        if show is None:
+            return kp.EffectResult(RowState.SENDING)
+        if (show.get("task") or {}).get("id") != card:
+            return kp.EffectResult(RowState.CANCELLED_STALE)
+        if prior is not None and kp.recovery_outcome(show, stop["run_id"], stop["event_created_s"])[0]:
+            return kp.EffectResult(RowState.DONE)  # lost ACK: readback only, never another unblock
+        if kp.ticket_lease_stop(show) != stop:
+            return kp.EffectResult(RowState.CANCELLED_STALE)
+        parents = show.get("parents")
+        if not isinstance(parents, list) or binding["gate_card"] not in parents:
+            return kp.EffectResult(RowState.CANCELLED_STALE)
+        observed = {}
+        for parent in parents:
+            if not isinstance(parent, str) or not kp._CARD_ID.fullmatch(parent):
+                return kp.EffectResult(RowState.CANCELLED_STALE)
+            observed[parent] = self._show(parent)
+            if observed[parent] is None:
+                return kp.EffectResult(RowState.SENDING)
+            if (observed[parent].get("task") or {}).get("id") != parent:
+                return kp.EffectResult(RowState.CANCELLED_STALE)
+            if kp.card_status(observed[parent]) not in ("done", "archived"):
+                return kp.EffectResult(RowState.SENDING)
+        # Parent reads may be slow: a replacement run or newly linked parent cannot inherit
+        # the earlier observation's permission to retry.
+        show = self._show(card)
+        if show is None:
+            return kp.EffectResult(RowState.SENDING)
+        if ((show.get("task") or {}).get("id") != card or kp.ticket_lease_stop(show) != stop
+                or show.get("parents") != parents):
+            return kp.EffectResult(RowState.CANCELLED_STALE)
+        snap = load_ticket_snapshot(self.cfg.state_path, row["task"], self.cfg.ticket_lease_seconds)
+        if snap is None:
+            return kp.EffectResult(RowState.SENDING)
+        a = next((a for a in snap.approvals if a["id"] == binding["id"]), None)
+        if a is None or any(a[k] != v for k, v in binding.items()):
+            return kp.EffectResult(RowState.CANCELLED_STALE)
+        g = engine._gates(a)
+        if (not g or g["promotion"] != card or g["plan_revision"] != a["rev"]
+                or g["plan_sha256"] != a["plan_sha256"]
+                or not kp.promotion_guarded(show, a["gate_card"],
+                                           render.ticket_marker(a["gate_card"], row["task"], a["rev"], a["plan_sha256"]))):
+            return kp.EffectResult(RowState.CANCELLED_STALE)
+        now = self.store.clock()  # reads can consume the lease; do not use the scan's start time
+        verdict = ticket_verdict(snap, observed[a["gate_card"]], row["task"], a["rev"], a["plan_sha256"],
+                                 a["gate_card"], now)
+        if not verdict.valid:
+            return kp.EffectResult(RowState.SENDING if verdict.reason == "lease_expired" else RowState.CANCELLED_STALE)
+        if (row["task"] not in self.obs.confirmed
+                or not rules.send_barrier_ok(snap.task, p, now, self.obs.scan_started_ms)):
+            return kp.EffectResult(RowState.SENDING)
+        result = self.port.unblock(card)
+        if not _ok(result):
+            return kp._failed(result)
+        back = self._show(card)
+        applied = back is not None and kp.recovery_outcome(back, stop["run_id"], stop["event_created_s"])[0]
+        return kp.EffectResult(RowState.DONE if applied else RowState.AMBIGUOUS)
 
     def release(self, card, prior=None):
         """Initial release of a blocked, never-run own card (§8.1 request pickup, §8.4 step 3): ``unblock``
@@ -1398,9 +2121,66 @@ def release_task(store, task):
         return c.execute("UPDATE tasks SET hold_reason=NULL WHERE clickup_task_id=?", (task,)).rowcount == 1
 
 
+def _resume_filtered_publication(store, key):
+    """Explicitly rearm the exact never-sent attachment -> comment -> status chain.
+
+    Keep payloads, preconditions and accounting intact. Normal send-time gates still apply.
+    """
+    match = re.fullmatch(r"clickup-dp:([^:]+):pub:r([1-9]\d*):([0-9a-f]{12}):i(\d+):attach", key)
+    if not match:
+        return False
+    task, rev, digest, gen = match.groups()
+    base = key[:-len(":attach")]
+    keys = [base + suffix for suffix in (":attach", ":comment", ":status")]
+    with store.transaction() as c:
+        rows = [c.execute("SELECT * FROM outbox WHERE idem_key=?", (k,)).fetchone() for k in keys]
+        current = c.execute("SELECT * FROM tasks WHERE clickup_task_id=?", (task,)).fetchone()
+        if any(r is None for r in rows) or current is None:
+            return False
+        if (not current["eligible"] or current["terminal"] or current["phase"] not in rules.LIVE_PHASES
+                or current["hold_reason"] not in (None, "", "outbound_filter")
+                or current["published_rev"] is not None or current["published_sha256"] is not None
+                or current["input_gen"] != int(gen) or current["classified_gen"] != int(gen)):
+            return False
+        try:
+            pre = json.loads(rows[0]["preconditions"])
+            bodies = [json.loads(r["body"]) for r in rows]
+            if (pre["task_id"] != task or pre["input_gen"] != int(gen)
+                    or pre["scope_gen"] != current["scope_gen"]
+                    or not re.fullmatch(digest + r"[0-9a-f]{52}", bodies[0]["sha256"])
+                    or bodies[1]["summary_from"] != {"card": bodies[0]["card"],
+                                                      "attachment": bodies[0]["attachment"]}
+                    or bodies[2]["status"] != "waiting for approval"):
+                return False
+            for index, row in enumerate(rows):
+                if (row["task"] != task or row["target"] != task or bodies[index]["task"] != task
+                        or row["kind"] != ("cu_attach", "cu_comment", "cu_status")[index]
+                        or (row["state"], row["outcome"]) != (("failed", "FILTERED") if index == 0
+                            else ("cancelled_stale", "DEPENDENCY"))
+                        or row["attempts"] != 0
+                        or any(row[k] is not None for k in ("first_send_ms", "next_attempt_ms", "child_pid",
+                                                           "child_start_time", "result_ref"))
+                        or json.loads(row["preconditions"]) != pre
+                        or json.loads(row["depends_on"]) != ([] if index == 0 else [keys[index - 1]])):
+                    return False
+        except (KeyError, TypeError, ValueError):
+            return False
+        mirrors = [k + suffix for k in keys for suffix in ("#cu", "#cu-att")]
+        if any(c.execute("SELECT 1 FROM outbox WHERE idem_key=?", (k,)).fetchone() for k in mirrors):
+            return False
+        c.executemany("UPDATE outbox SET state='pending', outcome=NULL WHERE idem_key=?", [(k,) for k in keys])
+        c.execute("UPDATE tasks SET hold_reason=NULL WHERE clickup_task_id=? AND hold_reason='outbound_filter'",
+                  (task,))
+    return True
+
+
 def outbox_command(store, action, key):
     """``outbox resend|abandon <id>`` for a held_ambiguous/failed row (S2 key or its ``#cu`` mirror)."""
     base = key.split("#", 1)[0]
+    root = store.conn.execute("SELECT kind, outcome FROM outbox WHERE idem_key=?", (base,)).fetchone()
+    if (action == "resend" and root and root["kind"] == "cu_attach" and root["outcome"] == "FILTERED"
+            and re.fullmatch(r"clickup-dp:[^:]+:pub:r[1-9]\d*:[0-9a-f]{12}:i\d+:attach", base)):
+        return key == base and _resume_filtered_publication(store, base)
     keys = [k for k in (base, base + "#cu-att", base + "#cu")]
     rows = {k: store.conn.execute("SELECT task, state FROM outbox WHERE idem_key=?", (k,)).fetchone() for k in keys}
     rows = {k: r for k, r in rows.items() if r}
@@ -1462,15 +2242,107 @@ def ticket_check(cfg, port, gate, task, rev, sha, now):
     return ticket_verdict(snapshot, shown.json if _ok(shown) else "", task, rev, sha, gate, now)
 
 
-def recovery_check(cfg, port, card, run):
+def recovery_check(cfg, port, card, run, clock=None):
     """r3 §6.1 read-only admission: one read-only state snapshot and one ``show W --json``; never locks or writes."""
     snap = load_recovery_snapshot(cfg.state_path, None, card, run)
+    if snap is not None and (snap.get('incident') or {}).get('class') == 'approval_staging':
+        return _preworker_check(lambda: load_recovery_snapshot(cfg.state_path, None, card, run), port,
+                                card, run, clock or (lambda: int(time.time() * 1000)),
+                                handoff_unblock=cfg.handoff_unblock)
     if snap is not None:
         snap["members"] = engine.recovery_members((snap["incident"] or {}).get("task"), snap["approvals"],
                                                   snap["orch"])
     shown = port.show(card)
+    if snap is not None and (snap.get("incident") or {}).get("class") == stalled.CLASS:
+        w = shown.json if _ok(shown) and isinstance(shown.json, dict) else None
+        _diagnostic_reads(snap, port, card, w)
+        shown = port.show(card)
+        snap["shows"][card] = shown.json if _ok(shown) else None
+        latest = load_recovery_snapshot(cfg.state_path, None, card, run)
+        if latest is None:
+            return kp.RecoveryVerdict("UNAVAILABLE", "state_unavailable")
+        snap.update(latest)
+        snap["members"] = engine.recovery_members((snap.get("incident") or {}).get("task"), snap["approvals"], snap["orch"])
+        snap.update(now_ms=clock() if clock is not None else int(time.time() * 1000),
+                    scan_started_ms=(snap.get("task") or {}).get("last_light_ms") or 0)
     return kp.recovery_verdict(snap if snap is not None else False,
                                shown.json if _ok(shown) and isinstance(shown.json, dict) else None, card, run)
+
+
+def _preworker_check(load, port, card, run, clock, scan=None, notice=False, handoff_unblock=True, reader=None):
+    from . import preworker
+    snap = load()
+    if snap is None:
+        return kp.RecoveryVerdict('UNAVAILABLE', 'state_unavailable')
+    snap['handoff_unblock'] = handoff_unblock
+    a, why = preworker.authority(snap, card, run)
+    if why:
+        return kp.RecoveryVerdict('STALE', why)
+    binding = _preworker_binding(snap['task'], a, snap)
+    reader = reader or _PreworkerReads(port, clock)
+    cards, atts, complete = _preworker_collect(snap['task'], a, snap, reader, recheck=True)
+    latest = load()  # Revalidate authority and required target set after all I/O.
+    if latest is None:
+        return kp.RecoveryVerdict('UNAVAILABLE', 'state_unavailable')
+    latest['handoff_unblock'] = handoff_unblock
+    current, why = preworker.authority(latest, card, run)
+    if why:
+        return kp.RecoveryVerdict('STALE', why)
+    if (not complete or reader.proof is None or not reader.proof.valid()
+            or _preworker_binding(latest['task'], current, latest) != binding):
+        return kp.RecoveryVerdict('UNAVAILABLE', 'staging_observation')
+    snap.update(latest)
+    snap.update(shows=cards, attachments=atts)
+    snap.update(now_ms=clock(), scan_started_ms=scan if scan is not None else (snap['task']['last_light_ms'] or 0))
+    return preworker.verdict(snap, card, run, notice=notice)
+
+
+def _diagnostic_complete(snap, card, w, approval):
+    """Separate an unavailable observation (defer) from a completely observed changed obligation (cancel)."""
+    if not isinstance(w, dict) or not isinstance(w.get('parents'), list):
+        return False
+    required = set(w['parents']) | set(snap['requests']) | {b['question_card'] for b in snap['blockers']}
+    required |= {f['fence_card'] for f in snap['fences'] if f['state'] in ('open', 'releasing')}
+    required |= {a['orchestrator_card'] for a in snap['approvals'] if a['orchestrator_card']}
+    for other in required | {card}:
+        show = snap['shows'].get(other)
+        if not isinstance(show, dict) or (show.get('task') or {}).get('id') != other or kp.card_status(show) is None:
+            return False
+    if any(r not in snap['attachments'] for r in snap['requests']):
+        return False
+    for r in snap['requests']:
+        ev = rules.pass_evidence(snap['shows'].get(r), snap['attachments'][r], approval['task'])
+        if ev and ev['rev'] == approval['rev'] and ev['sha256'] == approval['plan_sha256']:
+            return True
+    return False
+
+
+def _diagnostic_reads(snap, port, card, w):
+    """Fresh read-only diagnostic inputs; failed reads remain absent, never empty proof."""
+    snap["shows"], snap["attachments"] = {card: w}, {}
+    want = set((w or {}).get("parents") or []) | set(snap["requests"]) | {b["question_card"] for b in snap["blockers"]}
+    want |= {a["orchestrator_card"] for a in snap["approvals"] if a["orchestrator_card"]}
+    want |= {f['fence_card'] for f in snap['fences'] if f['state'] in ('open', 'releasing')}
+    for other in sorted(want - {card}):
+        r = port.show(other)
+        if _ok(r) and isinstance(r.json, dict):
+            snap["shows"][other] = r.json
+    for source in snap["requests"]:
+        r = port.attachments(source)
+        if not _ok(r) or not isinstance(r.json, list):
+            continue
+        atts = []
+        for att in r.json:
+            if not isinstance(att, dict) or not PLAN_NAME.fullmatch(str(att.get("filename", ""))):
+                continue
+            try:
+                with open(att["stored_path"], "rb") as f:
+                    data = f.read(MARKER_SCAN_MAX + 1)
+            except (KeyError, OSError, TypeError):
+                continue
+            if len(data) <= MARKER_SCAN_MAX:
+                atts.append(_observed_attachment(dict(att, data=data, sha256=_sha(data))))
+        snap["attachments"][source] = atts
 
 
 def recovery_adopt(store, port, cfg, card, run, now):
@@ -1519,17 +2391,179 @@ def recovery_status(store):
 
 def recovery_rollback_check(store):
     """r3 §8 (read-only): the recovery-only reasons a rollback to 2d53206 is refused."""
-    one = lambda sql: store.conn.execute(sql).fetchone()[0]  # noqa: E731
+    return _recovery_reasons(store.conn)
+
+
+def _recovery_reasons(conn):
+    one = lambda sql: conn.execute(sql).fetchone()[0]  # noqa: E731
     reasons = ["recovery enabled"] if one("SELECT COUNT(*) FROM meta WHERE key='%s'" % engine.RECOVERY_KEY) else []
     for label, n in (
             (":rcv: rows not done or cancelled_stale", one(
                 "SELECT COUNT(*) FROM outbox WHERE state NOT IN ('done', 'cancelled_stale') AND"
                 " idem_key LIKE 'clickup-dp:%:rcv:%'")),
+            ("originating recovery notice rows not done or cancelled_stale", one(
+                "SELECT COUNT(*) FROM outbox WHERE state NOT IN ('done', 'cancelled_stale') AND"
+                " idem_key LIKE 'clickup-dp:%:recovery-notice:%'")),
             ("open incidents", one("SELECT COUNT(*) FROM recoveries WHERE state IN (%s)"
-                                   % engine._in(engine.RECOVERY_LIVE)))):
+                                   % engine._in(engine.RECOVERY_LIVE)) if _has_table(conn, "recoveries") else 0)):
         if n:
             reasons.append("%s: %d" % (label, n))
     return reasons
+
+
+# ---- workflow repair r3 §3.8/§3.9: amendment continuation, admission flag and rollback readiness ----------------
+_SHA64 = re.compile(r"[0-9a-f]{64}")
+ADMISSION_EXEMPT = (("blockers", "rollback-preflight"), ("blockers", "admission-open"), ("recovery", "status"),
+                    ("recovery", "rollback-check"))  # r3 §3.8: admission-open and the read-only lock-taking commands
+
+
+def _has_table(conn, name):
+    return conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone() is not None
+
+
+def _meta_json(conn, key):
+    r = conn.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+    return json.loads(r[0]) if r else None
+
+
+def rollback_readiness(conn, target):
+    """r3 §3.9 readiness of a rollback to ``target`` (read-only): the reasons it is refused; [] when ready."""
+    one = lambda sql: conn.execute(sql).fetchone()[0]  # noqa: E731
+    reasons = []
+    if _has_table(conn, "amendment_answers"):
+        n = one("SELECT COUNT(*) FROM amendment_answers WHERE state='bound'")
+        if n:
+            reasons.append("amendment bindings bound: %d" % n)
+        n = one("SELECT COUNT(*) FROM amendment_answers k JOIN blockers b ON b.id=k.blocker_id"
+                " WHERE k.state='applied' AND b.state NOT IN (%s)" % engine._in(engine.BLOCKER_FINAL))
+        if n:
+            reasons.append("applied amendment blockers not final: %d" % n)
+    n = one("SELECT COUNT(*) FROM outbox WHERE state IN ('sending', 'ambiguous')")
+    if n:
+        reasons.append("outbox rows sending or ambiguous: %d" % n)
+    if target == "aa3cbe67c998":  # r3 §3.9 item 4: that target predates recovery
+        reasons += _recovery_reasons(conn)
+    return reasons
+
+
+def amendment_status(conn, target):
+    """``blockers amendment-status`` lines (read-only)."""
+    lines = []
+    if _has_table(conn, "amendment_answers"):
+        for k in conn.execute("SELECT k.*, b.state AS bstate FROM amendment_answers k LEFT JOIN blockers b"
+                              " ON b.id=k.blocker_id ORDER BY k.id").fetchall():
+            lines.append("binding %d blocker %d approval %d source %s: %s%s; blocker %s"
+                         % (k["id"], k["blocker_id"], k["approval_id"], k["source"], k["state"],
+                            " (%s)" % k["reason"] if k["reason"] else "", k["bstate"] or "missing"))
+    cut, adm = _meta_json(conn, engine.AMEND_KEY), _meta_json(conn, engine.ADMISSION_KEY)
+    lines.append("amendment continuation: " + ("enabled %d drain %s" % (cut["ms"], cut["drain_sha256"][:12])
+                                               if cut else "disabled"))
+    lines.append("admission: " + ("closed (rollback to %s)" % adm["target"] if adm else "open"))
+    reasons = rollback_readiness(conn, target)
+    lines.append("rollback-target %s: %s" % (target, "refused (%s)" % "; ".join(reasons) if reasons else "ready"))
+    return lines
+
+
+def amendment_enable(store, drain_sha, now):
+    """r3 §3.8 ``blockers amendment-enable``: write the enablement key once; a repeat keeps the first value."""
+    if not drain_sha or not _SHA64.fullmatch(drain_sha):
+        return False, "--drain-sha must be 64 lowercase hex characters"
+    with store.transaction() as c:
+        if _meta_json(c, engine.ADMISSION_KEY) is not None:
+            return False, "admission closed"
+        if _meta_json(c, engine.CUTOVER_KEY) is None:
+            return False, "blockers not enabled"
+        cut = _meta_json(c, engine.AMEND_KEY)
+        if cut is not None:
+            return True, "amendment continuation enabled %d drain %s (existing)" % (cut["ms"],
+                                                                                 cut["drain_sha256"][:12])
+        c.execute("INSERT INTO meta(key, value) VALUES (?, ?)",
+                  (engine.AMEND_KEY, json.dumps({"ms": now, "drain_sha256": drain_sha})))
+    return True, "amendment continuation enabled %d drain %s" % (now, drain_sha[:12])
+
+
+def rollback_prepare(store, target, now):
+    """r3 §3.9: readiness and the admission flag in ONE transaction; no override."""
+    if target != ROLLBACK_TARGET:
+        return False, "target must be %s" % ROLLBACK_TARGET
+    with store.transaction() as c:
+        reasons = rollback_readiness(c, target)
+        if reasons:
+            return False, "rollback refused: " + "; ".join(reasons)
+        c.execute("INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)",
+                  (engine.ADMISSION_KEY, json.dumps({"target": target, "ms": now})))
+    return True, "rollback ready; admission closed"
+
+
+def admission_open(store):
+    with store.transaction() as c:
+        c.execute("DELETE FROM meta WHERE key=?", (engine.ADMISSION_KEY,))
+    return True, "admission open"
+
+
+def adopt_amendment(store, port, blocker, approval, receipt, receipt_sha, now):
+    """r3 §3.9 ``blockers adopt-amendment``: one ``bound`` operator row, or the first failed requirement."""
+    c = store.conn
+    if _meta_json(c, engine.ADMISSION_KEY) is not None:
+        return False, "admission closed"
+    if _meta_json(c, engine.CUTOVER_KEY) is None:
+        return False, "blockers not enabled"
+    if _meta_json(c, engine.AMEND_KEY) is None:
+        return False, "amendment continuation not enabled"
+    if c.execute("SELECT 1 FROM amendment_answers WHERE blocker_id=? AND approval_id=?",
+                 (blocker, approval)).fetchone():
+        return True, "binding blocker %d approval %d (existing)" % (blocker, approval)
+    b = c.execute("SELECT * FROM blockers WHERE id=?", (blocker,)).fetchone()
+    if b is None:
+        return False, "unknown blocker %d" % blocker
+    b = dict(b)
+    if b["state"] != "scope_change" or b["delivered_gen"] is not None or b["release_key"] is not None \
+            or b["resolution_authority"] != "unchanged" or b["resolution_body"] is None:
+        return False, "blocker %d is not an undelivered scope_change with an unchanged-authority resolution" % blocker
+    try:
+        with open(receipt, "rb") as f:
+            data = f.read()
+    except (OSError, TypeError):
+        return False, "receipt unreadable"
+    if not receipt_sha or _sha(data) != receipt_sha:
+        return False, "receipt SHA-256 mismatch"
+    a = c.execute("SELECT * FROM approvals WHERE id=?", (approval,)).fetchone()
+    if a is None or a["task"] != b["task"]:
+        return False, "approval %d is not an approval of the blocker's task" % approval
+    a = dict(a)
+    line = rules.adoption_line(b["id"], b["question_card"], b["card"], b["resolution_gen"], b["resolution_relay"],
+                               _sha(b["resolution_body"]), b["task"], a["id"], a["rev"], a["plan_sha256"])
+    if line is None or not rules.has_line(data.decode("utf-8", "replace"), line):
+        return False, "the receipt has no exact line for the live blocker and approval"
+    if b["pending_relay"] != b["resolution_relay"]:
+        return False, "blocker %d has a newer relay" % blocker
+    if a["state"] not in engine.AMENDED_STATES:
+        return False, "approval %d is %s" % (a["id"], a["state"])
+    if a["id"] <= (b["approval_id"] or 0) or b["resolution_gen"] > a["accounts_gen"]:
+        return False, "approval %d does not account the blocker's resolution" % a["id"]
+    t = dict(c.execute("SELECT * FROM tasks WHERE clickup_task_id=?", (b["task"],)).fetchone())
+    if t["input_gen"] > a["accounts_gen"] or not rules.current(a["accounts_gen"], t):
+        return False, "approval %d is not current" % a["id"]
+    if t["terminal"]:
+        return False, "task %s is terminal" % t["clickup_task_id"]
+    if t["hold_reason"]:
+        return False, "task %s is held" % t["clickup_task_id"]
+    if t["phase"] not in engine.AMENDMENT_PHASES:
+        return False, "task %s is in phase %s" % (t["clickup_task_id"], t["phase"])
+    q = port.show(b["question_card"])
+    q = q.json if _ok(q) and isinstance(q.json, dict) else None
+    if rules.status(q) != "blocked":
+        return False, "question card %s is not blocked" % b["question_card"]
+    w = port.show(b["card"])
+    w = w.json if _ok(w) and isinstance(w.json, dict) else None
+    if (rules.status(w) != "todo" or b["question_card"] not in rules.parents(w) or kp.open_run_ids(w)
+            or any(r > (b["run_id"] or 0) for r in kp.claimed_runs(w)) or b["card"] not in engine.approval_cards(a)):
+        return False, "work card %s is not eligible" % b["card"]
+    with store.transaction() as tc:
+        engine.insert_binding(tc, b["task"], b, a, "operator", receipt_sha, now)
+        kid = tc.execute("SELECT id FROM amendment_answers WHERE blocker_id=? AND approval_id=?",
+                         (blocker, approval)).fetchone()[0]
+    return True, "binding %d blocker %d approval %d bound" % (kid, blocker, approval)
 
 
 def _parser():
@@ -1540,8 +2574,16 @@ def _parser():
     sub.add_parser("status")
     for name in ("admit", "hold", "release"):
         sub.add_parser(name).add_argument("task")
-    sub.add_parser("blockers").add_argument("action", choices=("enable", "disable", "protocol-comment",
-                                                                      "rollback-preflight"))
+    bl = sub.add_parser("blockers")
+    bl.add_argument("action", choices=("enable", "disable", "protocol-comment", "rollback-preflight",
+                                       "adopt-amendment", "amendment-status", "amendment-enable", "rollback-prepare",
+                                       "admission-open"))  # workflow repair r3 §3.9
+    bl.add_argument("--blocker", type=int)
+    bl.add_argument("--approval", type=int)
+    bl.add_argument("--receipt")
+    bl.add_argument("--receipt-sha")
+    bl.add_argument("--drain-sha")
+    bl.add_argument("--target")
     ob = sub.add_parser("outbox")
     ob.add_argument("action", choices=("resend", "abandon"))
     ob.add_argument("id")
@@ -1594,12 +2636,28 @@ def main(argv=None, root=None, *, transport=None, port=None, clock=None, opener=
         say(str(verdict))
         return 0 if verdict.valid else 3
     if args.cmd == "recovery-check":  # r3 §6.1: read-only, before the lock
-        verdict = recovery_check(cfg, port, args.card, args.run)
+        verdict = recovery_check(cfg, port, args.card, args.run, clock)
         say(str(verdict))
         return verdict.code
     if args.cmd == "recovery" and args.action == "adopt" and (args.card is None or args.run is None):
         say("recovery adopt requires --card and --run")
         return 2
+    if args.cmd == "blockers" and args.action == "adopt-amendment" and None in (
+            args.blocker, args.approval, args.receipt, args.receipt_sha):
+        say("blockers adopt-amendment requires --blocker, --approval, --receipt and --receipt-sha")
+        return 2
+    if args.cmd == "blockers" and args.action == "amendment-status":  # r3 §3.9: read-only, before the lock
+        try:
+            conn = open_readonly(cfg.state_path)
+            try:
+                lines = amendment_status(conn, ROLLBACK_TARGET)
+            finally:
+                conn.close()
+        except Exception:
+            say("state unavailable")
+            return 2
+        say(*lines)
+        return 0
     if args.cmd == "status":
         try:
             say(*status_lines(cfg.state_path))
@@ -1619,6 +2677,17 @@ def main(argv=None, root=None, *, transport=None, port=None, clock=None, opener=
     try:
         store = Store(cfg.state_path, clock)
         try:
+            closed = _meta_json(store.conn, engine.ADMISSION_KEY)  # r3 §3.8: before any other write
+            if closed is not None and (args.cmd, getattr(args, "action", None)) not in ADMISSION_EXEMPT:
+                if args.cmd == "run":
+                    log = _logger(cfg.runtime_dir)
+                    log.info(json.dumps({"event": "admission_closed", "target": closed.get("target")}))
+                    for h in list(log.handlers):
+                        h.close()
+                        log.removeHandler(h)
+                    return 0
+                say("admission closed (rollback to %s)" % closed.get("target"))
+                return 1
             store.ensure_relay_tables()
             now = clock()
             if args.cmd == "hold":
@@ -1628,6 +2697,21 @@ def main(argv=None, root=None, *, transport=None, port=None, clock=None, opener=
             if args.cmd == "release":
                 ok = release_task(store, args.task)
                 say("released" if ok else "unknown task")
+                return 0 if ok else 1
+            if args.cmd == "blockers" and args.action in ("adopt-amendment", "amendment-enable", "rollback-prepare",
+                                                          "admission-open"):  # workflow repair r3 §3.8/§3.9
+                if args.action == "adopt-amendment":
+                    ok, line = adopt_amendment(store, port, args.blocker, args.approval, args.receipt,
+                                               args.receipt_sha, now)
+                    line = line if ok else "adopt refused: " + line
+                elif args.action == "amendment-enable":
+                    ok, line = amendment_enable(store, args.drain_sha, now)
+                    line = line if ok else "amendment-enable refused: " + line
+                elif args.action == "rollback-prepare":
+                    ok, line = rollback_prepare(store, args.target, now)
+                else:
+                    ok, line = admission_open(store)
+                say(line)
                 return 0 if ok else 1
             if args.cmd == "blockers":  # r6 §4.1/§7, r9 §7, r11 §9, r12 §9
                 if args.action == "rollback-preflight":
