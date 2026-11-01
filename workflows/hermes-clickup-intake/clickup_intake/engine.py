@@ -19,7 +19,7 @@ import re
 from dataclasses import dataclass, field
 
 from . import kanban_port as kp
-from . import render, rules, stalled, preworker
+from . import render, rules, stalled, preworker, progress
 from .config import Config
 from .contracts import BlockerPreconditions, EffectIntent, Preconditions
 from .store import revoke_live_tickets
@@ -59,6 +59,8 @@ class Observation:
     confirmed: frozenset = frozenset()
     workers: dict = field(default_factory=dict)  # card -> separately observed current process/heartbeat proof
     early_approvals: frozenset = frozenset()  # already reconciled before this scan's global card collection
+    progress_scan: bool = False  # distinguishes a completed native scan from a progress-only pass
+    dependency_members: dict = field(default_factory=dict)  # task -> current validated card/approval map
 
 
 def _sha(s):
@@ -178,7 +180,17 @@ def evaluate(store, now, obs=None, config=None):
                 _fences(ctx, tid)  # r12 §3.3 parks and fence/park readback need no live task (r11 §9, r12 §9)
             continue
         if t["hold_reason"] or tid not in ctx.obs.confirmed:
-            continue  # owner V1 (the approved temporary-hold rule): a temporary hold pauses its blockers and fences, never final
+            if tid in ctx.obs.confirmed and tid in progress.held_tasks(ctx.c) and _recovery_cutover(ctx) is not None:
+                # Diagnose an integration failure without running any normal held workflow transition.
+                with ctx.store.transaction():
+                    for inc in map(dict, ctx.c.execute("SELECT * FROM recoveries WHERE task=? AND class IN (?,?) AND state IN ('open','handed_off')",
+                                                       (tid, progress.CLASS, preworker.CLASS)).fetchall()):
+                        if inc['class'] == preworker.CLASS:
+                            preworker.step(ctx, tid, t, inc)
+                        else:
+                            progress.step(ctx, tid, t, inc)
+                    progress.detect(ctx, tid)
+            continue  # holds still pause all ordinary blockers, fences and source transitions
         _outputs(ctx, tid)
         _amend(ctx, tid)  # workflow repair r3 §3.4: bind/apply approved-amendment continuations
         _deliver(ctx, tid)
@@ -221,12 +233,110 @@ def _watched(ctx, tid):
     return out
 
 
+def _watched_rows(approvals):
+    out = {}
+    for a in approvals:
+        if a["state"] not in WATCHED_STATES and (a["state"] != "revoked" or a["revoked_reason"] == "superseded"):
+            continue
+        g = _gates(a) or {}
+        for card in [a["orchestrator_card"], g.get("final_e2e"), g.get("promotion"), g.get("cleanup")] \
+                + list(g.get("lineage") or []):
+            if isinstance(card, str) and card and card != a["gate_card"]:
+                out.setdefault(card, a)
+    return out
+
+
+def dependency_scope(conn, tid):
+    """Declared authority and explicitly foreign cards; no native graph mutation."""
+    approvals = [dict(a) for a in conn.execute('SELECT * FROM approvals ORDER BY id')]
+    task = conn.execute('SELECT * FROM tasks WHERE clickup_task_id=?', (tid,)).fetchone()
+    own = [a for a in approvals if a['task'] == tid and task and rules.current(a['accounts_gen'], task)
+           and (a['state'] in WATCHED_STATES or (a['state'] == 'revoked' and a['revoked_reason'] == 'hold'
+                and (task['hold_reason'] or '').startswith('outbox:')))]
+    orch = dict(conn.execute("SELECT idem_key,body FROM outbox WHERE task=? AND kind='kb_create' AND state='done'",
+                             (tid,)).fetchall())
+    roots = _watched_rows(own)
+    roots.update(recovery_members(tid, own, orch))
+    foreign = set(_watched_rows(a for a in approvals if a['task'] != tid))
+    foreign.update(r[0] for r in conn.execute('SELECT card_id FROM cards WHERE task!=?', (tid,)))
+    gates = {a['gate_card'] for a in own if a['gate_card']}
+    claims = {}
+    for a in own:
+        for card in set(_watched_rows([a])) | set(recovery_members(tid, [a], orch)):
+            claims.setdefault(card, set()).add(a['id'])
+    ambiguous = {card for card, ids in claims.items() if len(ids) != 1}
+    return roots, gates | foreign | ambiguous
+
+
+def _current_watched(ctx, tid):
+    observed = getattr(ctx, 'dependency_members', getattr(getattr(ctx, 'obs', None), 'dependency_members', {}))
+    return observed[tid] if tid in observed else _watched(ctx, tid)
+
+
+def dependency_members(roots, shows, forbidden=()):
+    """Evidence-only required ancestors; never rewrite declared approval membership.
+
+    A complete bounded graph, reciprocal edges and unique approval ownership are
+    required. A foreign consumer makes its shared ancestor ambiguous, not owned.
+    Protocol cards and approval gates remain obligations, never worker targets.
+    """
+    owners, active, done = {}, set(), set()
+    forbidden = set(forbidden)
+    def visit(card, approval):
+        key = (card, approval['id'])
+        if key in active or len(owners) >= 512:
+            raise ValueError('cyclic or oversized dependency graph')
+        if key in done:
+            return
+        shown = shows.get(card)
+        if (not isinstance(shown, dict) or (shown.get('task') or {}).get('id') != card
+                or not isinstance(shown.get('parents'), list) or not isinstance(shown.get('children'), list)
+                or any(not isinstance(p, str) for p in shown['parents'] + shown['children'])):
+            raise ValueError('incomplete dependency graph')
+        owners.setdefault(card, {})[approval['id']] = approval
+        active.add(key)
+        for parent in shown['parents']:
+            if parent in forbidden:
+                continue  # an approval gate remains an obligation, never new authority
+            visit(parent, approval)
+            if card not in shows[parent]['children']:
+                raise ValueError('inconsistent dependency edge')
+        active.remove(key)
+        done.add(key)
+    try:
+        for card, approval in roots.items():
+            if card not in forbidden:
+                visit(card, approval)
+    except (ValueError, RecursionError):
+        return {}
+    out = {}
+    for card, approvals in owners.items():
+        if card in forbidden or len(approvals) != 1:
+            continue
+        shown = shows[card]
+        if any(str(shown['task'].get('title', '')).startswith(prefix) for prefix, _ in kp.PROTOCOL_TITLES):
+            continue
+        approval = next(iter(approvals.values()))
+        if card not in roots and any(child not in owners or set(owners[child]) != {approval['id']}
+                                     for child in shown['children']):
+            continue
+        out[card] = approval
+    changed = True
+    while changed:
+        changed = False
+        for card in list(out):
+            if card not in roots and any(child not in out for child in shows[card]['children']):
+                del out[card]
+                changed = True
+    return out
+
+
 def _detect(ctx, tid):
     """Record protocol question, fence and park parents of watched cards (r9 §4.2, r11 §3.2, r12 §3.2)."""
     cut = _cutover_ms(ctx)
     if cut is None:
         return  # feature off: no detection
-    for w, a in _watched(ctx, tid).items():
+    for w, a in _current_watched(ctx, tid).items():
         ws = ctx.show(w)
         for p in (ws or {}).get("parents") or []:
             if not isinstance(p, str) or ctx.c.execute(
@@ -1296,8 +1406,15 @@ def _recorded(ctx, tid, b):
 
 
 def _closure_root(ctx, tid, b):
-    """r6 §4.6 replies go "to the closure": its thread root when the closure was itself a thread reply."""
-    return _root(ctx, tid, b["closure_item"]) or b["closure_item"]
+    """Use the closure thread, or the delivered question when incorporation has no closure item."""
+    if b["closure_item"] is not None:
+        return _root(ctx, tid, b["closure_item"]) or b["closure_item"]
+    row = ctx.c.execute(
+        "SELECT o.result_ref FROM outbox o JOIN items i ON i.task=o.task AND i.id=o.result_ref"
+        " AND i.kind='comment' AND i.parent_id IS NULL AND i.deleted=0"
+        " WHERE o.idem_key=? AND o.task=? AND o.target=? AND o.kind='cu_comment' AND o.state='done'",
+        (b['question_key'], tid, tid)).fetchone()
+    return row[0] if row else None
 
 
 def _due(ctx, t, b):
@@ -1950,6 +2067,21 @@ def _approved_plan_resolution(ctx, tid, b, a, source, ev, marker):
     """An explicit current approved incorporation owns absent bookkeeping, never a planner's missing answer."""
     fields = ('resolution_relay', 'resolution_card', 'resolution_gen', 'resolution_body', 'resolution_authority')
     t = ctx.task(tid)
+    if b and b['state'] == 'superseded':
+        # Revocation can precede closure bookkeeping. Recover only that untouched
+        # old blocker, from the current approved generation's actual material relay.
+        prior = _approval_or_none(ctx, b['approval_id'])
+        if (any(b[k] is not None for k in ('closure_item', 'closure_gen', 'pending_relay',
+                                         'release_gen', 'delivered_sha256') + fields)
+                or not prior or prior['task'] != tid or prior['state'] != 'revoked'
+                or prior['revoked_reason'] != 'superseded'
+                or marker['gen'] != a['accounts_gen'] or marker['gen'] != t['input_gen']):
+            return None
+        relays = ctx.c.execute('SELECT * FROM relays WHERE task=? AND card=? AND gen>=?',
+                               (tid, source, marker['gen'])).fetchall()
+        if len(relays) != 1 or relays[0]['gen'] != marker['gen']:
+            return None
+        b = dict(b, state='scope_change', closure_gen=marker['gen'], pending_relay=relays[0]['relay_ref'])
     if (not b or b['state'] != 'scope_change' or b['task'] != tid or b['delivered_gen'] is not None
             or b['release_key'] is not None or any(b[k] is not None for k in fields)
             or marker != {'blocker': b['id'], 'question': b['question_card'], 'card': b['card'], 'gen': b['closure_gen']}
@@ -1971,7 +2103,9 @@ def _approved_plan_resolution(ctx, tid, b, a, source, ev, marker):
             'bytes, with no authority beyond this approval; retain the normal answer-fence and worker checks.' %
             (tid, b['id'], b['question_card'], b['card'], marker['gen'], a['id'], a['rev'], a['plan_sha256'],
              a['comment_id'], source, b['pending_relay']))
-    return text if len(text) <= RESOLUTION_MAX and not rules.blocker_leak(text) and not render.check_outbound(text) else None
+    if len(text) <= RESOLUTION_MAX and not rules.blocker_leak(text) and not render.check_outbound(text):
+        return text, b['pending_relay']
+    return None
 
 
 def _amend_ingest(ctx, tid):
@@ -1996,11 +2130,13 @@ def _amend_ingest(ctx, tid):
                 continue
             with ctx.store.transaction() as c:
                 b = ctx.c.execute("SELECT * FROM blockers WHERE id=?", (m["blocker"],)).fetchone()
-                text = _approved_plan_resolution(ctx, tid, b, a, card, ev, m)
-                if text is not None:
-                    c.execute("UPDATE blockers SET resolution_relay=pending_relay,resolution_card=?,resolution_gen=?,"
+                resolution = _approved_plan_resolution(ctx, tid, b, a, card, ev, m)
+                if resolution is not None:
+                    text, relay = resolution
+                    c.execute("UPDATE blockers SET state='scope_change',closure_gen=?,pending_relay=?,"
+                              "resolution_relay=?,resolution_card=?,resolution_gen=?,"
                               "resolution_body=?,resolution_authority='unchanged',updated_ms=? WHERE id=?",
-                              (card, m['gen'], text, ctx.now, b['id']))
+                              (m['gen'], relay, relay, card, m['gen'], text, ctx.now, b['id']))
                     b = c.execute('SELECT * FROM blockers WHERE id=?', (b['id'],)).fetchone()
                 if (b is None or b["task"] != tid or b["question_card"] != m["question"] or b["card"] != m["card"]
                         or b["resolution_gen"] != m["gen"] or m["gen"] > a["accounts_gen"]
@@ -2138,6 +2274,9 @@ def recovery_members(tid, approvals, orch):
 
 
 def _recovery_members(ctx, tid):
+    observed = getattr(ctx, 'dependency_members', getattr(getattr(ctx, 'obs', None), 'dependency_members', {}))
+    if tid in observed:
+        return {c: a for c, a in observed[tid].items() if a['state'] in WATCHED_STATES}
     approvals = [dict(a) for a in ctx.c.execute("SELECT * FROM approvals WHERE task=? ORDER BY id", (tid,))]
     orch = dict(ctx.c.execute("SELECT idem_key, body FROM outbox WHERE task=? AND kind='kb_create' AND state='done'"
                               " AND idem_key LIKE ?", (tid, "clickup-dp:%s:orch:%%" % tid)).fetchall())
@@ -2158,12 +2297,16 @@ def _recover(ctx, tid):
     for inc in map(dict, ctx.c.execute("SELECT * FROM recoveries WHERE task=? AND state IN (%s) ORDER BY id"
                                        % _in(RECOVERY_LIVE), (tid,)).fetchall()):
         with ctx.store.transaction():
+            inc = progress.retire_delivery(ctx, tid, inc)
             if inc['class'] == preworker.CLASS:
                 preworker.step(ctx, tid, t, inc)
+            elif inc['class'] == progress.CLASS:
+                progress.step(ctx, tid, t, inc)
             else:
                 _recovery_step(ctx, tid, t, inc)
     with ctx.store.transaction():
-        preworker.detect(ctx, tid)
+        handled = preworker.detect(ctx, tid)
+        progress.detect(ctx, tid, fallback=not handled)
     if t["phase"] not in AMENDMENT_PHASES:
         return
     for card, a in _recovery_members(ctx, tid).items():
@@ -2198,8 +2341,12 @@ def _recover(ctx, tid):
 def open_incident(ctx, tid, card, a, found, adopted):
     """Insert incident (W, R) bound to A*; a fresh one queues wake attempt 1 in the same transaction, the
     (RECOVERY_CAP+1)th on (task, W, A*) escalates without a wake; an adopted one waits for the next scan."""
-    earlier = ctx.c.execute("SELECT COUNT(*) FROM recoveries WHERE task=? AND card=? AND approval_id=?",
-                            (tid, card, a["id"])).fetchone()[0]
+    if found['class'] == progress.CLASS:
+        earlier = ctx.c.execute("SELECT COUNT(*) FROM recoveries WHERE task=? AND class=? AND approval_id IS ?",
+                                (tid, progress.CLASS, a['id'])).fetchone()[0]
+    else:
+        earlier = ctx.c.execute("SELECT COUNT(*) FROM recoveries WHERE task=? AND card=? AND approval_id IS ?",
+                                (tid, card, a["id"])).fetchone()[0]
     iid = ctx.c.execute(
         "INSERT INTO recoveries(task, card, run_id, event_kind, event_created_s, block_kind, class, reason_sha256,"
         " approval_id, approval_rev, plan_sha256, adopted, state, attempts, abs_ms, detected_ms, updated_ms)"
@@ -2221,7 +2368,8 @@ def _recovery_update(ctx, inc, **cols):
 
 
 def _diagnostic_found(ctx, tid, card, a):
-    return stalled.candidate(ctx.task(tid), a, card, ctx.obs.cards, stalled.context(ctx.c, tid), ctx.obs.attachments)
+    state = dict(stalled.context(ctx.c, tid), now_ms=ctx.now)
+    return stalled.candidate(ctx.task(tid), a, card, ctx.obs.cards, state, ctx.obs.attachments)
 
 
 def _diagnostic_wait(ctx, iid, value=None):
@@ -2267,12 +2415,19 @@ def _diagnostic_resolution(ctx, tid, card, h12, hdr, text):
     rel = ctx.c.execute('SELECT * FROM relays WHERE relay_ref=? AND task=? AND card=?',
                         (hdr['relay'], tid, card)).fetchone()
     a = inc and ctx.c.execute('SELECT * FROM approvals WHERE id=?', (inc['approval_id'],)).fetchone()
+    delivery = progress.delivery_context(ctx.c, tid).get('delivery_role')
+    original_stage_wait = bool(inc and inc['event_kind'] == preworker.CLASS and wait and 'authority' not in wait
+                               and isinstance(delivery, dict) and delivery.get('incident') == inc['id'])
+    authority_ok = bool(a and a['state'] in
+        (preworker.STATES + WATCHED_STATES if inc['class'] == preworker.CLASS or original_stage_wait else WATCHED_STATES)
+        and rules.current(a['accounts_gen'], ctx.task(tid)))
+    if inc and inc['class'] == progress.CLASS and not original_stage_wait:
+        authority_ok = bool(wait and wait.get('authority') ==
+                            progress.question_authority(ctx.task(tid), progress.context(ctx.c, tid)))
     if (not inc or inc['state'] != 'open' or recovery_abandoned(ctx.c, inc) or not wait
             or wait['state'] != 'classifying' or wait.get('relay') != hdr['relay'] or wait.get('gen') != hdr['gen']
             or not rel or rel['state'] != 'classified' or rel['classification'] != 'answer_only'
-            or rel['gen'] != hdr['gen'] or not a or a['state'] not in
-               (preworker.STATES + WATCHED_STATES if inc['class'] == preworker.CLASS else WATCHED_STATES)
-            or not rules.current(a['accounts_gen'], ctx.task(tid)) or hdr.get('authority') != 'unchanged'
+            or rel['gen'] != hdr['gen'] or not authority_ok or hdr.get('authority') != 'unchanged'
             or not text or len(text) > RESOLUTION_MAX or rules.blocker_leak(text) or render.check_outbound(text)):
         ctx.alert('diagnostic-resolution:' + h12, 'Diagnostic question resolution refused: unknown/foreign target, '
                   'unclassified relay, changed authority or unsafe guidance; the question remains unfinished.', tid)
@@ -2323,6 +2478,9 @@ def _recovery_step(ctx, tid, t, inc):
             or t["phase"] not in AMENDMENT_PHASES):
         _recovery_update(ctx, inc, state="superseded")
         return
+    if (tid in ctx.obs.dependency_members
+            and _recovery_members(ctx, tid).get(inc['card'], {}).get('id') != a['id']):
+        return  # detached/ambiguous or unavailable current graph cannot spend the old incident budget
     show = ctx.show(inc["card"])
     if show is None:
         return  # not observed this pass (e.g. the cards-empty progress pass): nothing is decided
@@ -2335,7 +2493,10 @@ def _recovery_step(ctx, tid, t, inc):
         return
     if outcome == "gated":
         outcome = "handed_off"  # healthy dependency work may be interim; no capable-owner pickup yet
-    handoff = stalled.handoff(t, dict(a), inc, ctx.obs.cards, stalled.context(ctx.c, tid), ctx.obs.attachments)
+    handoff_state = stalled.context(ctx.c, tid)
+    handoff = stalled.handoff(t, dict(a), inc, ctx.obs.cards, handoff_state, ctx.obs.attachments)
+    if handoff is not None and progress.prerequisite_status(inc['card'], handoff_state, ctx.obs.cards):
+        handoff = None
     wait = _reconcile_cancelled_question(ctx, inc)
     if (wait and wait.get('takeover') and handoff is not None
             and wait.get('question', {}).get('run') != handoff):
@@ -2422,6 +2583,10 @@ def _attempt(ctx, tid, inc, a, found):
     early = inc['class'] == preworker.CLASS
     pre = Preconditions(task_id=tid, phases=preworker.PHASES if early else AMENDMENT_PHASES,
                         approval_id=a["id"], approval_states=preworker.STATES + WATCHED_STATES if early else WATCHED_STATES)
+    if inc['class'] == progress.CLASS:
+        t = ctx.task(tid)
+        pre = Preconditions(task_id=tid, phases=() if found['card'] == progress.outer_anchor(tid) else progress.PHASES,
+                            approval_id=a['id'], input_gen=t['input_gen'], scope_gen=t['scope_gen'])
     _carrier_row(ctx, k + ":create", "kb_create", {
         "role": "recovery", "title": "CLICKUP-RECOVERY v1 %s run=%d attempt=%d" % (inc["card"], inc["run_id"], n),
         "template": "recovery_card", "params": params, "assignee": None, "skills": [], "initial_status": "blocked",
@@ -2464,7 +2629,8 @@ def _escalate(ctx, tid, inc, why, reason=None, delivery_hold=None, question=None
     wait = _diagnostic_wait(ctx, inc['id'])
     if inc['class'] == preworker.CLASS and question is None:
         return  # no fabricated operator question or native stopped-run fallback for an approval anchor
-    takeover = question is None and delivery_hold is None
+    general = inc['class'] == progress.CLASS
+    takeover = question is None and delivery_hold is None and not general
     if takeover:
         if wait and wait['state'] == 'answered':
             return  # the human response follows normal authority checks; never refund wakes or ask it again
@@ -2488,7 +2654,10 @@ def _escalate(ctx, tid, inc, why, reason=None, delivery_hold=None, question=None
                           and _diagnostic_wait(ctx, inc['id']) is None)
     rebound = bool(takeover and wait and wait['state'] == 'superseded' and row and row['state'] == 'done'
                    and wait.get('question', {}).get('run') != question['run'])
-    if _cancelled_notice(ctx, key) or technical_done or rebound:
+    continued = bool(general and wait and wait.get('key') == key and wait.get('root')
+                     and wait['state'] in ('answered', 'superseded') and row and row['state'] == 'done'
+                     and progress.notice_refreshable(ctx, tid, inc))
+    if _cancelled_notice(ctx, key) or technical_done or rebound or continued:
         key = _notice_key(tid, inc) + ':publication:%d' % row['rowid']
     # A new immutable payload still belongs to the same logical stopped-work send budget.
     prefix = ('clickup-dp:%s:recovery-notice:%s:%d' % (tid, inc['card'], inc['run_id']))
@@ -2496,40 +2665,51 @@ def _escalate(ctx, tid, inc, why, reason=None, delivery_hold=None, question=None
                         " AND (idem_key=? OR substr(idem_key,1,?)=?) ORDER BY rowid DESC LIMIT 1",
                         (tid, prefix, len(prefix) + 1, prefix + ':')).fetchone()
     if (row and json.loads(row['body']).get('recovery_notice') == inc['id']
-            and (_cancelled_notice(ctx, row['idem_key']) or technical_done or rebound)):
+            and (_cancelled_notice(ctx, row['idem_key']) or technical_done or rebound or continued)):
         # The mirror may be ahead after a crash: use the real maximum, never sum cumulative copies.
         previous = ctx.c.execute('SELECT * FROM outbox WHERE idem_key IN (?,?)'
                                  ' ORDER BY attempts DESC,next_attempt_ms DESC LIMIT 1',
                                  (row['idem_key'], row['idem_key'] + '#cu')).fetchone()
-    text = ("Approved plan r%d remains stopped: %s. Diagnostic wakes attempted: %d. "
+    label = 'Planning/publication workflow' if general else 'Approved plan r%d' % inc['approval_rev']
+    text = ("%s remains stopped: %s. Diagnostic wakes attempted: %d. "
             "The available recovery operations did not establish a safe continuation. "
             "Next action: the integration operator must inspect this stopped workflow and use only an existing "
             "supported, already-authorized recovery; if an integration repair is required, arrange a separately "
             "authorized tested repair before resuming the same work. No new product approval or repeated answer "
             "is requested for technical bookkeeping. Any actual missing decision must be stated precisely on "
             "this task before a human is asked to decide. Work remains safely stopped; this notice grants no "
-            "approval, repair permission or release." % (inc["approval_rev"], why, inc["attempts"]))
+            "approval, repair permission or release." % (label, why, inc["attempts"]))
+    if general and progress.context(ctx.c, tid)['delivery_failures']:
+        text = ('ClickUp notification delivery remains unresolved after %d diagnostic wakes. %s '
+                'Next action: the integration operator must inspect the failed delivery and its current binding, '
+                'then use only supported delivery recovery or arrange an authorized tested repair. '
+                'Native workflow progress is independent of this notification; do not stop, restart or resume '
+                'native work because of this notice. Destination validation, spent budgets and approval '
+                'boundaries remain in force.' % (inc['attempts'], reason or _recovery_reason(ctx, tid, inc)))
     detail = stalled.notice_detail(ctx.show(inc["card"]), inc)
     if detail:
         text += "\n\n" + detail
     if question:
-        text = ('Approved plan r%d remains safely stopped. Diagnostic wakes attempted: %d.\n'
+        text = ('%s remains safely stopped. Diagnostic wakes attempted: %d.\n'
                 'Failed: %s\nAttempted: %s\nDecision needed: %s\nNext action: %s\n\n'
                 'Reply in this question thread and mention the intake bot. The answer enters normal '
                 'classification and authority checks; it is not approval or permission to resume, repair, '
-                'complete a question or bypass any gate.' % (inc['approval_rev'], inc['attempts'], question['failed'],
+                'complete a question or bypass any gate.' % (label, inc['attempts'], question['failed'],
                 question['attempted'], question['decision'], question['next_action']))
         if inc['state'] == 'handed_off':
             _recovery_update(ctx, inc, state='open')
         _diagnostic_wait(ctx, inc['id'], {'state': 'publishing', 'question': question, 'ack_s': ack_s, 'key': key,
-                                         'takeover': takeover})
+                                         'takeover': takeover,
+                                         **({'authority': progress.question_authority(t, progress.context(ctx.c, tid))}
+                                            if general else {})})
     payload = {"text": text, "recovery_notice": inc["id"]}
     if delivery_hold:
         payload["recovery_delivery_hold"] = delivery_hold
     ctx.cu(tid, key, "cu_comment", payload, anchor=0,
-           phases=preworker.PHASES if inc['class'] == preworker.CLASS else AMENDMENT_PHASES,
+           phases=progress.PHASES if general else preworker.PHASES if inc['class'] == preworker.CLASS else AMENDMENT_PHASES,
            approval_id=inc["approval_id"],
-           approval_states=preworker.STATES + WATCHED_STATES if inc['class'] == preworker.CLASS else
+           approval_states=preworker.STATES + WATCHED_STATES if (inc['class'] == preworker.CLASS or
+                           (general and inc['event_kind'] == preworker.CLASS)) else
                            WATCHED_STATES + (("revoked",) if delivery_hold else ()),
            input_gen=t["input_gen"], scope_gen=t["scope_gen"])
     if previous:
@@ -2539,9 +2719,9 @@ def _escalate(ctx, tid, inc, why, reason=None, delivery_hold=None, question=None
                        'retry_wait' if previous['attempts'] else 'pending', key))
     _retire_attempts(ctx, tid, inc["card"], inc["run_id"])
     ctx.alert("rcv:%s:%d" % (inc["card"], inc["run_id"]),
-              "ClickUp recovery for %s r%d: %s; originating-task notice queued, delivery not yet verified. "
+              "ClickUp recovery for %s (%s): %s; originating-task notice queued, delivery not yet verified. "
               "Integration operator action is needed if delivery fails; no product reapproval requested."
-              % (tid, inc["approval_rev"], why), tid)
+              % (tid, label, why), tid)
 
 
 def _notice_key(tid, inc, conn=None):

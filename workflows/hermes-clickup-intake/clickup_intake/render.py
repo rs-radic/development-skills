@@ -115,11 +115,14 @@ def recovery_card_body(p):
     """Carrier body (r3 §6): binding, W's own blocked reason (clipped) and the fixed coordinator procedure.
     The reason is clipped to 4,000 characters and then, on a whole-character boundary, to the bytes the complete
     binding and procedure leave under the 16 KB UTF-8 body bound (r3 §8); nothing else is ever shortened."""
-    tpl = _template("preworker_card.md" if p.get("class") == "approval_staging" else
+    tpl = _template("progress_card.md" if p.get("class") == "progress_stall" else
+                    "preworker_card.md" if p.get("class") == "approval_staging" else
                     "diagnostic_card.md" if p.get("class") == "diagnostic" else "recovery_card.md")
     fields = dict({k: p[k] for k in ("task", "card", "run_id", "event_kind", "event_created_s", "block_kind", "class",
                                      "reason_sha256", "approval_id", "rev", "plan_sha256", "attempt", "adopted")},
                   source_status=p.get("source_status"), check_command=recovery_check_command(p["card"], p["run_id"]))
+    if p.get('class') == 'progress_stall':
+        fields.update({k: json.dumps(p[k]) for k in ('approval_id', 'rev', 'plan_sha256')})
     room = RECOVERY_BODY_MAX - len(tpl.substitute(fields, reason="").encode("utf-8"))
     reason = str(p.get("reason") or "")[:RECOVERY_REASON_MAX].encode("utf-8")[:max(room, 0)]
     return tpl.substitute(fields, reason=reason.decode("utf-8", "ignore"))  # drops only a cut trailing character
@@ -128,6 +131,11 @@ def recovery_card_body(p):
 def recovery_summary(p, carrier):
     """Wake ``complete`` summary (r3 §5.1): the binding headline (the notifier's ``Result:`` line) plus the full
     binding on a second line, at most 400 characters in total."""
+    if p.get('class') == 'progress_stall':
+        return (f"CLICKUP-RECOVERY: diagnose workflow {p['task']} at {p['card']} run {p['run_id']}; "
+                f"read carrier {carrier}. approval={json.dumps(p['approval_id'])} "
+                f"revision={json.dumps(p['rev'])} class=progress_stall attempt={p['attempt']}/3 "
+                f"reason_sha256={p['reason_sha256']}")[:RECOVERY_SUMMARY_MAX]
     head = (f"CLICKUP-RECOVERY: act as operator for {p['card']} run {p['run_id']} ({p['block_kind']}) — read card "
             f"{carrier} body; approval r{p['rev']}.")
     binding = (f"task={p['task']} card={p['card']} run={p['run_id']} event={p['event_kind']}@{p['event_created_s']} "

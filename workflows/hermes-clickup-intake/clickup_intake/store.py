@@ -412,9 +412,15 @@ def recovery_snapshot(conn, task, card, run):
     if inc:
         from . import stalled
         snap.update(stalled.context(conn, tid))
+        from .engine import dependency_scope
+        roots, forbidden = dependency_scope(conn, tid)
+        snap['dependency_scope'] = [roots, sorted(forbidden)]
         if inc['class'] == 'approval_staging':
             from . import preworker
             snap.update(preworker.context(conn, tid))
+        elif inc['class'] == 'progress_stall':
+            from . import progress
+            snap.update(progress.context(conn, tid))
         snap['diagnostic_notice_key'] = _notice_key(tid, inc, conn)
         wait = conn.execute('SELECT value FROM meta WHERE key=?', ('diagnostic_wait:%d' % inc['id'],)).fetchone()
         snap['diagnostic_wait'] = json.loads(wait[0]) if wait else None

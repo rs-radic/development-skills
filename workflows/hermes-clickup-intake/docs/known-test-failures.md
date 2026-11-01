@@ -1,8 +1,20 @@
-# Known test qualifications for this source snapshot
+# Historical test qualifications and current refresh status
 
-This public refresh follows source `2a8fe198bf00aa719d6a7e53833799587172ad6d`. The owner explicitly selected publication with source-test failures documented. No runtime behavior or original assertion was changed to make the tests green. This is **not a green-suite release** and does not imply production readiness or universal recovery.
+The execution results and exact failure IDs below are **historical evidence for public revision `ba95426b6dd927f0c9ccbd22c28be6c28e5f2367`**, extracted from source `2a8fe198bf00aa719d6a7e53833799587172ad6d`. They are not results for the current source refresh at `4e598dd4a9ca2875b004d30740a6a33cbf15a0af`. The owner selected that earlier bounded publication with its documented source-test failures; that decision is not a blanket approval of new failures, extraction defects or unverified behavior. No original assertion was weakened for this refresh. Neither snapshot is advertised here as a green-suite release, production-ready installation or universal recovery.
 
-## Actual execution
+## Latest follow-up
+
+Source `4e598dd4a9ca2875b004d30740a6a33cbf15a0af` adds verified completed-workflow retirement and bounded nested observation. The new 25-case regression module was attempted locally; ten cases reached OK before the 300-second tool timeout. The run is incomplete, not a module PASS. No full regression rerun or repair of upstream test expectations was performed.
+
+## Previous full-run evidence: source `dee977fb`
+
+The complete previous public run executed **1,196 unique tests** with no exclusions or skips: **988 passed and 208 failed**, exit **1**. The result contains **155 assertion-failure entries and 73 error entries**; subtests can produce multiple entries for one test ID. All 195 added test IDs were exercised: 151 passed and 44 failed. Another 75 previously passing IDs now fail; 89 IDs retain failures from the earlier full-run report. Four earlier native-path setup failures now pass with the qualified test-process binding.
+
+[Current machine-readable results](test-results.json) list every failed ID, its outcome, entry counts and source-comparison category. **206 offline failed IDs** reproduce against exact pinned source at the same failed statements and exception boundaries. One native admission test also fails identically against source. The remaining static-audit failure was verified with the original source audit helper: it rejects the supported outbound-filter hold-clearing SQL. Its native source control was not rerun. No unexplained extraction difference remains at the compared boundaries.
+
+These are failed tests, not successful coverage or proof that the source behavior is correct. Many cases stop at helper waits or singleton-row unpacking before later scenario assertions; those later assertions remain unverified. Preliminary diagnostic runs invalidated by a containment-harness URI bug are excluded from the valid comparison evidence. No runtime or original assertion was changed to obtain green results. Current source/privacy review and the separate preparation checks passed; there is no live-service or production-readiness claim.
+
+## Historical actual execution at `ba95426`
 
 - The complete public run discovered and executed **1,001 unique test IDs**, with no exclusions or skips. It returned exit **1**: **908 passed**, **93 failed test IDs**. The runner recorded 91 assertion-failure entries and six error entries; entries are not distinct test counts.
 - Four native-schema cases initially failed before their target assertions because they derived an installation path from the inert `C:/Hermes` example. All four subsequently **passed** against the actual selected Hermes installation with an isolated, test-process-only executable binding. No runtime file or live configuration was changed.
@@ -10,7 +22,7 @@ This public refresh follows source `2a8fe198bf00aa719d6a7e53833799587172ad6d`. T
 - The actual documented test command, including that process-only binding, was also exercised on the native-review-regression module. The full suite was not repeated through that command.
 - The 30-file offline preparation payload, its manifest hashes and the actual disabled no-argument entry passed. No credential or state database was created by that smoke check.
 
-## What the retained failures establish
+## What those historical failures established
 
 **65 failing IDs** were reproduced against the exact unmodified source in isolated snapshots: 13 in the initial native-fixture comparison and 52 in the subsequent comparison. Exception classes and failed statements agree; two messages differ only in synthetic run numbers or private/public carrier prose. The later comparison has no unexplained extraction-introduced failure. Some cases stop at bounded setup/lifecycle conditions before their later assertions: those later behaviors remain unverified, not passed.
 
@@ -129,7 +141,7 @@ test_stalled_transport_context.TransportContextTest.test_verified_answered_quest
 test_recovery_cli.RecoveryCliTest.test_control_b_a_fenced_child_cannot_mutate_and_production_never_bypasses_the_fence
 ```
 
-## Native setup reruns
+## Historical native setup reruns
 
 These four IDs passed after the test process received the actual executable path:
 
@@ -140,4 +152,4 @@ test_preworker_review_regressions.PreworkerReviewRegressionTest.test_notice_rene
 test_preworker_snapshot.PreworkerSnapshotTest.test_installed_adapter_on_native_schema_and_bound_fixture_database
 ```
 
-See [verification notes](verification.md) for the test invocation and [the README](../README.md) for installation boundaries. Private raw logs and hash-bound publication receipts are retained outside this repository. No live ClickUp, worker-model or deployment success is claimed by these local test results.
+See [verification notes](verification.md) for the current refresh boundary and test invocation, and [the README](../README.md) for installation boundaries. Private raw logs and hash-bound publication receipts are retained outside this repository. No live ClickUp, worker-model or deployment success is claimed by these local test results. The historical 1,001-case run, qualified 912/89 reconciliation and 30-file smoke result above remain tied to `ba95426`, never a new full-suite PASS.

@@ -13,6 +13,8 @@ import sqlite3
 
 from . import kanban_port as kp
 
+MAX_DEPENDENCY_NODES = 512
+
 
 class Snapshot:
     def __init__(self, conn, path, take, clock):
@@ -70,6 +72,8 @@ def acquire(path, roots, take, clock):
         proof = Snapshot(conn, path, take, clock)
         conn.execute('BEGIN')
         roots = set(roots)
+        if len(roots) > MAX_DEPENDENCY_NODES:
+            raise ValueError('dependency roots exceed bound')
         initial = proof.query('SELECT r.*,t.status AS task_status FROM task_runs r JOIN tasks t ON t.id=r.task_id '
                               'WHERE r.task_id IN (SELECT value FROM json_each(?)) ORDER BY r.id',
                               (json.dumps(sorted(roots)),))
@@ -81,9 +85,11 @@ def acquire(path, roots, take, clock):
             if gates:
                 roots.add(gates['promotion'])
         prefix = ('WITH RECURSIVE needed(id) AS (SELECT value FROM json_each(?) UNION '
-                  'SELECT l.parent_id FROM task_links l JOIN needed n ON l.child_id=n.id) ')
+                  'SELECT l.parent_id FROM task_links l JOIN needed n ON l.child_id=n.id LIMIT 513) ')
         args = (json.dumps(sorted(roots)),)
         tasks = proof.query(prefix + 'SELECT * FROM tasks WHERE id IN needed', args)
+        if len(tasks) > MAX_DEPENDENCY_NODES:
+            raise ValueError('dependency closure exceeds bound')
         for r in tasks:
             task = dict(r)
             # Native Task.from_row decodes skills; completion_contract is opaque text.
@@ -93,7 +99,9 @@ def acquire(path, roots, take, clock):
             proof.shows[r['id']] = dict(task=task, parents=[], children=[], runs=[], comments=[], events=[],
                                          latest_summary=None)
             proof.attachments[r['id']] = []
-        links = proof.query(prefix + 'SELECT * FROM task_links WHERE child_id IN needed OR parent_id IN needed', args)
+        links = proof.query(prefix + 'SELECT * FROM task_links WHERE child_id IN needed OR parent_id IN needed LIMIT 4097', args)
+        if len(links) > 4096:
+            raise ValueError('dependency edges exceed bound')
         for r in links:
             if r['child_id'] in proof.shows: proof.shows[r['child_id']]['parents'].append(r['parent_id'])
             if r['parent_id'] in proof.shows: proof.shows[r['parent_id']]['children'].append(r['child_id'])

@@ -141,6 +141,7 @@ def context(conn, tid):
     """Read-only obligation/plan-source projection, shared by selection and fresh admission."""
     return {"blockers": [dict(r) for r in conn.execute("SELECT * FROM blockers WHERE task=?", (tid,))],
             "fences": [dict(r) for r in conn.execute("SELECT * FROM fences WHERE task=?", (tid,))],
+            "outbox": [dict(r) for r in conn.execute("SELECT * FROM outbox WHERE task=?", (tid,))],
             "requests": [r[0] for r in conn.execute("SELECT card_id FROM cards WHERE task=? AND role='request'",
                                                    (tid,))]}
 
@@ -212,6 +213,35 @@ def handoff(task, approval, inc, shows, state, attachments):
     return run['id'] if run else 0
 
 
+def _undelivered_question(card, parent, shows, state, approval):
+    """A stopped internal handoff is not a verified unanswered human question."""
+    w, q = shows.get(card), shows.get(parent)
+    if not q or kp.card_status(q) != 'blocked' or kp.open_run_ids(q):
+        return False
+    kind, verdict = kp.protocol_parent(card, w, q, 0)
+    if kind != 'question':
+        return False
+    blocker = next((b for b in state.get('blockers', []) if b['question_card'] == parent), None)
+    if blocker is None:
+        return verdict.startswith('alert:')
+    if blocker['card'] != card or blocker['approval_id'] != approval['id']:
+        return False
+    rows = {r['idem_key']: r for r in state.get('outbox', [])}
+    delivery = rows.get(blocker.get('question_key'))
+    if blocker['state'] == 'asked' and delivery and delivery['state'] == 'done' and delivery['result_ref']:
+        return False
+    request = shows.get(blocker.get('request_card'))
+    if request and (kp.open_run_ids(request) or kp.card_status(request) in ('running', 'review')):
+        return False
+    now = state.get('now_ms', 0)
+    pending = [r for r in rows.values() if r['idem_key'] == blocker.get('question_key')
+               or (blocker.get('relay_ref') and ':blocker:' + blocker['relay_ref'] + ':' in r['idem_key'])]
+    if any(r['state'] in ('sending', 'ambiguous') or r.get('outcome') == 'ABANDONED'
+           or (r['state'] == 'retry_wait' and (r.get('next_attempt_ms') or 0) > now) for r in pending):
+        return False
+    return blocker['state'] in ('detected', 'relayed', 'asked')
+
+
 def candidate(task, approval, card, shows, state=None, attachments=None):
     """A fully observed stopped worker with satisfied parents; unknown reads are never empty obligations."""
     w = shows.get(card)
@@ -229,6 +259,7 @@ def candidate(task, approval, card, shows, state=None, attachments=None):
     if not isinstance(parents, list):
         return None
     state = state or {}
+    pending_questions = {p for p in parents if _undelivered_question(card, p, shows, state, approval)}
     markers = plan_markers(task, approval, shows, attachments or {}, state)
     incorporated = set()
     for b in state.get("blockers", []):
@@ -239,6 +270,8 @@ def candidate(task, approval, card, shows, state=None, attachments=None):
             return None
         if kp.card_status(qs) in ("done", "archived"):
             continue
+        if q in pending_questions:
+            continue
         matched = any(m == {"blocker": b["id"], "question": q, "card": b["card"], "gen": b["closure_gen"]}
                       and m["gen"] <= approval["accounts_gen"] for m in markers)
         if not (b["state"] == "scope_change" and matched and approval["id"] > (b["approval_id"] or 0)):
@@ -246,16 +279,20 @@ def candidate(task, approval, card, shows, state=None, attachments=None):
         incorporated.add(q)
     if any(f["state"] in ("open", "releasing", "abandoned", "refused") for f in state.get("fences", [])):
         return None
+    from . import progress
+    obligations = dict(state, blockers=state.get('blockers', []), fences=state.get('fences', []))
+    if progress.prerequisite_status(card, obligations, shows, incorporated | pending_questions):
+        return None  # the exception is only this question's status, never its ancestry or live runs
     observed = []
     for p in parents:
         s = shows.get(p)
         if not isinstance(s, dict) or (s.get("task") or {}).get("id") != p:
             return None
         status = kp.card_status(s)
-        if status not in ("done", "archived") and p not in incorporated:
+        if status not in ("done", "archived") and p not in incorporated | pending_questions:
             return None
         observed.append((p, status))
-    if kp.card_status(w) == "todo" and not incorporated.intersection(parents):
+    if kp.card_status(w) == "todo" and not (incorporated | pending_questions).intersection(parents):
         return None  # a normal ready/todo queue or dependency is not a stalled decision transition
     if kp.card_status(w) == "todo" and kp.card_status(shows.get(approval["orchestrator_card"])) != "done":
         return None  # an active coordinator, not a missing transition
@@ -272,8 +309,13 @@ def candidate(task, approval, card, shows, state=None, attachments=None):
     if type(event.get("created_at")) is not int:
         return None
     rid = run["id"] if run else 0  # explicit no-worker generation, never a synthetic claimed run
+    delivery = [[b['id'], b['state'], b.get('request_card'), b.get('question_key'),
+                 kp.card_status(shows.get(b.get('request_card')))]
+                for b in state.get('blockers', []) if b['question_card'] in pending_questions]
     binding = [approval["id"], approval["rev"], approval["plan_sha256"], task["input_gen"],
                task["scope_gen"], card, rid, kp.card_status(w), event, sorted(observed)]
+    if pending_questions:
+        binding.append(delivery)
     fingerprint = hashlib.sha256(json.dumps(binding, sort_keys=True).encode()).hexdigest()
     return {"run_id": rid, "event_kind": "stalled_work", "event_created_s": event["created_at"],
             "block_kind": "diagnostic", "class": CLASS, "reason_sha256": fingerprint,

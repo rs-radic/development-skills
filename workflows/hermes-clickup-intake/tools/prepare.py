@@ -130,21 +130,23 @@ def build_payload(settings):
     }
     module_names = {"__init__", "clickup_api", "clickup_effects", "config", "contracts", "engine",
                     "kanban_port", "main", "observe", "parse", "ports", "preworker", "preworker_snapshot",
-                    "render", "rules", "stalled", "store", "ticket"}
+                    "progress", "render", "rules", "stalled", "store", "ticket"}
     template_names = {"approval_record", "blocker_triage", "diagnostic_card", "gate_card", "orchestrator_card",
-                      "preworker_card", "question_protocol", "recovery_card", "request_card", "ticket_recheck_paragraph"}
+                      "preworker_card", "progress_card", "question_protocol", "recovery_card", "request_card", "ticket_recheck_paragraph"}
     for directory, names, suffix in (("clickup_intake", module_names, ".py"),
                                      ("templates", template_names, ".md")):
         if any(not (PACKAGE_ROOT / directory / (name + suffix)).is_file() for name in names):
             raise ValueError("package is missing required " + directory + " files")
     payload = {"scripts/clickup_dedicated_panel_intake.py":
                (PACKAGE_ROOT / "clickup_dedicated_panel_intake.py").read_bytes()}
-    for source in sorted((PACKAGE_ROOT / "clickup_intake").glob("*.py")):
+    for name in sorted(module_names):
+        source = PACKAGE_ROOT / "clickup_intake" / (name + ".py")
         data = source.read_bytes()
         if source.name in replacements:
             data = replace_literals(data, replacements[source.name])
         payload["scripts/clickup_intake/" + source.name] = data
-    for source in sorted((PACKAGE_ROOT / "templates").glob("*.md")):
+    for name in sorted(template_names):
+        source = PACKAGE_ROOT / "templates" / (name + ".md")
         payload["scripts/templates/" + source.name] = source.read_bytes()
     payload["integrations/clickup-dedicated-panel/config.json"] = json_bytes(dataclasses.asdict(cfg))
     return payload

@@ -246,7 +246,8 @@ assert not output.exists(), "partial staging was left behind"
         for relative in ("clickup_intake/main.py", "clickup_intake/ports.py", "templates/request_card.md",
                          "templates/blocker_triage.md", "templates/question_protocol.md", "templates/recovery_card.md",
                          "clickup_intake/preworker.py", "clickup_intake/preworker_snapshot.py",
-                         "clickup_intake/stalled.py", "templates/diagnostic_card.md", "templates/preworker_card.md"):
+                         "clickup_intake/stalled.py", "templates/diagnostic_card.md", "templates/preworker_card.md",
+                         "clickup_intake/progress.py", "templates/progress_card.md"):
             with self.subTest(missing=relative):
                 source = self.package / relative
                 content = source.read_bytes()
@@ -406,9 +407,9 @@ module["prepare"](settings, pathlib.Path(sys.argv[3]))
         self.assertEqual(manifest["algorithm"], "sha256")
         expected_modules = {"__init__", "clickup_api", "clickup_effects", "config", "contracts", "engine",
                             "kanban_port", "main", "observe", "parse", "ports", "preworker",
-                            "preworker_snapshot", "render", "rules", "stalled", "store", "ticket"}
+                            "preworker_snapshot", "progress", "render", "rules", "stalled", "store", "ticket"}
         expected_templates = {"approval_record", "blocker_triage", "diagnostic_card", "gate_card",
-                              "orchestrator_card", "preworker_card", "question_protocol", "recovery_card",
+                              "orchestrator_card", "preworker_card", "progress_card", "question_protocol", "recovery_card",
                               "request_card", "ticket_recheck_paragraph"}
         expected_payload = {
             "scripts/clickup_dedicated_panel_intake.py", "integrations/clickup-dedicated-panel/config.json",
@@ -417,6 +418,9 @@ module["prepare"](settings, pathlib.Path(sys.argv[3]))
         }
         self.assertEqual(set(payload), expected_payload)
         self.assertEqual(manifest["file_count"], len(expected_payload))
+        self.assertEqual(manifest["file_count"], 32)
+        self.assertIn("scripts/clickup_intake/progress.py", payload)
+        self.assertIn("scripts/templates/progress_card.md", payload)
         self.assertIn("scripts/templates/recovery_card.md", payload)
         for name in ("preworker", "preworker_snapshot", "stalled"):
             self.assertIn("scripts/clickup_intake/" + name + ".py", payload)
@@ -433,6 +437,40 @@ module["prepare"](settings, pathlib.Path(sys.argv[3]))
             *("scripts/clickup_intake/" + p.name for p in (self.package / "clickup_intake").glob("*.py")),
             *("scripts/templates/" + p.name for p in (self.package / "templates").glob("*.md")),
         })
+
+    def test_unlisted_modules_and_templates_are_not_prepared(self):
+        for relative in ("clickup_intake/unlisted_private.py", "templates/unlisted_private.md"):
+            (self.package / relative).write_text("SYNTHETIC_NOT_FOR_INSTALLATION", encoding="utf-8")
+        result = self.prepare()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        manifest = json.loads((self.output / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["file_count"], 32)
+        self.assertFalse(any("unlisted_private" in item["path"] for item in manifest["files"]))
+        self.assertFalse(any("unlisted_private" in path.name for path in self.output.rglob("*")))
+
+    def test_literal_substitution_is_unique_literal_and_algorithm_preserving(self):
+        probe = '''import ast, runpy, sys
+replace = runpy.run_path(sys.argv[1])["replace_literals"]
+source = b"VALUE = 1\\nOTHER = 2\\ndef read():\\n    return VALUE + OTHER\\n"
+changed = replace(source, {"VALUE": "configured"})
+assert changed == b"VALUE = 'configured'\\nOTHER = 2\\ndef read():\\n    return VALUE + OTHER\\n"
+before, after = ast.parse(source), ast.parse(changed)
+before.body[0].value = after.body[0].value = ast.Constant(value=None)
+assert ast.dump(before, include_attributes=False) == ast.dump(after, include_attributes=False)
+for invalid in (b"OTHER = 1\\n", b"VALUE = 1\\nVALUE = 2\\n", b"VALUE = object()\\n"):
+    try:
+        replace(invalid, {"VALUE": "configured"})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("unsafe deployment substitution was accepted")
+'''
+        result = subprocess.run([sys.executable, "-c", probe, str(self.tool)],
+                                cwd=self.package, env=self.env, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(self.output.exists())
+        self.assertFalse(self.home.exists())
+        self.assertFalse(self.credential.exists())
 
 
 if __name__ == "__main__":

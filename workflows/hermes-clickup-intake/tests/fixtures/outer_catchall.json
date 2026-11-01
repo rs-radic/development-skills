@@ -1,0 +1,390 @@
+{
+  "kind": "Sanitized structural projection, not a full API replay or exact private captured bytes. Identities, digests and titles are synthetic; original native relationships, lifecycle kinds, timing and nulls are retained.",
+  "task": {
+    "clickup_task_id": "fixturetaska",
+    "eligible": 1,
+    "requester_id": 900000101,
+    "phase": "development",
+    "last_status_seen": "implementing",
+    "list_fp": "2443d4fe4f917676d9b9640a0f0d0fa2fe31e87d37b08d0aa1a2274dc44a6cca",
+    "content_hash": "19adbd0b5b7cd41e2da722e080d664ede3ef4bdc81127e519459c2d74b8adab0",
+    "attach_ids_hash": "29ae739c230f69c6311cac032621ee7a3a8cd3c564c529e42c34e1a8e43f9745",
+    "quiet_until_ms": 1793394984190,
+    "input_gen": 9,
+    "classified_gen": 9,
+    "scope_gen": 9,
+    "published_rev": 6,
+    "published_sha256": "46e8cf0597f6b232893d887540e128865009cfe55d6b5bb6e45492466b00ba5e",
+    "published_accounts_gen": 9,
+    "next_rev": null,
+    "last_status_written": null,
+    "last_light_ms": 1793411445494,
+    "last_full_ms": 1793411545527,
+    "last_task_get_ms": 1793411545527,
+    "full_cursor": null,
+    "full_started_ms": 1793411545527,
+    "barrier_ok_ms": 1793410464660,
+    "hold_reason": null,
+    "terminal": 0
+  },
+  "approvals": [
+    {
+      "id": 16,
+      "task": "fixturetaska",
+      "rev": 4,
+      "accounts_gen": 4,
+      "comment_id": "9000000000001013",
+      "author_id": 900000101,
+      "author_name": "Approver One",
+      "comment_date": 1792769081461,
+      "text_hash": "9b07995ef6cef1a7849629f31de0b20c2625de6081260300d5d1deb282973da8",
+      "plan_sha256": "a02a5d50072ca610081bce294e2098a1166f2966a6295a4599e29fd83be8a85f",
+      "state": "revoked",
+      "orchestrator_card": "t_e000000b",
+      "gate_card": "t_e000001b",
+      "clickup_gates": "{\"plan_revision\": 4, \"plan_sha256\": \"a02a5d50072ca610081bce294e2098a1166f2966a6295a4599e29fd83be8a85f\", \"final_e2e\": \"t_e0000007\", \"promotion\": \"t_e0000002\", \"cleanup\": \"t_e0000015\", \"lineage\": [\"t_e0000011\", \"t_e0000017\", \"t_e0000001\", \"t_e0000010\", \"t_e000000f\", \"t_e0000007\", \"t_e0000002\", \"t_e0000015\"]}",
+      "ticket_epoch": 0,
+      "ticket_input_gen": null,
+      "ticket_renewed_ms": null,
+      "revoked_reason": "superseded",
+      "revoked_ms": 1793395284147,
+      "audit_stamp_state": "none",
+      "promoted_sha": null
+    },
+    {
+      "id": 33,
+      "task": "fixturetaska",
+      "rev": 6,
+      "accounts_gen": 9,
+      "comment_id": "9000000000001022",
+      "author_id": 900000101,
+      "author_name": "Approver One",
+      "comment_date": 1793394391919,
+      "text_hash": "3179a364d70c5bdbb5311bb3710ae8cfbbd1f87d3d2a8d07050232dbcb6e37d8",
+      "plan_sha256": "46e8cf0597f6b232893d887540e128865009cfe55d6b5bb6e45492466b00ba5e",
+      "state": "recorded",
+      "orchestrator_card": null,
+      "gate_card": null,
+      "clickup_gates": null,
+      "ticket_epoch": 0,
+      "ticket_input_gen": null,
+      "ticket_renewed_ms": null,
+      "revoked_reason": null,
+      "revoked_ms": null,
+      "audit_stamp_state": "none",
+      "promoted_sha": null
+    }
+  ],
+  "blocker": {
+    "id": 5,
+    "task": "fixturetaska",
+    "question_card": "t_e000000c",
+    "card": "t_e0000001",
+    "run_id": 1257,
+    "created_ms": 1792781019482,
+    "body_sha256": "8f71ef693f41f97a639eb2da39c2835a26472c9b4fe2b5721eec2475b743a07e",
+    "approval_id": 16,
+    "phase_at_detect": "development",
+    "restore_status": "implementing",
+    "stage": "technical",
+    "boundary": 1,
+    "state": "superseded",
+    "relay_ref": "fixturetaska-s2-k5-w1054",
+    "request_card": "t_e0000016",
+    "question_key": "clickup-dp:fixturetaska:bq:technical:5:c0a3fe7d94ef",
+    "closure_item": null,
+    "closure_gen": null,
+    "pending_relay": null,
+    "resolution_relay": null,
+    "resolution_card": null,
+    "resolution_gen": null,
+    "resolution_body": null,
+    "resolution_authority": null,
+    "release_key": null,
+    "release_gen": null,
+    "delivered_gen": null,
+    "delivered_sha256": null,
+    "origin_lane": "work",
+    "updated_ms": 1793395284147
+  },
+  "pending": {
+    "idem_key": "clickup-dp:fixturetaska:gate:r6:g9",
+    "task": "fixturetaska",
+    "kind": "kb_create",
+    "target": null,
+    "payload_sha256": "92afe9e2bd72e032cb860af5f69d59e679f60bbd917ec0a987c674fb14717e4f",
+    "body": "{\"assignee\":null,\"card\":null,\"idempotency_key\":\"clickup-dp:fixturetaska:gate:r6:g9\",\"initial_status\":\"blocked\",\"params\":{\"approval_id\":33,\"rev\":6,\"sha256\":\"46e8cf0597f6b232893d887540e128865009cfe55d6b5bb6e45492466b00ba5e\",\"task\":\"fixturetaska\"},\"role\":\"gate\",\"skills\":[],\"template\":\"gate_card\",\"title\":\"ClickUp fixturetaska: approval gate r6\"}",
+    "preconditions": "{\"task_id\": \"fixturetaska\", \"list_id\": null, \"phases\": [], \"scope_gen\": null, \"input_gen\": null, \"published_rev\": null, \"approval_id\": 33, \"approval_states\": [\"recorded\"], \"wait_run_id\": null}",
+    "depends_on": "[]",
+    "state": "pending",
+    "outcome": null,
+    "attempts": 0,
+    "next_attempt_ms": null,
+    "first_send_ms": null,
+    "child_pid": null,
+    "child_start_time": null,
+    "result_ref": null
+  },
+  "tasks": [
+    {
+      "id": "t_e0000001",
+      "title": "Synthetic feature r4 — implementation and native SPEC",
+      "assignee": "implementor",
+      "status": "todo",
+      "current_run_id": null,
+      "worker_pid": null,
+      "claim_lock": null,
+      "last_heartbeat_at": 1792781437,
+      "created_at": 1792775487,
+      "completed_at": null
+    },
+    {
+      "id": "t_e000000c",
+      "title": "CLICKUP-QUESTION v1 t_e0000001",
+      "assignee": "clickup-intake",
+      "status": "blocked",
+      "current_run_id": null,
+      "worker_pid": null,
+      "claim_lock": null,
+      "last_heartbeat_at": null,
+      "created_at": 1792780819,
+      "completed_at": null
+    },
+    {
+      "id": "t_e0000016",
+      "title": "ClickUp fixturetaska: request 2",
+      "assignee": "plan-reviewer",
+      "status": "done",
+      "current_run_id": null,
+      "worker_pid": null,
+      "claim_lock": null,
+      "last_heartbeat_at": 1793392831,
+      "created_at": 1792573859,
+      "completed_at": 1793392837
+    }
+  ],
+  "runs": [
+    {
+      "id": 1257,
+      "task_id": "t_e0000001",
+      "profile": "implementor",
+      "status": "blocked",
+      "outcome": "blocked",
+      "metadata": null,
+      "worker_pid": null,
+      "started_at": 1792777317,
+      "ended_at": 1792781452
+    },
+    {
+      "id": 1054,
+      "task_id": "t_e0000016",
+      "profile": "planner",
+      "status": "scheduled",
+      "outcome": "scheduled",
+      "metadata": null,
+      "worker_pid": null,
+      "started_at": 1792574657,
+      "ended_at": 1792574737
+    },
+    {
+      "id": 1267,
+      "task_id": "t_e0000016",
+      "profile": "planner",
+      "status": "scheduled",
+      "outcome": "scheduled",
+      "metadata": null,
+      "worker_pid": null,
+      "started_at": 1792785732,
+      "ended_at": 1792785816
+    },
+    {
+      "id": 1272,
+      "task_id": "t_e0000016",
+      "profile": "planner",
+      "status": "scheduled",
+      "outcome": "scheduled",
+      "metadata": null,
+      "worker_pid": null,
+      "started_at": 1792791243,
+      "ended_at": 1792791338
+    },
+    {
+      "id": 1288,
+      "task_id": "t_e0000016",
+      "profile": "planner",
+      "status": "scheduled",
+      "outcome": "scheduled",
+      "metadata": null,
+      "worker_pid": null,
+      "started_at": 1792808442,
+      "ended_at": 1792808602
+    },
+    {
+      "id": 1320,
+      "task_id": "t_e0000016",
+      "profile": "planner",
+      "status": "scheduled",
+      "outcome": "scheduled",
+      "metadata": null,
+      "worker_pid": null,
+      "started_at": 1792852653,
+      "ended_at": 1792852737
+    },
+    {
+      "id": 1545,
+      "task_id": "t_e0000016",
+      "profile": "planner",
+      "status": "review",
+      "outcome": "review_requested",
+      "metadata": {
+        "clickup_task": "fixturetaska",
+        "plan_revision": 5,
+        "plan_attachment": "clickup-plan-r5.md",
+        "plan_sha256": "36b1718ac8f49979f17e4c33d1ac8e774d89484ac4fe153bdc010b2d9019dec1",
+        "accounts_gen": 9
+      },
+      "worker_pid": null,
+      "started_at": 1793391198,
+      "ended_at": 1793391930
+    },
+    {
+      "id": 1547,
+      "task_id": "t_e0000016",
+      "profile": "plan-reviewer",
+      "status": "ready",
+      "outcome": "changes_requested",
+      "metadata": null,
+      "worker_pid": null,
+      "started_at": 1793391984,
+      "ended_at": 1793392366
+    },
+    {
+      "id": 1549,
+      "task_id": "t_e0000016",
+      "profile": "planner",
+      "status": "review",
+      "outcome": "review_requested",
+      "metadata": {
+        "clickup_task": "fixturetaska",
+        "plan_revision": 6,
+        "plan_attachment": "clickup-plan-r6.md",
+        "plan_sha256": "46e8cf0597f6b232893d887540e128865009cfe55d6b5bb6e45492466b00ba5e",
+        "accounts_gen": 9
+      },
+      "worker_pid": null,
+      "started_at": 1793392374,
+      "ended_at": 1793392576
+    },
+    {
+      "id": 1551,
+      "task_id": "t_e0000016",
+      "profile": "plan-reviewer",
+      "status": "done",
+      "outcome": "completed",
+      "metadata": {
+        "review_outcome": "approved",
+        "plan_revision": 6,
+        "reviewed_sha256": "46e8cf0597f6b232893d887540e128865009cfe55d6b5bb6e45492466b00ba5e"
+      },
+      "worker_pid": null,
+      "started_at": 1793392628,
+      "ended_at": 1793392837
+    }
+  ],
+  "links": [
+    {
+      "parent_id": "t_e0000001",
+      "child_id": "t_e0000010"
+    },
+    {
+      "parent_id": "t_e000000c",
+      "child_id": "t_e0000001"
+    },
+    {
+      "parent_id": "t_e000000b",
+      "child_id": "t_e0000001"
+    },
+    {
+      "parent_id": "t_e0000011",
+      "child_id": "t_e0000001"
+    }
+  ],
+  "attachment": {
+    "name": "clickup-plan-r6.md",
+    "sha256": "46e8cf0597f6b232893d887540e128865009cfe55d6b5bb6e45492466b00ba5e"
+  },
+  "relays": [
+    {
+      "relay_ref": "fixturetaska-s1-g1-w0",
+      "task": "fixturetaska",
+      "card": "t_e0000018",
+      "gen": 1,
+      "item_ids": "[]",
+      "state": "classified",
+      "classification": "material"
+    },
+    {
+      "relay_ref": "fixturetaska-s1-g3-w682",
+      "task": "fixturetaska",
+      "card": "t_e0000018",
+      "gen": 3,
+      "item_ids": "[[\"reply\", \"9000000000001001\"], [\"reply\", \"9000000000001002\"], [\"reply\", \"9000000000001003\"], [\"attachment\", \"00000000-0000-4000-8000-000000000002.pdf\"], [\"reply\", \"9000000000001004\"], [\"comment\", \"9000000000001005\"], [\"comment\", \"9000000000001006\"]]",
+      "state": "classified",
+      "classification": "material"
+    },
+    {
+      "relay_ref": "fixturetaska-s1-g4-w740",
+      "task": "fixturetaska",
+      "card": "t_e0000018",
+      "gen": 4,
+      "item_ids": "[[\"comment\", \"9000000000001007\"], [\"comment\", \"9000000000001008\"], [\"attachment\", \"00000000-0000-4000-8000-000000000001.pdf\"], [\"comment\", \"9000000000001009\"]]",
+      "state": "classified",
+      "classification": "material"
+    },
+    {
+      "relay_ref": "fixturetaska-s2-g5-w0",
+      "task": "fixturetaska",
+      "card": "t_e0000016",
+      "gen": 5,
+      "item_ids": "[[\"reply\", \"9000000000001010\"]]",
+      "state": "classified",
+      "classification": "answer_only"
+    },
+    {
+      "relay_ref": "fixturetaska-s2-g6-w1267",
+      "task": "fixturetaska",
+      "card": "t_e0000016",
+      "gen": 6,
+      "item_ids": "[[\"reply\", \"9000000000001011\"], [\"reply\", \"9000000000001012\"], [\"comment\", \"9000000000001013\"], [\"comment\", \"9000000000001015\"]]",
+      "state": "classified",
+      "classification": "answer_only"
+    },
+    {
+      "relay_ref": "fixturetaska-s2-g7-w1272",
+      "task": "fixturetaska",
+      "card": "t_e0000016",
+      "gen": 7,
+      "item_ids": "[[\"reply\", \"9000000000001016\"]]",
+      "state": "classified",
+      "classification": "material"
+    },
+    {
+      "relay_ref": "fixturetaska-s2-g8-w1288",
+      "task": "fixturetaska",
+      "card": "t_e0000016",
+      "gen": 8,
+      "item_ids": "[[\"reply\", \"9000000000001017\"]]",
+      "state": "classified",
+      "classification": "answer_only"
+    },
+    {
+      "relay_ref": "fixturetaska-s2-g9-w1320",
+      "task": "fixturetaska",
+      "card": "t_e0000016",
+      "gen": 9,
+      "item_ids": "[[\"reply\", \"9000000000001018\"], [\"reply\", \"9000000000001020\"], [\"reply\", \"9000000000001021\"]]",
+      "state": "classified",
+      "classification": "material"
+    }
+  ]
+}

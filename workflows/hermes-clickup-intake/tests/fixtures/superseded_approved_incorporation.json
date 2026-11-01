@@ -1,0 +1,766 @@
+{
+  "tasks": [
+    {
+      "clickup_task_id": "fixturetaska",
+      "eligible": 1,
+      "requester_id": 900000101,
+      "phase": "development",
+      "last_status_seen": "implementing",
+      "list_fp": "f6e8eea71765b428738f8204a25d388662d551c70ef91fbd9c8fbc89375e3bb4",
+      "content_hash": "19adbd0b5b7cd41e2da722e080d664ede3ef4bdc81127e519459c2d74b8adab0",
+      "attach_ids_hash": "29ae739c230f69c6311cac032621ee7a3a8cd3c564c529e42c34e1a8e43f9745",
+      "quiet_until_ms": 1793394984190,
+      "input_gen": 9,
+      "classified_gen": 9,
+      "scope_gen": 9,
+      "published_rev": 6,
+      "published_sha256": "46e8cf0597f6b232893d887540e128865009cfe55d6b5bb6e45492466b00ba5e",
+      "published_accounts_gen": 9,
+      "next_rev": null,
+      "last_status_written": null,
+      "last_light_ms": 1793448504062,
+      "last_full_ms": 1793448024084,
+      "last_task_get_ms": 1793448504062,
+      "full_cursor": null,
+      "full_started_ms": 1793448024084,
+      "barrier_ok_ms": 1793448024084,
+      "hold_reason": null,
+      "terminal": 0
+    }
+  ],
+  "approvals": [
+    {
+      "id": 16,
+      "task": "fixturetaska",
+      "rev": 4,
+      "accounts_gen": 4,
+      "comment_id": "9000000000001013",
+      "author_id": 900000101,
+      "author_name": "Approver One",
+      "comment_date": 1792769081461,
+      "text_hash": "9b07995ef6cef1a7849629f31de0b20c2625de6081260300d5d1deb282973da8",
+      "plan_sha256": "a02a5d50072ca610081bce294e2098a1166f2966a6295a4599e29fd83be8a85f",
+      "state": "revoked",
+      "orchestrator_card": "t_e000000b",
+      "gate_card": "t_e000001b",
+      "clickup_gates": "{\"plan_revision\": 4, \"plan_sha256\": \"a02a5d50072ca610081bce294e2098a1166f2966a6295a4599e29fd83be8a85f\", \"final_e2e\": \"t_e0000007\", \"promotion\": \"t_e0000002\", \"cleanup\": \"t_e0000015\", \"lineage\": [\"t_e0000011\", \"t_e0000017\", \"t_e0000001\", \"t_e0000010\", \"t_e000000f\", \"t_e0000007\", \"t_e0000002\", \"t_e0000015\"]}",
+      "ticket_epoch": 0,
+      "ticket_input_gen": null,
+      "ticket_renewed_ms": null,
+      "revoked_reason": "superseded",
+      "revoked_ms": 1793395284147,
+      "audit_stamp_state": "none",
+      "promoted_sha": null
+    },
+    {
+      "id": 33,
+      "task": "fixturetaska",
+      "rev": 6,
+      "accounts_gen": 9,
+      "comment_id": "9000000000001022",
+      "author_id": 900000101,
+      "author_name": "Approver One",
+      "comment_date": 1793394391919,
+      "text_hash": "3179a364d70c5bdbb5311bb3710ae8cfbbd1f87d3d2a8d07050232dbcb6e37d8",
+      "plan_sha256": "46e8cf0597f6b232893d887540e128865009cfe55d6b5bb6e45492466b00ba5e",
+      "state": "started",
+      "orchestrator_card": "t_e0000006",
+      "gate_card": "t_e000001a",
+      "clickup_gates": "{\"plan_revision\": 6, \"plan_sha256\": \"46e8cf0597f6b232893d887540e128865009cfe55d6b5bb6e45492466b00ba5e\", \"final_e2e\": \"t_e0000007\", \"promotion\": \"t_e0000003\", \"cleanup\": \"t_e0000015\", \"lineage\": [\"t_e0000011\", \"t_e0000017\", \"t_e0000001\", \"t_e0000010\", \"t_e000000f\", \"t_e0000007\", \"t_e0000002\", \"t_e0000015\", \"t_e0000003\"]}",
+      "ticket_epoch": 0,
+      "ticket_input_gen": null,
+      "ticket_renewed_ms": null,
+      "revoked_reason": null,
+      "revoked_ms": null,
+      "audit_stamp_state": "none",
+      "promoted_sha": null
+    }
+  ],
+  "blockers": [
+    {
+      "id": 5,
+      "task": "fixturetaska",
+      "question_card": "t_e000000c",
+      "card": "t_e0000001",
+      "run_id": 1257,
+      "created_ms": 1792781019482,
+      "body_sha256": "8f71ef693f41f97a639eb2da39c2835a26472c9b4fe2b5721eec2475b743a07e",
+      "approval_id": 16,
+      "phase_at_detect": "development",
+      "restore_status": "implementing",
+      "stage": "technical",
+      "boundary": 1,
+      "state": "superseded",
+      "relay_ref": "fixturetaska-s2-k5-w1054",
+      "request_card": "t_e0000016",
+      "question_key": "clickup-dp:fixturetaska:bq:technical:5:c0a3fe7d94ef",
+      "closure_item": null,
+      "closure_gen": null,
+      "pending_relay": null,
+      "resolution_relay": null,
+      "resolution_card": null,
+      "resolution_gen": null,
+      "resolution_body": null,
+      "resolution_authority": null,
+      "release_key": null,
+      "release_gen": null,
+      "delivered_gen": null,
+      "delivered_sha256": null,
+      "origin_lane": "work",
+      "updated_ms": 1793395284147
+    }
+  ],
+  "relays": [
+    {
+      "relay_ref": "fixturetaska-s1-g1-w0",
+      "task": "fixturetaska",
+      "card": "t_e0000018",
+      "gen": 1,
+      "item_ids": "[]",
+      "state": "classified",
+      "classification": "material"
+    },
+    {
+      "relay_ref": "fixturetaska-s1-g3-w682",
+      "task": "fixturetaska",
+      "card": "t_e0000018",
+      "gen": 3,
+      "item_ids": "[[\"reply\", \"9000000000001001\"], [\"reply\", \"9000000000001002\"], [\"reply\", \"9000000000001003\"], [\"attachment\", \"00000000-0000-4000-8000-000000000002.pdf\"], [\"reply\", \"9000000000001004\"], [\"comment\", \"9000000000001005\"], [\"comment\", \"9000000000001006\"]]",
+      "state": "classified",
+      "classification": "material"
+    },
+    {
+      "relay_ref": "fixturetaska-s1-g4-w740",
+      "task": "fixturetaska",
+      "card": "t_e0000018",
+      "gen": 4,
+      "item_ids": "[[\"comment\", \"9000000000001007\"], [\"comment\", \"9000000000001008\"], [\"attachment\", \"00000000-0000-4000-8000-000000000001.pdf\"], [\"comment\", \"9000000000001009\"]]",
+      "state": "classified",
+      "classification": "material"
+    },
+    {
+      "relay_ref": "fixturetaska-s2-g5-w0",
+      "task": "fixturetaska",
+      "card": "t_e0000016",
+      "gen": 5,
+      "item_ids": "[[\"reply\", \"9000000000001010\"]]",
+      "state": "classified",
+      "classification": "answer_only"
+    },
+    {
+      "relay_ref": "fixturetaska-s2-g6-w1267",
+      "task": "fixturetaska",
+      "card": "t_e0000016",
+      "gen": 6,
+      "item_ids": "[[\"reply\", \"9000000000001011\"], [\"reply\", \"9000000000001012\"], [\"comment\", \"9000000000001013\"], [\"comment\", \"9000000000001015\"]]",
+      "state": "classified",
+      "classification": "answer_only"
+    },
+    {
+      "relay_ref": "fixturetaska-s2-g7-w1272",
+      "task": "fixturetaska",
+      "card": "t_e0000016",
+      "gen": 7,
+      "item_ids": "[[\"reply\", \"9000000000001016\"]]",
+      "state": "classified",
+      "classification": "material"
+    },
+    {
+      "relay_ref": "fixturetaska-s2-g8-w1288",
+      "task": "fixturetaska",
+      "card": "t_e0000016",
+      "gen": 8,
+      "item_ids": "[[\"reply\", \"9000000000001017\"]]",
+      "state": "classified",
+      "classification": "answer_only"
+    },
+    {
+      "relay_ref": "fixturetaska-s2-g9-w1320",
+      "task": "fixturetaska",
+      "card": "t_e0000016",
+      "gen": 9,
+      "item_ids": "[[\"reply\", \"9000000000001018\"], [\"reply\", \"9000000000001020\"], [\"reply\", \"9000000000001021\"]]",
+      "state": "classified",
+      "classification": "material"
+    }
+  ],
+  "amendment_answers": [],
+  "shows": {
+    "t_e0000016": {
+      "latest_summary": "PLAN REVIEW r6 PASS: synthetic public fixture; the reviewed digest identifies the replacement fixture, not private plan bytes. Owner approval remains separate from review.",
+      "parents": [],
+      "children": [],
+      "task": {
+        "id": "t_e0000016",
+        "title": "ClickUp fixturetaska: request 2",
+        "status": "done",
+        "created_by": "clickup-intake",
+        "assignee": "plan-reviewer",
+        "created_at": 1792573859,
+        "completed_at": 1793392837
+      },
+      "runs": [
+        {
+          "id": 1054,
+          "profile": "planner",
+          "status": "scheduled",
+          "outcome": "scheduled",
+          "metadata": null,
+          "started_at": 1792574657,
+          "ended_at": 1792574737
+        },
+        {
+          "id": 1267,
+          "profile": "planner",
+          "status": "scheduled",
+          "outcome": "scheduled",
+          "metadata": null,
+          "started_at": 1792785732,
+          "ended_at": 1792785816
+        },
+        {
+          "id": 1272,
+          "profile": "planner",
+          "status": "scheduled",
+          "outcome": "scheduled",
+          "metadata": null,
+          "started_at": 1792791243,
+          "ended_at": 1792791338
+        },
+        {
+          "id": 1288,
+          "profile": "planner",
+          "status": "scheduled",
+          "outcome": "scheduled",
+          "metadata": null,
+          "started_at": 1792808442,
+          "ended_at": 1792808602
+        },
+        {
+          "id": 1320,
+          "profile": "planner",
+          "status": "scheduled",
+          "outcome": "scheduled",
+          "metadata": null,
+          "started_at": 1792852653,
+          "ended_at": 1792852737
+        },
+        {
+          "id": 1545,
+          "profile": "planner",
+          "status": "review",
+          "outcome": "review_requested",
+          "metadata": {
+            "clickup_task": "fixturetaska",
+            "plan_revision": 5,
+            "plan_attachment": "clickup-plan-r5.md",
+            "plan_sha256": "36b1718ac8f49979f17e4c33d1ac8e774d89484ac4fe153bdc010b2d9019dec1",
+            "accounts_gen": 9,
+            "plan_bytes": 67,
+            "summary_chars": 37,
+            "source_dev_sha": "b7339c6f23df55734a83afa8f224ab40f6334c29",
+            "dev_observed_at": "2026-10-30T20:16:26Z",
+            "supersedes": {
+              "plan_attachment": "clickup-plan-r4.md",
+              "plan_sha256": "a02a5d50072ca610081bce294e2098a1166f2966a6295a4599e29fd83be8a85f",
+              "retained_as_input": true
+            },
+            "lane_heads": {
+              "A": "65f10a57908c2e0079ee313248248a98adf2d805",
+              "B": "2b9522d2190d2287b37494c5cf94ebea7bb36172",
+              "C_checkpoint": "997ceb924c026ee06a0a99692b2a34e781857a94"
+            },
+            "dev_overlap_since_abcd0001": [
+              "CHANGELOG.md"
+            ],
+            "incorporates": [
+              "blocker=5 question=t_e000000c card=t_e0000001 gen=9"
+            ],
+            "canonical_guidance": {
+              "qa_skill_version": "0.0.1",
+              "qa_skill_sha256": "575fcc3212fe3a1843a1700de0c90db81911b4887f140cf0bf9ecbdbef2c7e50",
+              "current_dev_baseline_sha256": "685dc699de39592b3cf52cbbf08e1fa36f2f8e9396159fe6e21602052677f289",
+              "channel_context_sha256": "694228fb08cdc1dd6fe0d2328bb15ba6ca3d6756c8a36a90ac6d091008b7dd35"
+            },
+            "api_source": "Synthetic reply 9000000000001020 from Contributor One",
+            "open_questions_non_blocking": [
+              "Can a stale synthetic index be refused?",
+              "Can a refused synthetic operation leave relationships unchanged?",
+              "How many synthetic records are allowed?",
+              "Which synthetic scheduling limit applies?"
+            ],
+            "artifacts": [
+              "C:/fixture/attachments/t_e0000016/clickup-plan-r5.md"
+            ],
+            "worker_session_id": "local-3ed7c715ca5c4c79822782d193283fd09d9614c0bdb391023916a0a641105c2b"
+          },
+          "started_at": 1793391198,
+          "ended_at": 1793391930
+        },
+        {
+          "id": 1547,
+          "profile": "plan-reviewer",
+          "status": "ready",
+          "outcome": "changes_requested",
+          "metadata": null,
+          "started_at": 1793391984,
+          "ended_at": 1793392366
+        },
+        {
+          "id": 1549,
+          "profile": "planner",
+          "status": "review",
+          "outcome": "review_requested",
+          "metadata": {
+            "clickup_task": "fixturetaska",
+            "plan_revision": 6,
+            "plan_attachment": "clickup-plan-r6.md",
+            "plan_sha256": "46e8cf0597f6b232893d887540e128865009cfe55d6b5bb6e45492466b00ba5e",
+            "accounts_gen": 9,
+            "plan_bytes": 425,
+            "summary_chars": 96,
+            "supersedes": {
+              "plan_attachment": "clickup-plan-r5.md",
+              "plan_sha256": "36b1718ac8f49979f17e4c33d1ac8e774d89484ac4fe153bdc010b2d9019dec1",
+              "retained_as_input": false,
+              "status": "changes_requested, unpublished"
+            },
+            "addresses_review": "Synthetic plan-reviewer changes_requested (comment 61001): resolve the preceding synthetic finding",
+            "changes_from_r5": [
+              "Synthetic revision change 1; no private implementation detail",
+              "Synthetic revision change 2; no private implementation detail",
+              "Synthetic revision change 3; no private implementation detail",
+              "Synthetic revision change 4; no private implementation detail",
+              "Synthetic revision change 5; no private implementation detail"
+            ],
+            "source_dev_sha": "b7339c6f23df55734a83afa8f224ab40f6334c29",
+            "dev_observed_at": "2026-10-30T20:34:22Z",
+            "canonical_guidance": {
+              "qa_skill_version": "0.0.1",
+              "qa_skill_sha256": "575fcc3212fe3a1843a1700de0c90db81911b4887f140cf0bf9ecbdbef2c7e50",
+              "current_dev_baseline_sha256": "685dc699de39592b3cf52cbbf08e1fa36f2f8e9396159fe6e21602052677f289",
+              "channel_context_sha256": "694228fb08cdc1dd6fe0d2328bb15ba6ca3d6756c8a36a90ac6d091008b7dd35"
+            },
+            "lane_heads": {
+              "A": "65f10a57908c2e0079ee313248248a98adf2d805",
+              "B": "2b9522d2190d2287b37494c5cf94ebea7bb36172",
+              "C_checkpoint": "997ceb924c026ee06a0a99692b2a34e781857a94"
+            },
+            "incorporates": [
+              "blocker=5 question=t_e000000c card=t_e0000001 gen=9"
+            ],
+            "clickup_notice_comment": 61002,
+            "artifacts": [
+              "C:/fixture/attachments/t_e0000016/clickup-plan-r6.md"
+            ],
+            "worker_session_id": "local-728ea049c6a1b188864fbdbffb6320d851f6fabcbbea1284f5d371a265e8d706"
+          },
+          "started_at": 1793392374,
+          "ended_at": 1793392576
+        },
+        {
+          "id": 1551,
+          "profile": "plan-reviewer",
+          "status": "done",
+          "outcome": "completed",
+          "metadata": {
+            "review_outcome": "approved",
+            "plan_revision": 6,
+            "reviewed_sha256": "46e8cf0597f6b232893d887540e128865009cfe55d6b5bb6e45492466b00ba5e",
+            "artifact": "C:/fixture/attachments/t_e0000016/clickup-plan-r6.md",
+            "bytes": 425,
+            "findings": [],
+            "prior_finding_resolved": "Synthetic preceding revision finding resolved",
+            "checks": [
+              "Synthetic review check 1; structural fixture only",
+              "Synthetic review check 2; structural fixture only",
+              "Synthetic review check 3; structural fixture only",
+              "Synthetic checkpoint 997ceb92 inspected",
+              "Synthetic source baseline b7339c6f23df55734a83afa8f224ab40f6334c29",
+              "Synthetic review check 6; structural fixture only",
+              "Synthetic review check 7; structural fixture only",
+              "Synthetic review check 8; structural fixture only",
+              "Synthetic ClickUp summary verified"
+            ],
+            "sources": [
+              "synthetic-context-g9.md 17a8281f9cee0b285586970ff7d8c28cfc686ae7a80e5571d28cdc8e470d049f",
+              "Synthetic service contract",
+              "Contributor One reply 9000000000001020",
+              "Approver One replies 9000000000001016 and 9000000000001017",
+              "Synthetic review policy 575fcc3212fe3a1843a1700de0c90db81911b4887f140cf0bf9ecbdbef2c7e50",
+              "Synthetic source baseline 685dc699de39592b3cf52cbbf08e1fa36f2f8e9396159fe6e21602052677f289",
+              "Synthetic channel context 694228fb08cdc1dd6fe0d2328bb15ba6ca3d6756c8a36a90ac6d091008b7dd35"
+            ],
+            "limits": "Synthetic planning review only; no live API, product, database, credential or acceptance-test effects. Owner approval remains required.",
+            "worker_session_id": "local-4864de4931fc39fdd065ba65d8a8e18a1383c6eee8d1657b729836aecfa80540"
+          },
+          "started_at": 1793392628,
+          "ended_at": 1793392837
+        }
+      ],
+      "events": [
+        {
+          "kind": "claimed",
+          "payload": {
+            "lock": "FIXTURE-HOST:41001",
+            "expires": 1792575557,
+            "run_id": 1054
+          },
+          "created_at": 1792574657,
+          "run_id": 1054
+        },
+        {
+          "kind": "claimed",
+          "payload": {
+            "lock": "FIXTURE-HOST:41002",
+            "expires": 1792786632,
+            "run_id": 1267
+          },
+          "created_at": 1792785732,
+          "run_id": 1267
+        },
+        {
+          "kind": "claimed",
+          "payload": {
+            "lock": "FIXTURE-HOST:41002",
+            "expires": 1792792143,
+            "run_id": 1272
+          },
+          "created_at": 1792791243,
+          "run_id": 1272
+        },
+        {
+          "kind": "claimed",
+          "payload": {
+            "lock": "FIXTURE-HOST:41002",
+            "expires": 1792809342,
+            "run_id": 1288
+          },
+          "created_at": 1792808442,
+          "run_id": 1288
+        },
+        {
+          "kind": "claimed",
+          "payload": {
+            "lock": "FIXTURE-HOST:41002",
+            "expires": 1792853553,
+            "run_id": 1320
+          },
+          "created_at": 1792852653,
+          "run_id": 1320
+        },
+        {
+          "kind": "claimed",
+          "payload": {
+            "lock": "FIXTURE-HOST:41003",
+            "expires": 1793392098,
+            "run_id": 1545
+          },
+          "created_at": 1793391198,
+          "run_id": 1545
+        },
+        {
+          "kind": "claimed",
+          "payload": {
+            "lock": "FIXTURE-HOST:41003",
+            "expires": 1793392884,
+            "run_id": 1547,
+            "source_status": "review"
+          },
+          "created_at": 1793391984,
+          "run_id": 1547
+        },
+        {
+          "kind": "claimed",
+          "payload": {
+            "lock": "FIXTURE-HOST:41003",
+            "expires": 1793393274,
+            "run_id": 1549
+          },
+          "created_at": 1793392374,
+          "run_id": 1549
+        },
+        {
+          "kind": "claimed",
+          "payload": {
+            "lock": "FIXTURE-HOST:41003",
+            "expires": 1793393528,
+            "run_id": 1551,
+            "source_status": "review"
+          },
+          "created_at": 1793392628,
+          "run_id": 1551
+        }
+      ],
+      "comments": []
+    },
+    "t_e0000001": {
+      "latest_summary": "CLICKUP-QUESTION t_e000000c",
+      "parents": [
+        "t_e0000006",
+        "t_e000000b",
+        "t_e000000c",
+        "t_e0000011"
+      ],
+      "children": [
+        "t_e0000010"
+      ],
+      "task": {
+        "id": "t_e0000001",
+        "title": "Synthetic feature r6 — implementation and native SPEC",
+        "status": "todo",
+        "created_by": "orchestrator",
+        "assignee": "implementor",
+        "created_at": 1792775487,
+        "completed_at": null
+      },
+      "runs": [
+        {
+          "id": 1257,
+          "profile": "implementor",
+          "status": "blocked",
+          "outcome": "blocked",
+          "metadata": null,
+          "started_at": 1792777317,
+          "ended_at": 1792781452
+        }
+      ],
+      "events": [
+        {
+          "kind": "claimed",
+          "payload": {
+            "lock": "FIXTURE-HOST:41002",
+            "expires": 1792778217,
+            "run_id": 1257
+          },
+          "created_at": 1792777317,
+          "run_id": 1257
+        }
+      ],
+      "comments": []
+    },
+    "t_e000000c": {
+      "latest_summary": null,
+      "parents": [],
+      "children": [
+        "t_e0000001"
+      ],
+      "task": {
+        "id": "t_e000000c",
+        "title": "CLICKUP-QUESTION v1 t_e0000001",
+        "status": "blocked",
+        "created_by": "implementor",
+        "assignee": "clickup-intake",
+        "created_at": 1792780819,
+        "completed_at": null
+      },
+      "runs": [],
+      "events": [],
+      "comments": []
+    },
+    "t_e0000006": {
+      "latest_summary": "Synthetic r6 amendment retains the existing implementation, review, verification, promotion and cleanup graph, including E=t_e0000007, P=t_e0000003 and X=t_e0000015. Earlier promotion remains archived. This fixture is not a record of private project execution.",
+      "parents": [],
+      "children": [
+        "t_e0000001",
+        "t_e0000003",
+        "t_e0000007",
+        "t_e000000f",
+        "t_e0000010",
+        "t_e0000015"
+      ],
+      "task": {
+        "id": "t_e0000006",
+        "title": "ClickUp fixturetaska: orchestrate amendment r6",
+        "status": "done",
+        "created_by": "clickup-intake",
+        "assignee": "orchestrator",
+        "created_at": 1793423784,
+        "completed_at": 1793428588
+      },
+      "runs": [
+        {
+          "id": 1558,
+          "profile": "orchestrator",
+          "status": "blocked",
+          "outcome": "blocked",
+          "metadata": null,
+          "started_at": 1793425703,
+          "ended_at": 1793426455
+        },
+        {
+          "id": 1561,
+          "profile": "orchestrator",
+          "status": "done",
+          "outcome": "completed",
+          "metadata": {
+            "clickup_gates": {
+              "plan_revision": 6,
+              "plan_sha256": "46e8cf0597f6b232893d887540e128865009cfe55d6b5bb6e45492466b00ba5e",
+              "final_e2e": "t_e0000007",
+              "promotion": "t_e0000003",
+              "cleanup": "t_e0000015",
+              "lineage": [
+                "t_e0000011",
+                "t_e0000017",
+                "t_e0000001",
+                "t_e0000010",
+                "t_e000000f",
+                "t_e0000007",
+                "t_e0000002",
+                "t_e0000015",
+                "t_e0000003"
+              ]
+            },
+            "graph": {
+              "A": "t_e0000011",
+              "B": "t_e0000017",
+              "C": "t_e0000001",
+              "Q": "t_e0000010",
+              "I": "t_e000000f",
+              "E": "t_e0000007",
+              "P": "t_e0000003",
+              "X": "t_e0000015",
+              "gate": "t_e000001a",
+              "superseded_promotion": "t_e0000002",
+              "superseded_status": "archived",
+              "native_spec": "C requests native same-card spec-reviewer; A/B remain approved/done",
+              "startup_reconciliation_owner": "t_e000000f",
+              "promotion_handback_owner": "t_e0000003",
+              "question": "t_e000000c remains intake-owned; approved r6 incorporates it; no worker-side resolution or fence bypass"
+            },
+            "verification": {
+              "graph_checks_passed": 75,
+              "graph_checks_failed": 0,
+              "all_six_child_native_show_readbacks": true,
+              "five_operator_body_hashes_match": true,
+              "full_question_protocol_verbatim_cards": 9,
+              "clarification_comments_readback": [
+                61003,
+                61004,
+                61005,
+                61006,
+                61007
+              ],
+              "promotion_ticket_marker_and_paragraph_exact": true,
+              "promotion_top_level_full_promoted_sha_required": true,
+              "subscriptions": "Synthetic passive notification destination 111111111111111111, guild 999999999999999999; no wake changes",
+              "source_checkpoints": "A=65f10a57908c2e0079ee313248248a98adf2d805 B=2b9522d2190d2287b37494c5cf94ebea7bb36172 C=997ceb924c026ee06a0a99692b2a34e781857a94; all clean, no rebase",
+              "product_tests": "Not run by orchestration; implementation/native SPEC/QSR/exact-candidate live E2E remain required",
+              "verifier_note": "Synthetic fixture preserves intake-created ownership and a null assignee for an undispatched gate; no gate mutation."
+            },
+            "current_dev_baseline": {
+              "observed_utc": "2026-10-31T06:33:06.405942+00:00",
+              "git_readback_utc": "2026-10-31T06:35:34.632250+00:00",
+              "remote_dev_sha": "8dfa2db6d1f2a17c6be7354404c2bb9d4d9a14e7",
+              "remote_master_sha": "b7339c6f23df55734a83afa8f224ab40f6334c29",
+              "served_path": "C:/fixture/synthetic-served-tree",
+              "served_sha": "8dfa2db6d1f2a17c6be7354404c2bb9d4d9a14e7",
+              "models_sha256": "8405dfbef2236fe99353fa78107888f7802e0d7f7fe12e463adc66e19c8d2c8b",
+              "notifications_sha256": "973714dca784763b518084beb246885b097c241e39bd869904b441d0e8581a64",
+              "reused_handback": "t_e0000008 run1555; source/required DLL hashes/read-only DB shapes match",
+              "database": "FIXTURE-HOST/synthetic_database",
+              "postconditions": "Synthetic read-only schema and data checks; no private project catalog or row identifiers are included.",
+              "overlap": [
+                "CHANGELOG.md"
+              ],
+              "policy": "Synthetic source changes retain the existing review and verification owners; no replay or authorization bypass."
+            },
+            "governing_inputs": {
+              "plan_r6": {
+                "bytes": 425,
+                "sha256": "46e8cf0597f6b232893d887540e128865009cfe55d6b5bb6e45492466b00ba5e"
+              },
+              "approval_r6": {
+                "bytes": 60,
+                "sha256": "6af389d8b4f9b4167e2adbe8ebdcc9bf77fa92c70bf875f4524597c27c5d17ba",
+                "approver": "900000101",
+                "comment": "9000000000001022",
+                "accounts_gen": 9
+              },
+              "retained_plan_r4": {
+                "bytes": 79,
+                "sha256": "a02a5d50072ca610081bce294e2098a1166f2966a6295a4599e29fd83be8a85f"
+              },
+              "canonical_paths": [
+                "C:/fixture/policies/review-policy.md",
+                "C:/fixture/policies/synthetic-baseline.md",
+                "C:/fixture/policies/release-policy.md"
+              ]
+            },
+            "cleanup": {
+              "owner": "t_e0000015",
+              "requirements": "Synthetic retired workspaces, registrations, refs and temporary environments must be absent; retain only required evidence and verify the current handback.",
+              "this_scratch_in_allowlist": true,
+              "same_gate_stays_unfinished_on_obstacles": true
+            },
+            "boundaries": "No live product, database, configuration, deployment, provider, gate, question, fence, profile or gateway changes.",
+            "evidence": {
+              "file": "r6-orchestration-receipt.json",
+              "bytes": 73,
+              "sha256": "3412ad4a5240dc5668ee3af3bf8a2389eb8c7427d12cf520fe2333921a4679af"
+            },
+            "artifacts": [
+              "C:/fixture/attachments/t_e0000006/r6-orchestration-receipt.json"
+            ],
+            "worker_session_id": "local-cdc6162a4bafaccf95411a018a7e4c153961ae91aaaf6f98ddebf76ad4063ca1"
+          },
+          "started_at": 1793428167,
+          "ended_at": 1793428588
+        }
+      ],
+      "events": [
+        {
+          "kind": "claimed",
+          "payload": {
+            "lock": "FIXTURE-HOST:41003",
+            "expires": 1793426603,
+            "run_id": 1558
+          },
+          "created_at": 1793425703,
+          "run_id": 1558
+        },
+        {
+          "kind": "claimed",
+          "payload": {
+            "lock": "FIXTURE-HOST:41003",
+            "expires": 1793429067,
+            "run_id": 1561
+          },
+          "created_at": 1793428167,
+          "run_id": 1561
+        }
+      ],
+      "comments": []
+    },
+    "t_e000001a": {
+      "latest_summary": null,
+      "parents": [],
+      "children": [
+        "t_e0000003"
+      ],
+      "task": {
+        "id": "t_e000001a",
+        "title": "ClickUp fixturetaska: approval gate r6",
+        "status": "blocked",
+        "created_by": "clickup-intake",
+        "assignee": null,
+        "created_at": 1793423180,
+        "completed_at": null
+      },
+      "runs": [],
+      "events": [],
+      "comments": []
+    }
+  },
+  "provenance": {
+    "kind": "Sanitized native/store structural projection; synthetic identities, prose and artifact fingerprints. Not exact private captured bytes or a full API replay.",
+    "source_sha256": {
+      "live-store-projection.json": "9ec5bfa9dd1c90a3b2d7fd37cf57a0232cc06123e53cc9c35727e9e1499f0808",
+      "native-show-snapshots.json": "9e39b2140504477e21836d7d4f94eb891c7e1fd381c640511536f51dcb4c345b",
+      "attachment-index.json": "ccd5e6d7a1d620df77b73901874d8050783729fa44046fe348be3f5bea40536f"
+    },
+    "plan_sha256": "46e8cf0597f6b232893d887540e128865009cfe55d6b5bb6e45492466b00ba5e",
+    "omitted": "Private plan and project history are excluded. The approved plan is a minimal synthetic fixture; retained opaque fingerprints identify synthetic omitted inputs, not private artifacts."
+  }
+}

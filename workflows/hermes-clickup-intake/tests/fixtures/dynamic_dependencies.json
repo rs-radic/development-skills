@@ -1,0 +1,1052 @@
+{
+  "task_id": "fixturetaskb",
+  "quality_card": "t_e000000a",
+  "repair_card": "t_e0000012",
+  "question_card": "t_e0000014",
+  "cards": {
+    "t_e0000009": {
+      "task": {
+        "id": "t_e0000009",
+        "title": "ClickUp fixturetaskb: orchestrate approved plan r3",
+        "status": "done",
+        "assignee": "orchestrator",
+        "created_by": "clickup-intake",
+        "created_at": 1793359488,
+        "current_run_id": null,
+        "worker_pid": null,
+        "worker_started_at": "|179336211899",
+        "claim_lock": null,
+        "claim_expires": null,
+        "last_heartbeat_at": 1793362448
+      },
+      "parents": [],
+      "children": [
+        "t_e0000004",
+        "t_e0000019"
+      ],
+      "runs": [
+        {
+          "id": 1535,
+          "task_id": "t_e0000009",
+          "profile": "orchestrator",
+          "status": "done",
+          "outcome": "completed",
+          "started_at": 1793362118,
+          "ended_at": 1793362485,
+          "worker_pid": null,
+          "worker_started_at": null,
+          "last_heartbeat_at": 1793362448
+        }
+      ],
+      "events": [
+        {
+          "id": 56000,
+          "task_id": "t_e0000009",
+          "run_id": null,
+          "kind": "created",
+          "payload": {
+            "assignee": "orchestrator",
+            "status": "blocked"
+          },
+          "created_at": 1793359488
+        },
+        {
+          "id": 56001,
+          "task_id": "t_e0000009",
+          "run_id": null,
+          "kind": "blocked",
+          "payload": {
+            "status": "blocked"
+          },
+          "created_at": 1793359488
+        },
+        {
+          "id": 56002,
+          "task_id": "t_e0000009",
+          "run_id": null,
+          "kind": "attached",
+          "payload": {},
+          "created_at": 1793360266
+        },
+        {
+          "id": 56003,
+          "task_id": "t_e0000009",
+          "run_id": null,
+          "kind": "attached",
+          "payload": {},
+          "created_at": 1793360284
+        },
+        {
+          "id": 56004,
+          "task_id": "t_e0000009",
+          "run_id": null,
+          "kind": "attached",
+          "payload": {},
+          "created_at": 1793360336
+        },
+        {
+          "id": 56005,
+          "task_id": "t_e0000009",
+          "run_id": null,
+          "kind": "attached",
+          "payload": {},
+          "created_at": 1793360355
+        },
+        {
+          "id": 56011,
+          "task_id": "t_e0000009",
+          "run_id": null,
+          "kind": "unblocked",
+          "payload": null,
+          "created_at": 1793362065
+        },
+        {
+          "id": 56012,
+          "task_id": "t_e0000009",
+          "run_id": 1535,
+          "kind": "claimed",
+          "payload": {
+            "run_id": 1535
+          },
+          "created_at": 1793362118
+        },
+        {
+          "id": 56013,
+          "task_id": "t_e0000009",
+          "run_id": 1535,
+          "kind": "spawned",
+          "payload": {},
+          "created_at": 1793362118
+        },
+        {
+          "id": 56014,
+          "task_id": "t_e0000009",
+          "run_id": 1535,
+          "kind": "owner_admitted",
+          "payload": {},
+          "created_at": 1793362123
+        },
+        {
+          "id": 56015,
+          "task_id": "t_e0000009",
+          "run_id": 1535,
+          "kind": "worker_bound",
+          "payload": {},
+          "created_at": 1793362132
+        },
+        {
+          "id": 56016,
+          "task_id": "t_e0000009",
+          "run_id": 1535,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793362144
+        },
+        {
+          "id": 56017,
+          "task_id": "t_e0000009",
+          "run_id": 1535,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793362207
+        },
+        {
+          "id": 56018,
+          "task_id": "t_e0000009",
+          "run_id": 1535,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793362267
+        },
+        {
+          "id": 56019,
+          "task_id": "t_e0000009",
+          "run_id": 1535,
+          "kind": "heartbeat",
+          "payload": {},
+          "created_at": 1793362311
+        },
+        {
+          "id": 56022,
+          "task_id": "t_e0000009",
+          "run_id": 1535,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793362328
+        },
+        {
+          "id": 56031,
+          "task_id": "t_e0000009",
+          "run_id": 1535,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793362388
+        },
+        {
+          "id": 56044,
+          "task_id": "t_e0000009",
+          "run_id": 1535,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793362448
+        },
+        {
+          "id": 56045,
+          "task_id": "t_e0000009",
+          "run_id": null,
+          "kind": "commented",
+          "payload": {},
+          "created_at": 1793362475
+        },
+        {
+          "id": 56046,
+          "task_id": "t_e0000009",
+          "run_id": 1535,
+          "kind": "completed",
+          "payload": {},
+          "created_at": 1793362485
+        },
+        {
+          "id": 56055,
+          "task_id": "t_e0000009",
+          "run_id": 1535,
+          "kind": "worker_result",
+          "payload": {},
+          "created_at": 1793362510
+        }
+      ]
+    },
+    "t_e0000004": {
+      "task": {
+        "id": "t_e0000004",
+        "title": "Synthetic control operation r3 — offline implementation and native SPEC",
+        "status": "done",
+        "assignee": "spec-reviewer",
+        "created_by": "orchestrator",
+        "created_at": 1793362327,
+        "current_run_id": null,
+        "worker_pid": null,
+        "worker_started_at": "|179336357280",
+        "claim_lock": null,
+        "claim_expires": null,
+        "last_heartbeat_at": 1793363837
+      },
+      "parents": [
+        "t_e0000009"
+      ],
+      "children": [
+        "t_e000000a",
+        "t_e0000012"
+      ],
+      "runs": [
+        {
+          "id": 1536,
+          "task_id": "t_e0000004",
+          "profile": "implementor",
+          "status": "review",
+          "outcome": "review_requested",
+          "started_at": 1793362500,
+          "ended_at": 1793363532,
+          "worker_pid": null,
+          "worker_started_at": null,
+          "last_heartbeat_at": 1793363505
+        },
+        {
+          "id": 1538,
+          "task_id": "t_e0000004",
+          "profile": "spec-reviewer",
+          "status": "done",
+          "outcome": "completed",
+          "started_at": 1793363572,
+          "ended_at": 1793363847,
+          "worker_pid": null,
+          "worker_started_at": null,
+          "last_heartbeat_at": 1793363837
+        }
+      ],
+      "events": [
+        {
+          "id": 56020,
+          "task_id": "t_e0000004",
+          "run_id": null,
+          "kind": "created",
+          "payload": {
+            "assignee": "implementor",
+            "status": "todo"
+          },
+          "created_at": 1793362327
+        },
+        {
+          "id": 56021,
+          "task_id": "t_e0000004",
+          "run_id": null,
+          "kind": "dependency_wait",
+          "payload": {},
+          "created_at": 1793362327
+        },
+        {
+          "id": 56036,
+          "task_id": "t_e0000004",
+          "run_id": null,
+          "kind": "commented",
+          "payload": {},
+          "created_at": 1793362436
+        },
+        {
+          "id": 56047,
+          "task_id": "t_e0000004",
+          "run_id": null,
+          "kind": "promoted",
+          "payload": null,
+          "created_at": 1793362485
+        },
+        {
+          "id": 56049,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "claimed",
+          "payload": {
+            "run_id": 1536
+          },
+          "created_at": 1793362500
+        },
+        {
+          "id": 56050,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "spawned",
+          "payload": {},
+          "created_at": 1793362500
+        },
+        {
+          "id": 56053,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "owner_admitted",
+          "payload": {},
+          "created_at": 1793362503
+        },
+        {
+          "id": 56057,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "worker_bound",
+          "payload": {},
+          "created_at": 1793362512
+        },
+        {
+          "id": 56059,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793362522
+        },
+        {
+          "id": 56061,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793362583
+        },
+        {
+          "id": 56065,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793362649
+        },
+        {
+          "id": 56067,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793362712
+        },
+        {
+          "id": 56069,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793362774
+        },
+        {
+          "id": 56071,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793362834
+        },
+        {
+          "id": 56075,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793362894
+        },
+        {
+          "id": 56077,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793362954
+        },
+        {
+          "id": 56078,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363015
+        },
+        {
+          "id": 56079,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363075
+        },
+        {
+          "id": 56080,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363135
+        },
+        {
+          "id": 56081,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363196
+        },
+        {
+          "id": 56083,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363262
+        },
+        {
+          "id": 56084,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363323
+        },
+        {
+          "id": 56085,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363385
+        },
+        {
+          "id": 56086,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363445
+        },
+        {
+          "id": 56087,
+          "task_id": "t_e0000004",
+          "run_id": null,
+          "kind": "attached",
+          "payload": {},
+          "created_at": 1793363504
+        },
+        {
+          "id": 56088,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363505
+        },
+        {
+          "id": 56090,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "review_requested",
+          "payload": {},
+          "created_at": 1793363532
+        },
+        {
+          "id": 56091,
+          "task_id": "t_e0000004",
+          "run_id": 1536,
+          "kind": "worker_result",
+          "payload": {},
+          "created_at": 1793363552
+        },
+        {
+          "id": 56092,
+          "task_id": "t_e0000004",
+          "run_id": 1538,
+          "kind": "claimed",
+          "payload": {
+            "run_id": 1538,
+            "source_status": "review"
+          },
+          "created_at": 1793363572
+        },
+        {
+          "id": 56093,
+          "task_id": "t_e0000004",
+          "run_id": 1538,
+          "kind": "spawned",
+          "payload": {},
+          "created_at": 1793363572
+        },
+        {
+          "id": 56094,
+          "task_id": "t_e0000004",
+          "run_id": 1538,
+          "kind": "owner_admitted",
+          "payload": {},
+          "created_at": 1793363575
+        },
+        {
+          "id": 56095,
+          "task_id": "t_e0000004",
+          "run_id": 1538,
+          "kind": "worker_bound",
+          "payload": {},
+          "created_at": 1793363581
+        },
+        {
+          "id": 56096,
+          "task_id": "t_e0000004",
+          "run_id": 1538,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363590
+        },
+        {
+          "id": 56097,
+          "task_id": "t_e0000004",
+          "run_id": 1538,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363652
+        },
+        {
+          "id": 56098,
+          "task_id": "t_e0000004",
+          "run_id": 1538,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363713
+        },
+        {
+          "id": 56100,
+          "task_id": "t_e0000004",
+          "run_id": 1538,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363777
+        },
+        {
+          "id": 56101,
+          "task_id": "t_e0000004",
+          "run_id": 1538,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363837
+        },
+        {
+          "id": 56103,
+          "task_id": "t_e0000004",
+          "run_id": 1538,
+          "kind": "completed",
+          "payload": {},
+          "created_at": 1793363847
+        },
+        {
+          "id": 56105,
+          "task_id": "t_e0000004",
+          "run_id": 1538,
+          "kind": "worker_result",
+          "payload": {},
+          "created_at": 1793363856
+        }
+      ]
+    },
+    "t_e000000a": {
+      "task": {
+        "id": "t_e000000a",
+        "title": "Synthetic control operation r3 — independent quality/security",
+        "status": "todo",
+        "assignee": "quality-security-reviewer",
+        "created_by": "orchestrator",
+        "created_at": 1793362351,
+        "current_run_id": null,
+        "worker_pid": null,
+        "worker_started_at": "|179336388817",
+        "claim_lock": null,
+        "claim_expires": null,
+        "last_heartbeat_at": 1793364337
+      },
+      "parents": [
+        "t_e0000004",
+        "t_e0000012"
+      ],
+      "children": [
+        "t_e000000d"
+      ],
+      "runs": [
+        {
+          "id": 1539,
+          "task_id": "t_e000000a",
+          "profile": "quality-security-reviewer",
+          "status": "blocked",
+          "outcome": "blocked",
+          "started_at": 1793363888,
+          "ended_at": 1793364367,
+          "worker_pid": null,
+          "worker_started_at": null,
+          "last_heartbeat_at": 1793364337
+        }
+      ],
+      "events": [
+        {
+          "id": 56025,
+          "task_id": "t_e000000a",
+          "run_id": null,
+          "kind": "created",
+          "payload": {
+            "assignee": "quality-security-reviewer",
+            "status": "todo"
+          },
+          "created_at": 1793362351
+        },
+        {
+          "id": 56026,
+          "task_id": "t_e000000a",
+          "run_id": null,
+          "kind": "dependency_wait",
+          "payload": {},
+          "created_at": 1793362351
+        },
+        {
+          "id": 56038,
+          "task_id": "t_e000000a",
+          "run_id": null,
+          "kind": "commented",
+          "payload": {},
+          "created_at": 1793362436
+        },
+        {
+          "id": 56104,
+          "task_id": "t_e000000a",
+          "run_id": null,
+          "kind": "promoted",
+          "payload": null,
+          "created_at": 1793363847
+        },
+        {
+          "id": 56106,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "claimed",
+          "payload": {
+            "run_id": 1539
+          },
+          "created_at": 1793363888
+        },
+        {
+          "id": 56107,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "spawned",
+          "payload": {},
+          "created_at": 1793363888
+        },
+        {
+          "id": 56108,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "owner_admitted",
+          "payload": {},
+          "created_at": 1793363890
+        },
+        {
+          "id": 56109,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "worker_bound",
+          "payload": {},
+          "created_at": 1793363896
+        },
+        {
+          "id": 56110,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363904
+        },
+        {
+          "id": 56111,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793363967
+        },
+        {
+          "id": 56113,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "heartbeat",
+          "payload": {},
+          "created_at": 1793363980
+        },
+        {
+          "id": 56114,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793364028
+        },
+        {
+          "id": 56115,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793364089
+        },
+        {
+          "id": 56116,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793364149
+        },
+        {
+          "id": 56117,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "heartbeat",
+          "payload": {},
+          "created_at": 1793364180
+        },
+        {
+          "id": 56118,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793364213
+        },
+        {
+          "id": 56119,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793364273
+        },
+        {
+          "id": 56120,
+          "task_id": "t_e000000a",
+          "run_id": null,
+          "kind": "attached",
+          "payload": {},
+          "created_at": 1793364314
+        },
+        {
+          "id": 56122,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793364337
+        },
+        {
+          "id": 56123,
+          "task_id": "t_e000000a",
+          "run_id": null,
+          "kind": "linked",
+          "payload": {},
+          "created_at": 1793364337
+        },
+        {
+          "id": 56124,
+          "task_id": "t_e000000a",
+          "run_id": null,
+          "kind": "commented",
+          "payload": {},
+          "created_at": 1793364351
+        },
+        {
+          "id": 56127,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "dependency_wait",
+          "payload": {
+            "source_status": "ready"
+          },
+          "created_at": 1793364367
+        },
+        {
+          "id": 56128,
+          "task_id": "t_e000000a",
+          "run_id": 1539,
+          "kind": "worker_result",
+          "payload": {},
+          "created_at": 1793364381
+        }
+      ]
+    },
+    "t_e0000012": {
+      "task": {
+        "id": "t_e0000012",
+        "title": "Synthetic control operation r3 — Q1 refusal-boundary remediation + native SPEC",
+        "status": "todo",
+        "assignee": "implementor",
+        "created_by": "quality-security-reviewer",
+        "created_at": 1793364329,
+        "current_run_id": null,
+        "worker_pid": null,
+        "worker_started_at": "|179336439015",
+        "claim_lock": null,
+        "claim_expires": null,
+        "last_heartbeat_at": 1793364467
+      },
+      "parents": [
+        "t_e0000004",
+        "t_e0000014"
+      ],
+      "children": [
+        "t_e000000a"
+      ],
+      "runs": [
+        {
+          "id": 1540,
+          "task_id": "t_e0000012",
+          "profile": "implementor",
+          "status": "blocked",
+          "outcome": "blocked",
+          "started_at": 1793364390,
+          "ended_at": 1793364509,
+          "worker_pid": null,
+          "worker_started_at": null,
+          "last_heartbeat_at": 1793364467
+        }
+      ],
+      "events": [
+        {
+          "id": 56121,
+          "task_id": "t_e0000012",
+          "run_id": null,
+          "kind": "created",
+          "payload": {
+            "assignee": "implementor",
+            "status": "ready"
+          },
+          "created_at": 1793364329
+        },
+        {
+          "id": 56129,
+          "task_id": "t_e0000012",
+          "run_id": 1540,
+          "kind": "claimed",
+          "payload": {
+            "run_id": 1540
+          },
+          "created_at": 1793364390
+        },
+        {
+          "id": 56130,
+          "task_id": "t_e0000012",
+          "run_id": 1540,
+          "kind": "spawned",
+          "payload": {},
+          "created_at": 1793364390
+        },
+        {
+          "id": 56131,
+          "task_id": "t_e0000012",
+          "run_id": 1540,
+          "kind": "owner_admitted",
+          "payload": {},
+          "created_at": 1793364393
+        },
+        {
+          "id": 56132,
+          "task_id": "t_e0000012",
+          "run_id": 1540,
+          "kind": "worker_bound",
+          "payload": {},
+          "created_at": 1793364398
+        },
+        {
+          "id": 56133,
+          "task_id": "t_e0000012",
+          "run_id": 1540,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793364407
+        },
+        {
+          "id": 56134,
+          "task_id": "t_e0000012",
+          "run_id": 1540,
+          "kind": "heartbeat",
+          "payload": null,
+          "created_at": 1793364467
+        },
+        {
+          "id": 56137,
+          "task_id": "t_e0000012",
+          "run_id": null,
+          "kind": "linked",
+          "payload": {},
+          "created_at": 1793364497
+        },
+        {
+          "id": 56138,
+          "task_id": "t_e0000012",
+          "run_id": null,
+          "kind": "commented",
+          "payload": {},
+          "created_at": 1793364507
+        },
+        {
+          "id": 56139,
+          "task_id": "t_e0000012",
+          "run_id": 1540,
+          "kind": "dependency_wait",
+          "payload": {
+            "source_status": "ready",
+            "reason": "CLICKUP-QUESTION t_e0000014"
+          },
+          "created_at": 1793364509
+        },
+        {
+          "id": 56140,
+          "task_id": "t_e0000012",
+          "run_id": 1540,
+          "kind": "worker_result",
+          "payload": {},
+          "created_at": 1793364518
+        }
+      ]
+    },
+    "t_e0000014": {
+      "task": {
+        "id": "t_e0000014",
+        "title": "CLICKUP-QUESTION v1 t_e0000012",
+        "status": "blocked",
+        "assignee": "clickup-intake",
+        "created_by": "implementor",
+        "created_at": 1793364495,
+        "current_run_id": null,
+        "worker_pid": null,
+        "worker_started_at": null,
+        "claim_lock": null,
+        "claim_expires": null,
+        "last_heartbeat_at": null,
+        "body": "Synthetic control operation (ClickUp fixturetaskb), approved plan r3: a local input check refuses before any external operation, but the result is reported as an attempted operation. A human decision is needed before changing the approved behavior and tests.\n\nA) Report the local refusal as not performed and retain the isolated fixture.\nB) Revise the approved fixture so it exercises an attempted operation, subject to separate containment approval.\nC) Keep the approved behavior and document the limitation.\n\nRecommended: A. It keeps the existing containment boundary and reports whether an operation was actually attempted."
+      },
+      "parents": [],
+      "children": [
+        "t_e0000012"
+      ],
+      "runs": [],
+      "events": [
+        {
+          "id": 56135,
+          "task_id": "t_e0000014",
+          "run_id": null,
+          "kind": "created",
+          "payload": {
+            "assignee": "clickup-intake",
+            "status": "blocked"
+          },
+          "created_at": 1793364495
+        },
+        {
+          "id": 56136,
+          "task_id": "t_e0000014",
+          "run_id": null,
+          "kind": "blocked",
+          "payload": {
+            "status": "blocked"
+          },
+          "created_at": 1793364495
+        }
+      ]
+    }
+  },
+  "task": {
+    "clickup_task_id": "fixturetaskb",
+    "eligible": 1,
+    "requester_id": 900000101,
+    "phase": "development",
+    "last_status_seen": "implementing",
+    "list_fp": "8c507873abda840dc420f8a2a3ad7fea022aee61a91c42c527e12c8d31d971fc",
+    "content_hash": "9e3259012dba95c08a4ef7f1f0afc7925f4beb80c50cc356caf28881ae8c9088",
+    "attach_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "quiet_until_ms": 1793357304252,
+    "input_gen": 2,
+    "classified_gen": 2,
+    "scope_gen": 2,
+    "published_rev": 3,
+    "published_sha256": "dbe8cfb925466f8329b9e8d694c68b24a78215462100782af40fe6659475b905",
+    "published_accounts_gen": 2,
+    "next_rev": null,
+    "last_status_written": null,
+    "last_light_ms": 1793371764135,
+    "last_full_ms": 1793370864232,
+    "last_task_get_ms": 1793371764135,
+    "full_cursor": null,
+    "full_started_ms": 1793370864232,
+    "barrier_ok_ms": 1793370864232,
+    "hold_reason": null,
+    "terminal": 0
+  },
+  "approval": {
+    "id": 32,
+    "task": "fixturetaskb",
+    "rev": 3,
+    "accounts_gen": 2,
+    "comment_id": "9000000000001019",
+    "author_id": 900000101,
+    "author_name": "Approver One",
+    "comment_date": 1793356740668,
+    "text_hash": "083f39220d967e657a9a9ecb2a2b7a5f0ef17b05747a088bb9a8422d50f9c9c2",
+    "plan_sha256": "dbe8cfb925466f8329b9e8d694c68b24a78215462100782af40fe6659475b905",
+    "state": "started",
+    "orchestrator_card": "t_e0000009",
+    "gate_card": "t_e0000005",
+    "clickup_gates": "{\"plan_revision\": 3, \"plan_sha256\": \"dbe8cfb925466f8329b9e8d694c68b24a78215462100782af40fe6659475b905\", \"final_e2e\": \"t_e0000013\", \"promotion\": \"t_e0000008\", \"cleanup\": \"t_e000000e\", \"lineage\": [\"t_e0000004\", \"t_e0000019\", \"t_e000000a\", \"t_e000000d\", \"t_e0000013\", \"t_e0000008\", \"t_e000000e\"]}",
+    "ticket_epoch": 0,
+    "ticket_input_gen": null,
+    "ticket_renewed_ms": null,
+    "revoked_reason": null,
+    "revoked_ms": null,
+    "audit_stamp_state": "none",
+    "promoted_sha": null
+  },
+  "capture_note": "Sanitized structural projection: synthetic identities and question prose; original actor categories, lifecycle kinds, relative timing, graph memberships and nulls retained. Not exact private captured bytes."
+}

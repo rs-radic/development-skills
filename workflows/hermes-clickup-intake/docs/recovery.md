@@ -1,6 +1,6 @@
 # Optional recovery and stalled-work diagnostics
 
-Recovery wakes an operator for an exact stopped worker, a qualified stalled transition or pre-worker approval staging within an **existing approved workflow**. It is not a generic retry engine, a new approval, or permission to bypass a worker guard. Question relay, amendment continuation and recovery have separate activation gates. Bounded attempts can remain unresolved; this is not a universal live-recovery guarantee.
+Recovery wakes an operator for an exact stopped worker, a qualified stalled transition, pre-worker approval staging or structural/outer progress diagnosis within an **existing approved workflow**. It is not a generic retry engine, a new approval, or permission to bypass a worker guard. Question relay, amendment continuation and recovery have separate activation gates. Bounded attempts can remain unresolved; this is not a universal live-recovery guarantee. The [progress extension](progress-recovery.md) also distinguishes independent notification delivery failures from native worker progress, preserving one owner and the original budgets/deadline.
 
 Keep recovery **disabled until the operator adopts a project-specific recovery contract**. The public [carrier template](../templates/recovery_card.md) requires operator-supplied references to that contract, the approved plan/amendment, the project's workflow and its supported native recovery procedure. Supply the exact board, permitted operator context, target/path/byte bindings and ordering preconditions. The preparation tool does not discover or approve that authority, substitute a private project plan, or provision a coordinator. Unresolved references are a reason not to activate recovery.
 
@@ -28,6 +28,8 @@ recovery rollback-check
 
 `engine.recovery_members` binds each work card W to approval A*. Eligible approval states are `released`, `started`, `implemented`, `ticketed` and `promoted`. Membership includes the current orchestrator and its declared final-E2E, promotion, cleanup and lineage cards. It also includes the **last** prior `clickup_gates` lineage handed to that approval's own completed orchestrator-create row. This is not permission to scan arbitrary board cards or all historical ancestors. Every approval gate belonging to the task is excluded, even if named in lineage.
 
+With the current native observation contract, `dependency_scope`/`dependency_members` additionally derive uniquely owned required ancestors of current approved roots. This reaches later-added repair work and its question without rewriting declared approval membership. Complete reciprocal graph evidence, current generation/approval and foreign/shared ownership guards apply again at effect time and public admission. A missing read is unavailable, not affirmative detachment. Visibility is not new authority to operate on that card. See [current required dependencies](progress-recovery.md#current-dependency-observation-is-not-new-authority).
+
 The task must be unheld and nonterminal, with current classified input and approval, in `development`, `implemented`, `promotion_window`, `promotion_held` or `ready_for_deployment`. Evaluation requires a confirmed task observation. Missing reads defer a decision; they do not prove a stop has resolved.
 
 `kanban_port.recovery_incident` then requires:
@@ -41,11 +43,13 @@ The typed-stop identity is `(W, R)`, plus event kind/time, block kind, SHA-256 o
 
 ### Stalled transitions and pre-worker staging
 
-`stalled.candidate` additionally recognizes fully observed stopped `blocked`/`triage` work and the narrow `todo` case behind a material question incorporated into the current approved plan. It checks native parents, question/fence obligations and reviewed source bytes. Normal ready/todo queues, open human dependencies and unknown reads do not become new incidents. The no-worker case uses run **0** anchored to actual creation, not an invented claimed run or block event. Ten minutes of unchanged qualifying observations is a diagnostic grace, not a start-time SLA.
+`stalled.candidate` additionally recognizes fully observed stopped `blocked`/`triage` work and narrow `todo` cases behind an incorporated material question or a qualifying stopped internal question-delivery transition. It checks recursive native parents, question/fence obligations and reviewed source bytes. The undelivered-question exception is specific to that question's status, never its ancestry or live runs. Normal ready/todo queues, verified unanswered human dependencies and unknown reads do not qualify through this specialist. The separate outer diagnostic can investigate unchanged automation/observation failure without granting source execution. The no-worker case uses run **0** anchored to actual creation, not an invented claimed run or block event. Ten minutes of unchanged qualifying observations is a diagnostic grace, not a start-time SLA.
 
 `preworker.inspect`/`detect` handles a current reviewed/approved plan whose gate/orchestrator staging has made no verified progress for ten minutes, including no native objects yet or partial creation/attachment/registration. `approval-<approval-id>` is a **logical anchor**, not a Kanban card; run 0 means no native incident run. The current-review PASS and complete actual ancestor/target obligations must be observed. Live writers, future retries, ordinary progress, disabled handoff, holds and changed authority prevent/defer admission.
 
 The normal intake path alone may reconcile/create/register/attach/release those exact staged objects. Preserve returned-but-unregistered IDs and their idempotency keys. Never manually resume an approval anchor, create a replacement graph or reset state/history. `main.Glue.early_progress` prioritizes current staging before unrelated historical collection, but final effect-time admission still applies.
+
+Superseded blocker audit rows no longer veto current staging merely by existing. Current native obligations, approval/input authority and human-question readbacks still govern. Structural `progress_stall` carriers may bind an actual source or a logical `progress-…` anchor, with no product approval tuple where none exists. Their ACKs go on the actual carrier. Missing native evidence permits truthful observation-failure diagnosis only. The [progress procedure](progress-recovery.md) governs the outer grace, safe planner re-review path, current admission and temporary delivery-owner retirement; do not use the typed-stop source-operation procedure on a logical anchor.
 
 ## Carrier, wake and admission
 
@@ -69,7 +73,7 @@ The coordinator must execute the rendered command on wake, immediately before **
 | Exit 3, `STALE <reason>` | No board write or ACK. Reply once in the operator chat that this stale wake requires no action, then stop. |
 | Exit 2, `UNAVAILABLE <reason>` | Stop without an ACK or board mutation. Later polling can retry or escalate. |
 
-`main.recovery_check` uses `store.load_recovery_snapshot`/`open_readonly`. Typed stops normally read the source card; diagnostics additionally read native obligations/approved attachments and re-read source/local state. Pre-worker checks use the native snapshot described below, not a fake `show` for the logical anchor. The command takes no intake lock, opens no writer, loads no ClickUp credential and creates no missing state database. It can run while the writer lock is held. SQLite may leave sidecars; read-only does not mean no filesystem artifacts.
+`main.recovery_check` uses `store.load_recovery_snapshot`/`open_readonly`. Current native checks validate the approval-bound dependency snapshot; diagnostic checks additionally read obligations/approved attachments and re-read local state. Pre-worker/progress checks use the native snapshot described below, not a fake `show` for a logical anchor. A delivery-only verdict explicitly carries `scope=delivery-only`; it is not permission to resume source work. The command takes no intake lock, opens no writer, loads no ClickUp credential and creates no missing state database. It can run while the writer lock is held. SQLite may leave sidecars; read-only does not mean no filesystem artifacts.
 
 The verdict rejects stale identity/authority, held/terminal/wrong-phase tasks and ineligible current state; unknown evidence remains unavailable. Exact predicates differ by incident class. `CURRENT` is not an ACK, operator permission or proof that a capable owner is running. Question publication/wait state is rechecked at the send/admission boundary; neither a technical inability nor a previously answered question permits a stale restart.
 
@@ -93,7 +97,7 @@ For technical continuation, every operation requires the exact source handoff, o
 - **Attach** exact approved bytes to a card W owns under A*, after verifying their SHA-256.
 - **Resume W** only through a verified, supported native transition for its actual current state and adopted authority, with satisfied obligations. This package does not supply a universal dashboard transition or authorize an improvised state change.
 
-The protocol additionally permits the specified receipt/ACK comments **on W**. It does not grant arbitrary comments or edits elsewhere. Before resumption, post a `CLICKUP-RECOVERY-RECEIPT v1 card=W run=R` first line with operations and readbacks, worker-owned operations returned to W, and any deferred operation's exact precondition/re-request. Recheck admission, resume, then read W back. Never resume merely to repeat an operation that neither actor can perform.
+The typed-stop protocol additionally permits the specified receipt/ACK comments **on W**. It does not grant arbitrary comments or edits elsewhere. Before resumption, post a `CLICKUP-RECOVERY-RECEIPT v1 card=W run=R` first line with operations and readbacks, worker-owned operations returned to W, and any deferred operation's exact precondition/re-request. Recheck admission, resume, then read W back. Never resume merely to repeat an operation that neither actor can perform. Pre-worker anchors and structural progress diagnostics instead use their actual carrier for ACKs; never write to a logical anchor or mistake delivery-only admission for a source-operation receipt.
 
 Worker-owned create/link/comment/own-card attachment work returns to W. Deferred operator work waits for its required ordering; W re-requests it with a new typed `CLICKUP-RECOVERY-REQUEST` capability stop after satisfying the named precondition. Where the adopted contract requires an assembly hold for a new card awaiting a deferred input, W creates it with only W as parent. It must stay `todo`, with no runs or ready/claimed event, until W verifies its inputs and completes. The operator neither releases that child nor fabricates its dependencies. See the complete [carrier procedure](../templates/recovery_card.md).
 
@@ -101,7 +105,7 @@ Worker-owned create/link/comment/own-card attachment work returns to W. Deferred
 
 ## ACKs, budget and actual resumption
 
-For a genuine owner-only decision, do not resume. Default posts the exact first line on W (on the actual carrier for a pre-worker anchor):
+For a genuine owner-only decision, do not resume. Default posts the exact first line on W (on the actual carrier for a pre-worker anchor or structural progress diagnostic):
 
 ```text
 CLICKUP-RECOVERY-ACK v1 card=<work-card-id> run=<stopped-run-id> disposition=owner

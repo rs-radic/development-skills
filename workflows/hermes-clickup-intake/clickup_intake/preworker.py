@@ -91,6 +91,8 @@ def inspect(task, approval, state, shows, attachments, now, scan, admitted=False
         pending.update(w['parents'])
     markers = stalled.plan_markers(task, approval, shows, attachments, state)
     for b in state['blockers']:
+        if b['state'] == 'superseded':
+            continue  # Retained audit rows are not current stage obligations.
         q = shows.get(b['question_card'])
         if (not isinstance(q, dict) or (q.get('task') or {}).get('id') != b['question_card']
                 or kp.open_run_ids(q)):
@@ -170,8 +172,9 @@ def pending_question(ctx, approval_id):
     from . import engine
     if engine._recovery_cutover(ctx) is None:
         return False  # additive recovery tables need not exist while the feature is disabled
-    for inc in map(dict, ctx.c.execute("SELECT * FROM recoveries WHERE approval_id=? AND class=? AND state='open'",
-                                       (approval_id, CLASS))):
+    for inc in map(dict, ctx.c.execute("SELECT * FROM recoveries WHERE approval_id=? AND state='open'"
+                                       " AND (class=? OR (class='progress_stall' AND event_kind=?))",
+                                       (approval_id, CLASS, CLASS))):
         wait = engine._reconcile_cancelled_question(ctx, inc)
         if wait and wait['state'] in ('publishing', 'waiting', 'classifying'):
             return True
@@ -180,7 +183,11 @@ def pending_question(ctx, approval_id):
 
 def detect(ctx, tid):
     from . import engine
+    if ctx.c.execute("SELECT 1 FROM recoveries WHERE task=? AND state IN ('open','handed_off')",
+                     (tid,)).fetchone():
+        return True  # existing recovery owns this task's unfinished transition
     task, state = ctx.task(tid), context(ctx.c, tid)
+    handled = False
     approvals = [dict(r) for r in ctx.c.execute('SELECT * FROM approvals WHERE task=? ORDER BY id', (tid,))]
     for a in approvals:
         if a['state'] == 'staged' and not ctx.cfg.handoff_unblock:
@@ -190,6 +197,7 @@ def detect(ctx, tid):
         found = inspect(task, a, state, ctx.obs.cards, ctx.obs.attachments, ctx.now, ctx.obs.scan_started_ms)
         if found is None:
             continue
+        handled = True
         key = 'stage_observed:' + tid + ':' + anchor(a)
         row = ctx.c.execute('SELECT value FROM meta WHERE key=?', (key,)).fetchone()
         previous = json.loads(row[0]) if row else None
@@ -201,6 +209,7 @@ def detect(ctx, tid):
             continue
         if not ctx.c.execute('SELECT 1 FROM recoveries WHERE card=? AND run_id=0', (anchor(a),)).fetchone():
             engine.open_incident(ctx, tid, anchor(a), a, found, adopted=0)
+    return handled
 
 
 def step(ctx, tid, task, inc):
@@ -213,6 +222,9 @@ def step(ctx, tid, task, inc):
     if why:
         if why not in ('held', 'handoff_disabled') and task['classified_gen'] == task['input_gen']:
             engine._recovery_update(ctx, inc, state='superseded')
+        elif why == 'held':
+            from . import progress
+            progress.continue_incident(ctx, tid, task, inc)
         return
     if engine.recovery_abandoned(ctx.c, inc):
         return
@@ -227,6 +239,8 @@ def step(ctx, tid, task, inc):
     found = inspect(task, a, state, ctx.obs.cards, ctx.obs.attachments, ctx.now, ctx.obs.scan_started_ms,
                     admitted=True)
     if found is None:
+        from . import progress
+        progress.continue_incident(ctx, tid, task, inc)
         return
     if engine._notice_pending(ctx, tid, inc):
         return

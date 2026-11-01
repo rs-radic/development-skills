@@ -37,7 +37,7 @@ import shutil
 import sys
 import time
 
-from . import clickup_api, clickup_effects, engine, observe, render, rules, stalled
+from . import clickup_api, clickup_effects, engine, observe, render, rules, stalled, progress
 from . import kanban_port as kp
 from .config import load_config
 from .contracts import EffectIntent, Outcome, Preconditions, RowState, TransportResult, load_preconditions
@@ -357,6 +357,8 @@ class Glue:
         self._att_failed = set()
         self._diagnostic_refresh = {}  # at most one bounded target-local L per task per scan
         self._preworker_reads = {}  # one shared native read allowance per task/scan
+        self.dependency_members = {}
+
 
     # -- meta
     def meta(self, key, default=None):
@@ -629,7 +631,8 @@ class Glue:
             mark = self.c.execute("SELECT COALESCE(MAX(rowid), 0) FROM outbox").fetchone()[0]
             self.set_meta(PREPASS_KEY, mark)
         engine.evaluate(self.store, self.now,
-                        dataclasses.replace(self.obs, comments={}, cards={}, attachments={}, workers={}), self.cfg)
+                        dataclasses.replace(self.obs, comments={}, cards={}, attachments={}, workers={},
+                                            progress_scan=False), self.cfg)
         with self.store.transaction() as c:
             c.execute("DELETE FROM outbox WHERE kind='alert' AND state='pending' AND rowid>? AND idem_key NOT LIKE ?"
                       " AND idem_key NOT LIKE ?", (mark, "clickup-dp:alert:blocker:%:disabled:delivered",
@@ -698,11 +701,46 @@ class Glue:
                 atts[card] = [_observed_attachment(a) for a in self.attachments(card)]
                 if card in self._att_failed:
                     del atts[card]
+        self._observe_progress(cards, atts)
         workers = {card: proof for card, shown in cards.items()
                    if (proof := kp.worker_progress(shown, self.store.clock())) is not None}
         self.obs = engine.Observation(scan_started_ms=self.now, comments=dict(self.comments), cards=cards,
                                       attachments=atts, confirmed=frozenset(self.confirmed), workers=workers,
-                                      early_approvals=self.obs.early_approvals)
+                                      early_approvals=self.obs.early_approvals, progress_scan=True,
+                                      dependency_members=self.dependency_members)
+
+    def _observe_progress(self, cards, atts):
+        """Observe settled handoffs and post-completion work with the shared bounded native reader."""
+        from . import progress
+        if self.meta(engine.RECOVERY_KEY) is None:
+            return
+        for tid in sorted(self.confirmed):
+            task = dict(self.c.execute('SELECT * FROM tasks WHERE clickup_task_id=?', (tid,)).fetchone())
+            state = progress.context(self.c, tid)
+            admitted = self.c.execute("SELECT 1 FROM recoveries WHERE task=? AND class=? AND state='open'",
+                                      (tid, progress.CLASS)).fetchone() is not None
+            if not state['requests'] or (kp.card_status(cards.get(state['requests'][0])) not in ('done', 'blocked', 'triage')
+                                         and not admitted):
+                continue
+            if state['requests'][0] in self._att_failed:
+                continue  # a failed source read must not be laundered through a second observation path
+            kind, _ = progress.projection(task, state, cards, atts, self.now, self.obs.scan_started_ms, admitted=admitted)
+            _, outer = progress.outer(task, state, cards, atts, self.now, self.obs.scan_started_ms)
+            if kind != 'unknown' and not state['completed_incidents'] and not (outer or {}).get('native_unavailable'):
+                continue
+            # Initial and retired workflows need the same closure as admission,
+            # even when the ordinary settled-source projection is unchanged.
+            before = progress.binding(task, state)
+            reader = self.preworker_reader(tid)
+            observed, attachments, complete = _progress_collect(state, reader)
+            latest = dict(self.c.execute('SELECT * FROM tasks WHERE clickup_task_id=?', (tid,)).fetchone())
+            # Leave the nine-read fresh snapshot plus its two post-I/O validity
+            # checks available. A scan that cannot repeat its proof at admission
+            # must keep the same unknown diagnosis as that admission.
+            if (complete and before == progress.binding(latest, progress.context(self.c, tid))
+                    and reader.proof.valid() and reader.remaining >= 11):
+                cards.update(observed)
+                atts.update(attachments)
 
     def protocol_targets(self):
         """r9 §7 D1-A: (task, card) for each watched card (never the gate) of non-terminal, unheld tasks whose fresh
@@ -710,7 +748,7 @@ class Glue:
         out = []
         for (tid,) in self.c.execute("SELECT clickup_task_id FROM tasks WHERE terminal=0 AND (hold_reason IS NULL"
                                      " OR hold_reason='') ORDER BY clickup_task_id").fetchall():
-            for card in engine._watched(self, tid):
+            for card in engine._current_watched(self, tid):
                 shown = self._show(card)
                 if shown is not None and rules.status(shown) not in ("done", "archived"):
                     out.append((tid, card))
@@ -785,6 +823,8 @@ class Glue:
             if tid in terminal or hold:
                 continue
             task = self.c.execute('SELECT * FROM tasks WHERE clickup_task_id=?', (tid,)).fetchone()
+            if self._observe_dependencies(tid, cards) is not False:
+                continue
             for card, approval in engine._watched(self, tid).items():
                 if card in closed:
                     # A current approved owner may reopen its existing card. Historical closure is not
@@ -820,6 +860,26 @@ class Glue:
         if set(self.meta(WATCHED_CLOSED_KEY, [])) != closed | add:
             self.set_meta(WATCHED_CLOSED_KEY, sorted(closed | add))
 
+    def _observe_dependencies(self, tid, cards):
+        """One current native snapshot shared by question relay and recovery.
+
+        Closed-card caches are hints only: required edges can be added later.
+        False selects the legacy port path; None is unavailable native evidence,
+        not affirmative detachment. Neither native result permits legacy fallback.
+        """
+        factory = getattr(self.port, '_preworker_snapshot', None)
+        if factory is None:
+            return False
+        roots, forbidden = engine.dependency_scope(self.c, tid)
+        snap = dict(stalled.context(self.c, tid), dependency_scope=[roots, sorted(forbidden)])
+        self.dependency_members[tid] = {}
+        if roots:
+            if not _recovery_dependencies(snap, self.port, self.preworker_reader(tid)):
+                return None
+            cards.update(snap['shows'])
+            self.dependency_members[tid] = snap['members']
+        return True
+
     def _observe_recovery(self, cards, terminal):
         """r3 §4.1 while recovery is enabled: ``show`` each recovery member of a non-terminal, unheld task that is
         not yet in this scan's cards nor cached closed, and W of every live incident. A member observed
@@ -828,10 +888,13 @@ class Glue:
             return
         closed = set(self.meta(RECOVERY_CLOSED_KEY, []))
         add = set()
+        diagnostic_held = progress.held_tasks(self.c)
         for tid, hold in self.c.execute("SELECT clickup_task_id, hold_reason FROM tasks ORDER BY clickup_task_id"
                                         ).fetchall():
-            if tid in terminal or hold:
+            if tid in terminal or (hold and tid not in diagnostic_held):
                 continue
+            if tid not in self.dependency_members:
+                self._observe_dependencies(tid, cards)
             for b in self.c.execute("SELECT question_card FROM blockers WHERE task=?", (tid,)):
                 if b[0] not in cards:
                     shown = self._show(b[0])
@@ -841,12 +904,13 @@ class Glue:
                                                  % engine._in(engine.RECOVERY_LIVE), (tid,))}
             from . import preworker
             early = [dict(r) for r in self.c.execute(
-                "SELECT * FROM recoveries WHERE task=? AND class=? AND state IN ('open','handed_off')",
-                (tid, preworker.CLASS))]
+                "SELECT * FROM recoveries WHERE task=? AND class IN (?,?) AND state IN ('open','handed_off')",
+                (tid, preworker.CLASS, 'progress_stall'))]
             for inc in early:
-                live.discard(inc['card'])  # logical approval anchor, not a native object to show
+                if inc['class'] == preworker.CLASS or inc['card'].startswith('progress-'):
+                    live.discard(inc['card'])  # tagged logical anchors are never native objects
                 for ref, in self.c.execute("SELECT result_ref FROM outbox WHERE kind='kb_create' AND state='done'"
-                                          " AND idem_key LIKE ?", (engine._rcv_key(tid, inc['card'], 0, 0)[:-1] + '%',)):
+                                          " AND idem_key LIKE ?", (engine._rcv_key(tid, inc['card'], inc['run_id'], 0)[:-1] + '%',)):
                     if ref and ref not in cards:
                         shown = self._show(ref)
                         if shown is not None:
@@ -876,7 +940,8 @@ class Glue:
         """
         t = self.c.execute("SELECT * FROM tasks WHERE clickup_task_id=?", (tid,)).fetchone()
         now = self.store.clock()
-        if t is None or t['terminal'] or (t['hold_reason'] and tid not in stalled.held_notice_tasks(self.c)):
+        if t is None or t['terminal'] or (t['hold_reason'] and tid not in (
+                stalled.held_notice_tasks(self.c) | progress.held_tasks(self.c))):
             return False
         if tid in self._diagnostic_refresh:
             return self._diagnostic_refresh[tid]
@@ -901,6 +966,15 @@ class Glue:
         ACK. ``defer`` when W is unreadable or the task held; ``stale`` otherwise unless CURRENT."""
         q = p["params"]
         snap = recovery_snapshot(self.c, q["task"], q["card"], q["run_id"])
+        if q.get('class') == 'progress_stall' or (snap.get('incident') or {}).get('class') == 'progress_stall':
+            reader = self.preworker_reader(q['task'])
+            if not self.diagnostic_input(q['task'], reader=reader):
+                return 'defer'
+            verdict = _progress_check(lambda: recovery_snapshot(self.c, q['task'], q['card'], q['run_id']),
+                                      self.port, q['card'], q['run_id'], self.store.clock,
+                                      self.obs.scan_started_ms, reader=reader,
+                                      handoff_unblock=self.cfg.handoff_unblock)
+            return 'go' if verdict.code == 0 else 'defer' if verdict.code == 2 else 'stale'
         from . import preworker
         if (snap.get('incident') or {}).get('class') == preworker.CLASS:
             if not self.diagnostic_input(q['task'], reader=self.preworker_reader(q['task'])):
@@ -908,14 +982,20 @@ class Glue:
             verdict = self.preworker_check(q['task'], q['card'], q['run_id'])
             return 'go' if verdict.code == 0 else 'defer' if verdict.code == 2 or verdict.text == 'held' else 'stale'
         snap["members"] = engine.recovery_members(q["task"], snap["approvals"], snap["orch"])
+        reader = self.preworker_reader(q['task'])
         if ((snap.get("incident") or {}).get("class") == stalled.CLASS
-                and not self.diagnostic_input(q['task'])):
+                and not self.diagnostic_input(q['task'], reader=reader)):
             return 'defer'
-        w = self._show(q["card"])
+        diagnostic = (snap.get("incident") or {}).get("class") == stalled.CLASS
+        w = (None if getattr(self.port, '_preworker_snapshot', None) else
+             reader.read('show', q['card'], fresh=True)) if diagnostic else self._show(q['card'])
         if (snap.get("incident") or {}).get("class") == stalled.CLASS:
-            _diagnostic_reads(snap, self.port, q["card"], w)
-            w = self._show(q["card"])
-            snap["shows"][q["card"]] = w
+            _diagnostic_reads(snap, self.port, q["card"], w, reader)
+            if not getattr(self.port, '_preworker_snapshot', None):
+                reader.invalidate([q['card']])
+                snap['shows'][q['card']] = reader.read('show', q['card'], fresh=True)
+            w = snap['shows'].get(q['card'])
+            snap['shows'][q['card']] = w
             latest = recovery_snapshot(self.c, q["task"], q["card"], q["run_id"])
             snap.update(latest)
             snap["members"] = engine.recovery_members(q["task"], snap["approvals"], snap["orch"])
@@ -923,6 +1003,10 @@ class Glue:
             a = next((a for a in snap['approvals'] if a['id'] == (snap.get('incident') or {}).get('approval_id')), None)
             if a is not None and not _diagnostic_complete(snap, q['card'], w, a):
                 return 'defer'
+        if getattr(self.port, '_preworker_snapshot', None):
+            if not _recovery_dependencies(snap, self.port, self.preworker_reader(q['task'])):
+                return 'defer'
+            w = snap['shows'].get(q['card'])
         verdict = kp.recovery_verdict(snap, w, q["card"], q["run_id"])
         if verdict.verdict == "UNAVAILABLE" or verdict.text == "held":
             return "defer"
@@ -1070,6 +1154,18 @@ class Glue:
             return "cancel"
         p = json.loads(row["body"] or "{}")
         tid = json.loads(row["preconditions"])["task_id"]
+        blocker_id = json.loads(row['preconditions']).get('blocker_id')
+        if blocker_id is not None and ':bq:' in row['idem_key'] and getattr(self.port, '_preworker_snapshot', None):
+            b = self.c.execute('SELECT * FROM blockers WHERE id=? AND task=?', (blocker_id, tid)).fetchone()
+            observed = {}
+            if self._observe_dependencies(tid, observed) is None:
+                return 'defer'
+            if b is None or self.dependency_members[tid].get(b['card'], {}).get('id') != b['approval_id']:
+                return 'cancel'
+            w, q = observed.get(b['card']), observed.get(b['question_card'])
+            if (not q or not w or kp.latest_run_id(w) != b['run_id']
+                    or kp.protocol_parent(b['card'], w, q, self.meta(engine.CUTOVER_KEY))[1] != 'record'):
+                return 'cancel'
         aid = json.loads(row['preconditions']).get('approval_id')
         if aid is not None:
             a = self.c.execute('SELECT * FROM approvals WHERE id=?', (aid,)).fetchone()
@@ -1103,22 +1199,43 @@ class Glue:
         inc = self.c.execute("SELECT * FROM recoveries WHERE id=?", (iid,)).fetchone()
         if not inc or self.meta(engine.RECOVERY_KEY) is None:
             return "cancel"
+        if inc['class'] == 'progress_stall':
+            reader = self.preworker_reader(inc['task'])
+            if not self.diagnostic_input(inc['task'], reader=reader):
+                return 'defer'
+            def load_notice():
+                snap = recovery_snapshot(self.c, inc['task'], inc['card'], inc['run_id'])
+                if (delivery_hold and delivery_hold.startswith('outbox:')
+                        and delivery_hold[7:].startswith(engine._rcv_key(inc['task'], inc['card'], inc['run_id'], 0)[:-1])
+                        and self.state(delivery_hold[7:]) == 'failed'):
+                    snap['delivery_hold'] = delivery_hold
+                return snap
+            verdict = _progress_check(load_notice,
+                                      self.port, inc['card'], inc['run_id'], self.store.clock,
+                                      self.obs.scan_started_ms, notice=True, reader=reader,
+                                      handoff_unblock=self.cfg.handoff_unblock)
+            return 'go' if verdict.code == 0 else 'defer' if verdict.code == 2 else 'cancel'
         if inc['class'] == 'approval_staging':
             if not self.diagnostic_input(inc['task'], reader=self.preworker_reader(inc['task'])):
                 return 'defer'
             verdict = self.preworker_check(inc['task'], inc['card'], inc['run_id'], notice=True)
             return 'go' if verdict.code == 0 else 'defer' if verdict.code == 2 or verdict.text == 'held' else 'cancel'
         precise = inc['class'] == stalled.CLASS or engine._diagnostic_wait(self, inc['id']) is not None
-        if precise and not self.diagnostic_input(inc['task']):
+        reader = self.preworker_reader(inc['task'])
+        if precise and not self.diagnostic_input(inc['task'], reader=reader):
             return 'defer'
-        w = self._show(inc["card"])
-        if w is None:
+        w = (None if getattr(self.port, '_preworker_snapshot', None) else
+             reader.read('show', inc['card'], fresh=True)) if precise else self._show(inc['card'])
+        if w is None and not precise:
             return "defer"
         snap = None
         if precise:
             snap = recovery_snapshot(self.c, inc['task'], inc['card'], inc['run_id'])
-            _diagnostic_reads(snap, self.port, inc['card'], w)
-            w = self._show(inc['card'])
+            _diagnostic_reads(snap, self.port, inc['card'], w, reader)
+            if not getattr(self.port, '_preworker_snapshot', None):
+                reader.invalidate([inc['card']])
+                snap['shows'][inc['card']] = reader.read('show', inc['card'], fresh=True)
+            w = snap['shows'].get(inc['card'])
             snap['shows'][inc['card']] = w
             latest = recovery_snapshot(self.c, inc['task'], inc['card'], inc['run_id'])
             snap.update(latest)  # authority and required inputs may have changed during I/O
@@ -1169,6 +1286,8 @@ class Glue:
                          and all(kp.card_status(snap['shows'][p]) in ('done', 'archived') for p in w['parents'])
                          and all(b['state'] in engine.BLOCKER_FINAL for b in snap['blockers'])
                          and all(f['state'] in engine.FENCE_FINAL for f in snap['fences'])))):
+                if progress.prerequisite_status(inc['card'], snap, snap['shows']):
+                    return 'defer'
                 return 'go'  # only publish the unavailable-owner question; never release ready/gated work
             found = stalled.candidate(observed_task, a, inc['card'], snap['shows'], snap, snap['attachments'])
             stopped = found if inc['class'] == stalled.CLASS else kp.recovery_incident(w)
@@ -1266,7 +1385,7 @@ class Glue:
             return False
         if mrow["state"] == "pending" or (mrow["state"] == "retry_wait" and (mrow["next_attempt_ms"] or 0) <= self.now):
             gate = self.send_gate(row)  # the next step is a send or retry
-            if gate in ("defer", "foreign") or (p.get("recovery_notice") and gate != "go"):
+            if gate != "go":
                 return self.refuse(row, gate)
         before = (mrow["state"], mrow["attempts"], mrow["next_attempt_ms"])
         if mrow["state"] not in FINAL:
@@ -1601,6 +1720,13 @@ class Glue:
                 res = self.release(intent.target, prior)
             elif kind == "kb_attach" and p.get("template") == "context" and not p.get("card_role"):
                 res = self.attach_all(intent, prior)
+            elif p.get('template') == 'recovery_wake' and p.get('params', {}).get('class') == 'progress_stall':
+                def before_send():
+                    current = self.row(key)
+                    gate = self.send_gate(current)
+                    return self.recovery_gate(current, p) if gate == 'go' else gate
+                res = kp.run_kanban_effect(self.port, intent, prior_child=prior,
+                                           before_send=before_send if prior is not None else None)
             else:
                 res = kp.run_kanban_effect(self.port, intent, prior_child=prior)
         finally:
@@ -1612,7 +1738,10 @@ class Glue:
             return self.update(key, state="done", outcome="OK", result_ref=ref)
         if st is RowState.CANCELLED_STALE:
             return self.update(key, state="cancelled_stale", outcome="STALE")
-        if st is RowState.SENDING:  # the earlier child is still alive: nothing sent, decide next scan
+        if st is RowState.SENDING:  # the earlier child is still alive, or the progress proof is unavailable
+            if p.get('template') == 'recovery_wake' and p.get('params', {}).get('class') == 'progress_stall':
+                self.update(key, state=row['state'], attempts=row['attempts'], first_send_ms=row['first_send_ms'])
+                return False  # no request was sent; preserve ambiguous history without spinning this scan
             return self.update(key, attempts=row["attempts"])
         if attempts >= MAX_ATTEMPTS:
             self.update(key, state="failed", outcome=st.value)
@@ -2174,10 +2303,80 @@ def _resume_filtered_publication(store, key):
     return True
 
 
+def _resume_blocker_notification(store, key):
+    """Explicit resend of a proven never-sent NULL-root status; never replay native work."""
+    match = re.fullmatch(r'clickup-dp:([^:]+):blocker:(\d+):(recorded:g\d+|resumed)', key)
+    if not match:
+        return False
+    tid, bid, notice = match.groups()
+    with store.transaction() as c:
+        ctx = engine._Ctx(store, store.clock(), engine.Observation(), engine.Config())
+        row = c.execute('SELECT * FROM outbox WHERE idem_key=?', (key,)).fetchone()
+        b = c.execute('SELECT * FROM blockers WHERE id=? AND task=?', (int(bid), tid)).fetchone()
+        t = c.execute('SELECT * FROM tasks WHERE clickup_task_id=?', (tid,)).fetchone()
+        if not row or not b or not t or not t['eligible'] or t['terminal'] or t['hold_reason']:
+            return False
+        b, t, row = dict(b), dict(t), dict(row)
+        a, bound = engine._gov(ctx, b)
+        if (b['closure_item'] is not None or not a or not engine._incorporated(b, bound)
+                or bound['task'] != tid or bound['question_card'] != b['question_card'] or bound['card'] != b['card']
+                or bound['rev'] != a['rev'] or bound['plan_sha256'] != a['plan_sha256']
+                or a['state'] not in engine.AMENDED_STATES or t['phase'] not in rules.LIVE_PHASES
+                or not rules.current(a['accounts_gen'], t)
+                or t['classified_gen'] != t['input_gen'] or t['scope_gen'] != t['input_gen']
+                or a['rev'] != t['published_rev'] or a['plan_sha256'] != t['published_sha256']
+                or bound['gen'] != b['delivered_gen'] or b['resolution_gen'] != b['delivered_gen']
+                or t['input_gen'] != b['delivered_gen']
+                or c.execute("SELECT 1 FROM approvals WHERE task=? AND id>? AND state IN (%s)" %
+                             engine._in(engine.ACTIVE + engine.WATCHED_STATES), (tid, a['id'])).fetchone()):
+            return False
+        if notice.startswith('recorded:'):
+            if notice != 'recorded:g%d' % b['delivered_gen'] or b['state'] not in ('delivered', 'resumed', 'resumed_unconfirmed'):
+                return False
+            text = 'Answer recorded.' + (' The security/containment boundary is unchanged; any new authority will come back'
+                                         ' as a plan revision for approval.' if b['boundary'] else '')
+        else:
+            if b['state'] not in ('resumed', 'resumed_unconfirmed'):
+                return False
+            text = 'The blocked step has resumed' + (' with your answer.' if b['state'] == 'resumed' else '.')
+        original = dict(task=tid, ref='cu-' + _sha(key)[:12], root=None, text=text)
+        try:
+            valid = (json.loads(row['body']) == original and _sha(row['body']) == row['payload_sha256']
+                     and json.loads(row['depends_on']) == []
+                     and json.loads(row['preconditions']) == json.loads(json.dumps(dataclasses.asdict(Preconditions(task_id=tid,
+                         list_id=json.loads(row['preconditions'])['list_id'])))))
+        except (KeyError, TypeError, ValueError):
+            return False
+        if (not valid or row['kind'] != 'cu_reply' or row['task'] != tid or row['target'] != tid
+                or (row['state'], row['outcome']) != ('cancelled_stale', 'FOREIGN_ROOT') or row['attempts'] != 0
+                or any(row[k] is not None for k in ('first_send_ms', 'next_attempt_ms', 'child_pid',
+                                                   'child_start_time', 'result_ref'))
+                or c.execute('SELECT 1 FROM outbox WHERE idem_key IN (?,?)',
+                             (key + '#cu', key + '#cu-att')).fetchone()):
+            return False
+        root = engine._closure_root(ctx, tid, b)
+        if root is None:
+            return False
+        historical = ('Historical update for earlier question blocker %d:\n%s\n\n'
+                      'This records that earlier transition only, not a statement of current work status.'
+                      % (b['id'], text))
+        body = json.dumps(dict(original, root=root, text=historical), sort_keys=True, separators=(',', ':'))
+        pre = dataclasses.asdict(Preconditions(task_id=tid, list_id=json.loads(row['preconditions'])['list_id'],
+            input_gen=t['input_gen'], scope_gen=t['scope_gen'], published_rev=a['rev'],
+            approval_id=a['id'], approval_states=(a['state'],)))
+        c.execute('INSERT OR IGNORE INTO meta(key,value) VALUES (?,?)',
+                  ('delivery_repair:' + key, json.dumps(row, sort_keys=True)))
+        c.execute("UPDATE outbox SET body=?,payload_sha256=?,preconditions=?,state='pending',outcome=NULL WHERE idem_key=?",
+                  (body, _sha(body), json.dumps(pre), key))
+    return True
+
+
 def outbox_command(store, action, key):
-    """``outbox resend|abandon <id>`` for a held_ambiguous/failed row (S2 key or its ``#cu`` mirror)."""
+    """``outbox resend|abandon <id>``; resend also repairs bound never-sent NULL-root statuses."""
     base = key.split("#", 1)[0]
     root = store.conn.execute("SELECT kind, outcome FROM outbox WHERE idem_key=?", (base,)).fetchone()
+    if action == 'resend' and root and root['kind'] == 'cu_reply' and root['outcome'] == 'FOREIGN_ROOT':
+        return key == base and _resume_blocker_notification(store, base)
     if (action == "resend" and root and root["kind"] == "cu_attach" and root["outcome"] == "FILTERED"
             and re.fullmatch(r"clickup-dp:[^:]+:pub:r[1-9]\d*:[0-9a-f]{12}:i\d+:attach", base)):
         return key == base and _resume_filtered_publication(store, base)
@@ -2245,19 +2444,28 @@ def ticket_check(cfg, port, gate, task, rev, sha, now):
 def recovery_check(cfg, port, card, run, clock=None):
     """r3 §6.1 read-only admission: one read-only state snapshot and one ``show W --json``; never locks or writes."""
     snap = load_recovery_snapshot(cfg.state_path, None, card, run)
+    if snap is not None and (snap.get('incident') or {}).get('class') == 'progress_stall':
+        return _progress_check(lambda: load_recovery_snapshot(cfg.state_path, None, card, run), port,
+                               card, run, clock or (lambda: int(time.time() * 1000)),
+                               handoff_unblock=cfg.handoff_unblock)
+    if card.startswith('progress-'):
+        # Logical anchors never fall through to native lookup, even without a matching row.
+        return kp.RecoveryVerdict('UNAVAILABLE' if snap is None else 'STALE', 'logical_anchor_unresolved')
     if snap is not None and (snap.get('incident') or {}).get('class') == 'approval_staging':
         return _preworker_check(lambda: load_recovery_snapshot(cfg.state_path, None, card, run), port,
                                 card, run, clock or (lambda: int(time.time() * 1000)),
                                 handoff_unblock=cfg.handoff_unblock)
+    reader = _PreworkerReads(port, clock or (lambda: int(time.time() * 1000)))
     if snap is not None:
         snap["members"] = engine.recovery_members((snap["incident"] or {}).get("task"), snap["approvals"],
                                                   snap["orch"])
-    shown = port.show(card)
+    w = None if getattr(port, '_preworker_snapshot', None) else reader.read('show', card, fresh=True)
     if snap is not None and (snap.get("incident") or {}).get("class") == stalled.CLASS:
-        w = shown.json if _ok(shown) and isinstance(shown.json, dict) else None
-        _diagnostic_reads(snap, port, card, w)
-        shown = port.show(card)
-        snap["shows"][card] = shown.json if _ok(shown) else None
+        _diagnostic_reads(snap, port, card, w, reader)
+        if not getattr(port, '_preworker_snapshot', None):
+            reader.invalidate([card])
+            w = reader.read('show', card, fresh=True)
+            snap['shows'][card] = w
         latest = load_recovery_snapshot(cfg.state_path, None, card, run)
         if latest is None:
             return kp.RecoveryVerdict("UNAVAILABLE", "state_unavailable")
@@ -2265,8 +2473,118 @@ def recovery_check(cfg, port, card, run, clock=None):
         snap["members"] = engine.recovery_members((snap.get("incident") or {}).get("task"), snap["approvals"], snap["orch"])
         snap.update(now_ms=clock() if clock is not None else int(time.time() * 1000),
                     scan_started_ms=(snap.get("task") or {}).get("last_light_ms") or 0)
-    return kp.recovery_verdict(snap if snap is not None else False,
-                               shown.json if _ok(shown) and isinstance(shown.json, dict) else None, card, run)
+    if snap is not None and getattr(port, '_preworker_snapshot', None):
+        if not _recovery_dependencies(snap, port, reader):
+            return kp.RecoveryVerdict('UNAVAILABLE', 'dependency_graph_unavailable')
+        return kp.recovery_verdict(snap, snap['shows'].get(card), card, run)
+    return kp.recovery_verdict(snap if snap is not None else False, w, card, run)
+
+
+def _progress_collect(snap, reader):
+    """Use the existing 64-read native closure allowance, without requiring a valid PASS."""
+    from .preworker_snapshot import MAX_DEPENDENCY_NODES
+    roots = set(snap['requests'][:1]) | {b['question_card'] for b in snap['blockers']}
+    roots |= {a['orchestrator_card'] for a in snap['approvals'] if a['orchestrator_card']}
+    roots |= {f['fence_card'] for f in snap['fences'] if f['state'] in ('open', 'releasing', 'abandoned', 'refused')}
+    if snap.get('failure') and ':bq:' in snap['failure']['idem_key'] and snap.get('dependency_scope'):
+        roots.update(snap['dependency_scope'][0])
+    inc = snap.get('incident') or {}
+    whole_workflow = (progress.outer_incident(inc, snap) if inc else bool(snap.get('completed_incidents')))
+    if whole_workflow:
+        roots = progress.outer_roots(snap)
+    elif not inc:
+        roots.update(progress.outer_roots(snap))
+    factory = getattr(reader.port, '_preworker_snapshot', None)
+    if factory is None:
+        return {}, {}, False
+    started = reader.clock()
+    if reader.proof is not None:
+        # Discovery hints only: every caller still acquires a fresh snapshot.
+        # Reusing known ids avoids spending the same closure reads at send time.
+        roots.update(reader.proof.shows)
+        reader.proof.close()
+    elif getattr(reader, 'dependencies', None):
+        # The earlier dependency read already discovered this frontier. Expand
+        # its ids with one charged link read, not two duplicate full snapshots.
+        # Only ids are reused; statuses, files and authority are read afresh below.
+        import sqlite3
+        hints = reader.dependencies[1]
+        roots.update(hints.shows)
+        roots.update(child for shown in hints.shows.values() for child in shown.get('children', []))
+        if len(roots) > MAX_DEPENDENCY_NODES:
+            return {}, {}, False
+        try:
+            roots.update(row[0] for row in hints.query(
+                'SELECT DISTINCT child_id FROM task_links WHERE parent_id IN '
+                '(SELECT value FROM json_each(?)) LIMIT 513', (json.dumps(sorted(roots)),)))
+        except (ValueError, sqlite3.Error):
+            return {}, {}, False
+        if len(roots) > MAX_DEPENDENCY_NODES:
+            return {}, {}, False
+    reader.proof = proof = factory(roots, reader.take, reader.clock)
+    if proof is None:
+        return {}, {}, False
+    while True:
+        children = {child for shown in proof.shows.values() for child in shown.get('children', [])}
+        missing = children - proof.shows.keys()
+        if not missing:
+            break
+        proof.close()
+        expanded = roots | proof.shows.keys() | children
+        if (missing <= roots or len(expanded) > MAX_DEPENDENCY_NODES
+                or reader.clock() - started > 5 * 60_000):
+            return {}, {}, False
+        roots = expanded
+        reader.proof = proof = factory(roots, reader.take, reader.clock)
+        if proof is None:
+            return {}, {}, False
+    if reader.clock() - started > 5 * 60_000:
+        proof.close()
+        return {}, {}, False
+    atts = {}
+    for source in snap['requests'][:1]:
+        if source not in proof.shows:
+            continue
+        atts[source] = []
+        for a in proof.attachments.get(source, []):
+            if not PLAN_NAME.fullmatch(str(a.get('filename', ''))):
+                continue
+            try:
+                with open(a['stored_path'], 'rb') as stream:
+                    data = stream.read(MARKER_SCAN_MAX + 1)
+            except (KeyError, OSError, TypeError):
+                return {}, {}, False
+            if len(data) > MARKER_SCAN_MAX:
+                return {}, {}, False
+            sha = _sha(data)
+            proof.files[a['stored_path']] = sha
+            atts[source].append(_observed_attachment(dict(a, data=data, sha256=sha)))
+    return proof.shows, atts, proof.valid()
+
+
+def _progress_check(load, port, card, run, clock, scan=None, notice=False, reader=None, handoff_unblock=True):
+    from . import progress
+    snap = load()
+    if snap is None or not snap.get('task'):
+        return kp.RecoveryVerdict('UNAVAILABLE', 'state_unavailable')
+    reader = reader or _PreworkerReads(port, clock)
+    before = progress.binding(snap['task'], snap)
+    shows, atts, complete = _progress_collect(snap, reader)
+    latest = load()
+    if latest is None or not latest.get('task'):
+        return kp.RecoveryVerdict('UNAVAILABLE', 'state_unavailable')
+    if before != progress.binding(latest['task'], latest):
+        return kp.RecoveryVerdict('STALE', 'context_changed')
+    unavailable = not complete or reader.proof is None or not reader.proof.valid()
+    whole_workflow = bool(latest.get('incident')) and progress.outer_incident(latest['incident'], latest)
+    if unavailable and not whole_workflow:
+        return kp.RecoveryVerdict('UNAVAILABLE', 'progress_observation')
+    if unavailable:
+        shows, atts = {}, {}
+    latest.update(shows=shows, attachments=atts, now_ms=clock(), handoff_unblock=handoff_unblock,
+                  native_unavailable=unavailable,
+                  scan_started_ms=scan if scan is not None else (latest['task']['last_light_ms'] or 0))
+    return progress.verdict(latest, card, run, notice=notice)
 
 
 def _preworker_check(load, port, card, run, clock, scan=None, notice=False, handoff_unblock=True, reader=None):
@@ -2317,32 +2635,71 @@ def _diagnostic_complete(snap, card, w, approval):
     return False
 
 
-def _diagnostic_reads(snap, port, card, w):
+def _recovery_dependencies(snap, port, reader):
+    """Current approval-bound graph for public admission and every recovery effect."""
+    if not snap.get('dependency_scope') or reader.remaining <= 0:
+        return False
+    roots, forbidden = snap['dependency_scope']
+    extra = set(snap.get('requests', [])) | {b['question_card'] for b in snap.get('blockers', [])}
+    extra |= {f['fence_card'] for f in snap.get('fences', []) if f['state'] in ('open', 'releasing')}
+    binding = json.dumps([snap['dependency_scope'], sorted(extra)], sort_keys=True)
+    cached = getattr(reader, 'dependencies', None)
+    if cached and cached[0] == binding and cached[1].valid():
+        proof = cached[1]
+    else:
+        if cached:
+            cached[1].close()
+        proof = port._preworker_snapshot(set(roots) | extra, reader.take, reader.clock)
+        if proof is None:
+            return False
+        reader.dependencies = (binding, proof)
+    if (not (set(roots) | extra).issubset(proof.shows)
+            or any(parent not in proof.shows for shown in proof.shows.values()
+                   for parent in shown['parents'])):
+        return False  # a missing required node is unknown, not affirmative lost ownership
+    snap['members'] = engine.dependency_members(roots, proof.shows, forbidden)
+    snap['shows'] = dict(proof.shows)
+    snap['attachments'] = {}
+    for source in snap.get('requests', []):
+        if source not in proof.shows:
+            return False
+        snap['attachments'][source] = []
+        for att in proof.attachments.get(source, []):
+            if not PLAN_NAME.fullmatch(str(att.get('filename', ''))):
+                continue
+            try:
+                with open(att['stored_path'], 'rb') as stream:
+                    data = stream.read(MARKER_SCAN_MAX + 1)
+            except (KeyError, OSError, TypeError):
+                return False
+            if len(data) > MARKER_SCAN_MAX:
+                return False
+            digest = _sha(data)
+            proof.files[att['stored_path']] = digest
+            snap['attachments'][source].append(_observed_attachment(dict(att, data=data, sha256=digest)))
+    return proof.valid()
+
+
+def _diagnostic_reads(snap, port, card, w, reader=None):
     """Fresh read-only diagnostic inputs; failed reads remain absent, never empty proof."""
+    reader = reader or _PreworkerReads(port, lambda: int(time.time() * 1000))
+    if getattr(port, '_preworker_snapshot', None):
+        if not _recovery_dependencies(snap, port, reader):
+            snap['shows'], snap['attachments'] = {}, {}
+        return
     snap["shows"], snap["attachments"] = {card: w}, {}
     want = set((w or {}).get("parents") or []) | set(snap["requests"]) | {b["question_card"] for b in snap["blockers"]}
     want |= {a["orchestrator_card"] for a in snap["approvals"] if a["orchestrator_card"]}
     want |= {f['fence_card'] for f in snap['fences'] if f['state'] in ('open', 'releasing')}
+    reader.invalidate(want)  # each legacy gate re-observes obligations; accounting is shared, not proof
     for other in sorted(want - {card}):
-        r = port.show(other)
-        if _ok(r) and isinstance(r.json, dict):
-            snap["shows"][other] = r.json
+        shown = reader.read('show', other, fresh=True)
+        if shown is not None:
+            snap["shows"][other] = shown
     for source in snap["requests"]:
-        r = port.attachments(source)
-        if not _ok(r) or not isinstance(r.json, list):
-            continue
-        atts = []
-        for att in r.json:
-            if not isinstance(att, dict) or not PLAN_NAME.fullmatch(str(att.get("filename", ""))):
-                continue
-            try:
-                with open(att["stored_path"], "rb") as f:
-                    data = f.read(MARKER_SCAN_MAX + 1)
-            except (KeyError, OSError, TypeError):
-                continue
-            if len(data) <= MARKER_SCAN_MAX:
-                atts.append(_observed_attachment(dict(att, data=data, sha256=_sha(data))))
-        snap["attachments"][source] = atts
+        atts = reader.read('attachments', source, fresh=True)
+        if atts is not None:
+            snap["attachments"][source] = atts
 
 
 def recovery_adopt(store, port, cfg, card, run, now):

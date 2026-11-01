@@ -802,7 +802,7 @@ def _send(port, intent):
     return port.subscribe(card) if mode == DELIVERY_MODE else port.subscribe(card, mode=mode)
 
 
-def run_kanban_effect(port, intent, *, prior_child=None, alive=child_alive):
+def run_kanban_effect(port, intent, *, prior_child=None, alive=child_alive, before_send=None):
     """Execute one Kanban outbox effect (S0 ``EffectIntent``) with readback (§10.2) and the wake guard (§10.3).
 
     ``prior_child`` is the (pid, start_time) recorded for an earlier attempt of this row. While that
@@ -836,6 +836,10 @@ def run_kanban_effect(port, intent, *, prior_child=None, alive=child_alive):
             return EffectResult(RowState.RETRY_WAIT)
         if seen:
             return EffectResult(RowState.DONE, shown)
+    if before_send is not None:
+        gate = before_send()  # reconcile a prior send before acquiring current effect authority
+        if gate != 'go':
+            return EffectResult(RowState.CANCELLED_STALE if gate in ('cancel', 'stale') else RowState.SENDING)
     res = _send(port, intent)
     if res.outcome is not Outcome.OK:
         return _failed(res)
