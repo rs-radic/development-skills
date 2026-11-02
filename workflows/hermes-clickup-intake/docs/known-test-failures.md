@@ -1,8 +1,12 @@
 # Historical test qualifications and current refresh status
 
-The execution results and exact failure IDs below are **historical evidence for public revision `ba95426b6dd927f0c9ccbd22c28be6c28e5f2367`**, extracted from source `2a8fe198bf00aa719d6a7e53833799587172ad6d`. They are not results for the current source refresh at `4e598dd4a9ca2875b004d30740a6a33cbf15a0af`. The owner selected that earlier bounded publication with its documented source-test failures; that decision is not a blanket approval of new failures, extraction defects or unverified behavior. No original assertion was weakened for this refresh. Neither snapshot is advertised here as a green-suite release, production-ready installation or universal recovery.
+The execution results and exact failure IDs below are **historical evidence for public revision `ba95426b6dd927f0c9ccbd22c28be6c28e5f2367`**, extracted from source `2a8fe198bf00aa719d6a7e53833799587172ad6d`. They are not results for the current source refresh at `193db65139abd11bae25186a45378849950fe52c`. The owner selected that earlier bounded publication with its documented source-test failures; that decision is not a blanket approval of new failures, extraction defects or unverified behavior. No original assertion was weakened for this refresh. Neither snapshot is advertised here as a green-suite release, production-ready installation or universal recovery.
 
 ## Latest follow-up
+
+Source `193db65139abd11bae25186a45378849950fe52c` adds verified initial approval waits and current-obligation checks for obsolete recovery warnings. Six selected tests passed with zero failures/errors/skips; 13 other cases in the new module and the wider suite were not rerun. Earlier failed or incomplete executions below remain historical, not current PASS claims.
+
+## Previous follow-up
 
 Source `4e598dd4a9ca2875b004d30740a6a33cbf15a0af` adds verified completed-workflow retirement and bounded nested observation. The new 25-case regression module was attempted locally; ten cases reached OK before the 300-second tool timeout. The run is incomplete, not a module PASS. No full regression rerun or repair of upstream test expectations was performed.
 

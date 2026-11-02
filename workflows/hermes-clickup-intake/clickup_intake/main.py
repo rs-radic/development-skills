@@ -1099,6 +1099,13 @@ class Glue:
         if kind == "alert":  # a task-less operator alert (the r12 §9 disable sentence) has no task to go stale
             if json.loads(row["preconditions"]).get("task_id") and not self.precheck(row):
                 return self.update(key, state="cancelled_stale")
+            inc = self.c.execute("SELECT * FROM recoveries WHERE task=? AND class=? AND approval_id IS NULL "
+                                 "AND (?='clickup-dp:alert:rcv-owner:'||id OR "
+                                 "?='clickup-dp:alert:rcv:'||card||':'||run_id)",
+                                 (row['task'], progress.CLASS, key, key)).fetchone()
+            if inc and not progress.workflow_warning_current(
+                    self.c, inc, self.obs, self.store.clock(), self.cfg.handoff_unblock):
+                return False  # defer only this diagnostic; no spent budget or delivered effect changes
             self.out.append(json.loads(row["body"])["text"])
             return self.update(key, state="done", outcome="OK")
         if kind in CU_KINDS:

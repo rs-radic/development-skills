@@ -1,7 +1,8 @@
 {
   "source_revision": "dee977fb85d0802debfa95c8b222735ce757e559",
-  "latest_source_revision": "4e598dd4a9ca2875b004d30740a6a33cbf15a0af",
-  "latest_verification": "No new full-suite run. New 25-case module interrupted at the 300-second tool limit after ten per-case OK results; incomplete, not PASS. Counts below remain previous-source evidence.",
+  "latest_source_revision": "193db65139abd11bae25186a45378849950fe52c",
+  "latest_verification": "Six selected approval-wait tests passed, zero failures/errors/skips, exit 0. Thirteen other cases in that new module and the wider suite were not rerun. Counts below remain previous-source evidence.",
+  "previous_followup_verification": "Source 4e598dd: new 25-case module interrupted at the 300-second tool limit after ten per-case OK results; incomplete, not PASS.",
   "previous_public_revision": "ba95426b6dd927f0c9ccbd22c28be6c28e5f2367",
   "execution": "complete public unique-test run",
   "counts": {

@@ -157,7 +157,57 @@ def retire_delivery(ctx, tid, inc):
     return dict(ctx.c.execute('SELECT * FROM recoveries WHERE id=?', (inc['id'],)).fetchone())
 
 
+def approval_wait(conn, tid):
+    """Settled current publication, including its observed explicit approval request."""
+    task = conn.execute('SELECT * FROM tasks WHERE clickup_task_id=?', (tid,)).fetchone()
+    if (not task or task['terminal'] or task['phase'] != 'awaiting_approval'
+            or not rules.current(task['published_accounts_gen'], task)
+            or type(task['published_rev']) is not int or task['published_rev'] < 1
+            or not re.fullmatch(r'[0-9a-f]{64}', task['published_sha256'] or '')):
+        return False
+    rev, sha = task['published_rev'], task['published_sha256']
+    # Revocation does not turn an already accepted plan into an initial approval wait.
+    if conn.execute("SELECT 1 FROM approvals WHERE task=? AND rev=? AND plan_sha256=?",
+                    (tid, rev, sha)).fetchone():
+        return False
+    prefix = 'clickup-dp:%s:pub:r%d:%s:i' % (tid, rev, sha[:12])
+    row = conn.execute("SELECT * FROM outbox WHERE task=? AND kind='cu_comment' AND idem_key LIKE ? "
+                       "ORDER BY rowid DESC LIMIT 1", (tid, prefix + '%:comment')).fetchone()
+    if not row or row['state'] != 'done' or row['outcome'] != 'OK' or not row['result_ref']:
+        return False
+    base = row['idem_key'].removesuffix(':comment')
+    effects = {r['idem_key']: r for r in conn.execute('SELECT * FROM outbox WHERE task=? AND idem_key IN (?,?,?,?,?)',
+               (tid, base + ':attach', base + ':status', base + ':attach#cu', base + ':comment#cu', base + ':status#cu'))}
+    if len(effects) != 5 or any(r['state'] != 'done' or r['outcome'] != 'OK' for r in effects.values()):
+        return False
+    try:
+        body, pre = json.loads(row['body']), json.loads(row['preconditions'])
+        attach = json.loads(effects[base + ':attach']['body'])
+        status = json.loads(effects[base + ':status']['body'])
+        mirror = effects[base + ':comment#cu']
+        text = json.loads(mirror['body'])['text']
+        source = body['summary_from']
+        bound = (row['target'] == tid and body['task'] == pre['task_id'] == attach['task'] == status['task'] == tid
+                 and base == prefix + str(pre['input_gen'])
+                 and pre['scope_gen'] <= task['published_accounts_gen'] <= pre['input_gen'] <= task['classified_gen']
+                 and attach['sha256'] == sha and attach['card'] == source['card']
+                 and attach['attachment'] == source['attachment']
+                 and status['status'] == 'waiting for approval'
+                 and mirror['result_ref'] == row['result_ref']
+                 and 'Plan r%d, SHA-256 %s' % (rev, sha) in text
+                 and 'Approve plan r%d for development' % rev in text)
+    except (KeyError, TypeError, ValueError):
+        return False
+    return bool(bound and conn.execute("SELECT 1 FROM cards WHERE task=? AND card_id=? AND role='request'",
+                                      (tid, source['card'])).fetchone()
+                and conn.execute("SELECT 1 FROM items WHERE task=? AND kind='comment' AND id=? "
+                                 "AND parent_id IS NULL AND deleted=0 AND cur_hash=first_hash",
+                                 (tid, row['result_ref'])).fetchone())
+
+
 def human_wait(conn, tid):
+    if approval_wait(conn, tid):
+        return True
     task = conn.execute('SELECT * FROM tasks WHERE clickup_task_id=?', (tid,)).fetchone()
     for b in conn.execute("SELECT * FROM blockers WHERE task=? AND state='asked'", (tid,)):
         if b['approval_id'] is not None:
@@ -716,6 +766,38 @@ def same_obligation(inc, state, found, shows):
                 and all(r.get('worker_pid') is None for r in w['runs']))
 
 
+def workflow_warning_current(conn, inc, obs, now, handoff_unblock):
+    """An old preapproval workflow warning needs a current diagnostic obligation."""
+    from . import engine
+    if not (inc['class'] == CLASS and inc['approval_id'] is None
+            and workflow_anchor(inc['card'], inc['task'])):
+        return True
+    tid = inc['task']
+    state = dict(context(conn, tid), handoff_unblock=handoff_unblock)
+    if state['delivery_failures']:
+        return True  # a current independent failure retains its existing diagnostic path
+    if approval_wait(conn, tid):
+        return False
+    task = dict(conn.execute('SELECT * FROM tasks WHERE clickup_task_id=?', (tid,)).fetchone())
+    # Unsettled input does not undo an accepted published-plan binding.
+    if not any(a['state'] in engine.ACTIVE + engine.WATCHED_STATES
+               and a['accounts_gen'] is not None and a['accounts_gen'] >= task['scope_gen']
+               and a['rev'] == task['published_rev'] and a['plan_sha256'] == task['published_sha256']
+               for a in state['approvals']):
+        return True  # keep invalid-publication and revoked-plan diagnosis unchanged
+    if not obs.progress_scan:
+        return False
+    kind, found = outer(task, state, obs.cards, obs.attachments, now, obs.scan_started_ms)
+    if kind != 'actionable' or not found or not same_obligation(inc, state, found, obs.cards):
+        return False
+    if found['reason_sha256'] == inc['reason_sha256']:
+        return True
+    row = conn.execute('SELECT value FROM meta WHERE key=?', ('progress_observed:' + tid,)).fetchone()
+    previous = json.loads(row[0]) if row else None
+    return bool(previous and previous['progress'] == found['progress']
+                and now - previous['first_ms'] >= stalled.GRACE_MS)
+
+
 def step(ctx, tid, task, inc):
     from . import engine
     if engine.recovery_abandoned(ctx.c, inc):
@@ -784,13 +866,14 @@ def step(ctx, tid, task, inc):
         key = 'progress_observed:' + tid
         row = ctx.c.execute('SELECT value FROM meta WHERE key=?', (key,)).fetchone()
         previous = json.loads(row[0]) if row else None
-        if ctx.now < inc['abs_ms']:
-            if not previous or previous['progress'] != found['progress']:
-                ctx.c.execute('INSERT OR REPLACE INTO meta(key,value) VALUES (?,?)',
-                              (key, json.dumps(dict(progress=found['progress'], first_ms=ctx.now))))
+        if not previous or previous['progress'] != found['progress']:
+            # Keep current-obligation evidence even after the immutable incident deadline.
+            ctx.c.execute('INSERT OR REPLACE INTO meta(key,value) VALUES (?,?)',
+                          (key, json.dumps(dict(progress=found['progress'], first_ms=ctx.now))))
+            if ctx.now < inc['abs_ms']:
                 return
-            if ctx.now - previous['first_ms'] < stalled.GRACE_MS:
-                return
+        elif ctx.now < inc['abs_ms'] and ctx.now - previous['first_ms'] < stalled.GRACE_MS:
+            return
         a = found.get('approval') or {}
         if a.get('id') != inc['approval_id'] or (ctx.c.execute(
                 "SELECT 1 FROM outbox WHERE idem_key=?", (engine._notice_key(tid, inc, ctx.c),)).fetchone()

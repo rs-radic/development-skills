@@ -16,7 +16,7 @@ ClickUp: “Approve plan r1 for development” → orchestration → implementat
 
 **This is a Windows, self-hosted Hermes integration, not a hosted ClickUp app or a one-click skill install.** It preserves the existing chat-based intake. Public-source preparation does not install anything, activate polling, create a ClickUp task or change a running Hermes instance.
 
-Latest source: `4e598dd4a9ca2875b004d30740a6a33cbf15a0af`. This includes completed-workflow retirement and bounded nested observation. [Verification notes](docs/verification.md) distinguish the latest limited check from earlier full-run failures.
+Latest source: `193db65139abd11bae25186a45378849950fe52c`. This includes verified approval-wait handling and suppression of obsolete recovery warnings, alongside completed-workflow retirement and bounded nested observation. [Verification notes](docs/verification.md) distinguish the latest limited check from earlier full-run failures.
 
 ## What is included
 

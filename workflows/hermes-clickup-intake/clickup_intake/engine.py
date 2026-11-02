@@ -2749,7 +2749,7 @@ def _notice_delivered(ctx, inc, key, ref):
         if wait['state'] == 'publishing':
             wait.update(state='waiting', root=ref, verified_ms=ctx.now)
             _diagnostic_wait(ctx, inc['id'], wait)
-    else:
+    elif progress.workflow_warning_current(ctx.c, inc, ctx.obs, ctx.now, ctx.cfg.handoff_unblock):
         ctx.alert('rcv-owner:%d' % inc['id'],
                   'Recovery for task %s card %s run %d is unfinished: the default coordinator retains '
                   'the same approved repair. A technical notice is not completion; verify capable-owner '

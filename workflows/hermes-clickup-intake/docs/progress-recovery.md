@@ -1,6 +1,6 @@
 # Structural progress and delivery recovery
 
-This reference describes source `4e598dd4a9ca2875b004d30740a6a33cbf15a0af`. It extends the existing [recovery contract](recovery.md), not operator authority. The same `recovery enable`/`disable` gate and read-only `recovery-check` command apply. There is no `progress enable` command, new configuration flag, automatic activation or universal recovery guarantee. The operator must first supply the approved project workflow/recovery contract, compatible Windows Hermes installation and capable non-worker coordinator.
+This reference describes source `193db65139abd11bae25186a45378849950fe52c`. It extends the existing [recovery contract](recovery.md), not operator authority. The same `recovery enable`/`disable` gate and read-only `recovery-check` command apply. There is no `progress enable` command, new configuration flag, automatic activation or universal recovery guarantee. The operator must first supply the approved project workflow/recovery contract, compatible Windows Hermes installation and capable non-worker coordinator.
 
 ## Structural and outer diagnostics
 
@@ -15,6 +15,12 @@ Missing native evidence remains **unknown**, never an empty or healthy graph. Th
 All progress ACKs go on the actual recovery carrier, not on a logical anchor. Only `CURRENT` admits diagnosis; `STALE` requires stopping and `UNAVAILABLE` requires stopping/re-observing. The coordinator still needs the existing operation-specific authority and fresh closure checks. Never clear an operator/security hold, bypass a dependency/ticket, complete a question, replace a graph, reset history, edit lifecycle SQL or repair integration code merely because a wake arrived.
 
 For a completed planner with an invalid handoff, the carrier describes a narrow supported same-request requeue: the authorized operator must freshly verify the request is still terminal, with no descendants or active owner. Preserve original plan bytes and malformed metadata in history. A fresh review request must bind the correct hash of those unchanged bytes, and a real independent reviewer must review again. The wake is not permission to rewrite history, invent review evidence or broaden the project's recovery scope.
+
+## Verified approval waits and obsolete warnings
+
+A settled current plan is an approval wait only when its publication effects and mirrors are done, its exact approval request is observed, and its revision/hash/generation and request-card bindings agree. An already accepted or revoked plan is not reclassified as an initial wait. Missing or failed publication remains diagnosable.
+
+Old unbound workflow warnings are rechecked before emission and on delivered-notice callbacks. A verified wait or healthy newly approved workflow does not release obsolete warnings; independent delivery failures and current diagnostic obligations retain their existing paths. Unsettled input does not itself revoke an accepted plan. This changes warning eligibility, not execution authority or spent recovery budgets.
 
 ## Completed-workflow retirement
 
