@@ -21,7 +21,7 @@ class Snapshot:
         self.conn, self.path, self.take, self.clock = conn, Path(path), take, clock
         self.started = clock()
         self.identity = self._identity()
-        self.shows, self.attachments, self.files = {}, {}, {}
+        self.shows, self.attachments, self.files, self.views = {}, {}, {}, {}
         self.native_stable = lambda: True
         self.version = self.query('PRAGMA data_version')[0][0]
 
@@ -56,12 +56,14 @@ class Snapshot:
         self.close()
 
 
-def acquire(path, roots, take, clock):
+def acquire(path, roots, take, clock, render=None):
     """Nine fixed SELECT/PRAGMA reads plus final proof checks, independent of N.
 
     Failure or a >5-minute acquisition yields no snapshot. Attachment *bytes*
     are verified by the existing source reader after acquisition and remain
     outside SQLite's transaction; they are never considered a revision token.
+    ``render(conn, card)``, when given, builds ``views[card]`` for every loaded
+    card inside the same read transaction; a ValueError from it yields no snapshot.
     """
     proof = None
     try:
@@ -119,6 +121,8 @@ def acquire(path, roots, take, clock):
                 if key == 'events' and isinstance(r.get('payload'), str):
                     r['payload'] = json.loads(r['payload'])
                 (proof.attachments[task] if key == 'attachments' else proof.shows[task][key]).append(r)
+        if render is not None:
+            proof.views = {card: render(conn, card) for card in proof.shows}
         conn.execute('COMMIT')
         if not proof.valid() or clock() - proof.started > 300000:
             proof.close()

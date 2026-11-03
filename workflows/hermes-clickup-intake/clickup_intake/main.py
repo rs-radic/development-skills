@@ -26,6 +26,7 @@ The executor adapts S2 outbox rows to the S1/S3 executors without changing eithe
 """
 
 import argparse
+import copy
 import dataclasses
 import hashlib
 import json
@@ -40,7 +41,7 @@ import time
 from . import clickup_api, clickup_effects, engine, observe, render, rules, stalled, progress
 from . import kanban_port as kp
 from .config import load_config
-from .contracts import EffectIntent, Outcome, Preconditions, RowState, TransportResult, load_preconditions
+from .contracts import EffectIntent, KanbanResult, Outcome, Preconditions, RowState, TransportResult, load_preconditions
 from .parse import parse_comment
 from .store import Store, load_recovery_snapshot, load_ticket_snapshot, open_readonly, recovery_snapshot, \
     revoke_live_tickets
@@ -358,6 +359,7 @@ class Glue:
         self._diagnostic_refresh = {}  # at most one bounded target-local L per task per scan
         self._preworker_reads = {}  # one shared native read allowance per task/scan
         self.dependency_members = {}
+        self._batch = None  # routine observation's native reads; exists only inside observe_cards
 
 
     # -- meta
@@ -660,10 +662,49 @@ class Glue:
 
     # ------------------------------------------------------------------------------- §4.1 step 5
     def _show(self, card):
+        if self._batch is not None:
+            return self._batch_view(card)[0]
         r = self.port.show(card)
         return r.json if _ok(r) and isinstance(r.json, dict) else None
 
+    def _batch_view(self, card):
+        """(show, attachments) of ``card`` from this observation's native reads; (None, None) when unknown."""
+        b = self._batch
+        if card not in b["covered"]:
+            self._batch_read({card})
+        return copy.deepcopy((b["shows"].get(card), b["atts"].get(card)))  # one parsed object per read, as the CLI
+
+    def _batch_read(self, cards, prefetch=False):
+        """One bounded read-only native snapshot of ``cards`` and their closure. A failed read leaves the
+        cards unknown for this observation (a failed prefetch only falls back to per-card snapshots)."""
+        b = self._batch
+        got = self.port.show_batch(cards, self.store.clock)
+        b["reads"] += 1
+        if got is None:
+            b["unavailable"] += 1
+            if not prefetch:
+                b["covered"] |= set(cards)
+        elif got is not False:
+            b["shows"].update(got[0])
+            b["atts"].update(got[1])
+            b["covered"] |= set(cards) | set(got[0])
+        return got
+
     def observe_cards(self):
+        """Routine observation reads cards from bounded native snapshots when the port offers them (no CLI
+        process per card); the snapshots end with this method, so later effect-time reads stay fresh."""
+        self._batch = (dict(shows={}, atts={}, covered=set(), reads=0, unavailable=0)
+                       if getattr(self.port, "show_batch", None) else None)
+        try:
+            self._observe_cards()
+        finally:
+            if self._batch is not None:
+                self.log.info(json.dumps({"event": "native_reads", "snapshots": self._batch["reads"],
+                                          "unavailable": self._batch["unavailable"],
+                                          "cards": len(self._batch["shows"])}))
+            self._batch = None
+
+    def _observe_cards(self):
         """``show --json`` of glue-owned cards and ``clickup_gates`` ids; ``attachments`` of done request cards."""
         c = self.c
         terminal = {r[0] for r in c.execute("SELECT clickup_task_id FROM tasks WHERE terminal=1")}
@@ -677,6 +718,8 @@ class Glue:
                                         " AND state='done' AND result_ref IS NOT NULL ORDER BY rowid"):
             if ref and task not in terminal and ":rcv:" not in key:  # recovery carriers are never re-shown (r3 §4.4)
                 want.setdefault(ref, "request" if ":req:" in key else "other")
+        if self._batch is not None and self._batch_read(set(want), prefetch=True) is False:
+            self._batch = None  # custom child environment: the per-card CLI path
         cards = {}
         for card in want:
             shown = self._show(card)
@@ -1022,7 +1065,11 @@ class Glue:
     def attachments(self, card):
         """``attachments --json`` of a card with the SHA-256 of each stored file (cached per scan)."""
         if card not in self._att:
-            r = self.port.attachments(card)
+            if self._batch is not None:
+                listed = self._batch_view(card)[1]
+                r = KanbanResult(Outcome.OK if listed is not None else Outcome.DEFINITE_FAIL, listed)
+            else:
+                r = self.port.attachments(card)
             if not _ok(r) or not isinstance(r.json, list):
                 self._att_failed.add(card)
             out = []

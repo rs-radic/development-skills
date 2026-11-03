@@ -170,6 +170,42 @@ class KanbanCli:
         return self._run(["show", card_id, "--json"], json_out=True)
 
     def _preworker_snapshot(self, roots, take, clock):
+        return self._native_snapshot(roots, take, clock)
+
+    def show_batch(self, cards, clock):
+        """Routine read-only observation without a CLI process per card.
+
+        ``(shows, attachments)`` keyed by card for ``cards`` and their bounded native closure: the parsed
+        ``show --json`` / ``attachments --json`` that the installed CLI handlers build, from the same
+        installed readers and field lists inside one read transaction. ``False``: not applicable (custom
+        child environment; use the CLI). ``None``: unavailable, never an empty successful observation.
+        """
+        if self.env is not None:
+            return False
+
+        def render(conn, card):
+            try:
+                from hermes_cli import kanban_db as kb
+                from hermes_cli.kanban_output import _ATTACHMENT_FIELDS, _SHOW_RUN_FIELDS, _obj_dict, _task_to_dict
+                show = {  # hermes_cli.kanban._cmd_show --json
+                    "task": _task_to_dict(kb.get_task(conn, card)), "latest_summary": kb.latest_summary(conn, card),
+                    "parents": kb.parent_ids(conn, card), "children": kb.child_ids(conn, card),
+                    "comments": [_obj_dict(c, ("author", "body", "created_at")) for c in kb.list_comments(conn, card)],
+                    "events": [_obj_dict(e, ("kind", "payload", "created_at", "run_id"))
+                               for e in kb.list_events(conn, card)],
+                    "runs": [_obj_dict(r, _SHOW_RUN_FIELDS) for r in kb.list_runs(conn, card)]}
+                atts = [_obj_dict(a, _ATTACHMENT_FIELDS) for a in kb.list_attachments(conn, card)]  # _cmd_attachments
+                return json.loads(json.dumps(show)), json.loads(json.dumps(atts))
+            except Exception as e:  # any installed reader/schema change refuses the whole read
+                raise ValueError("native render") from e
+
+        proof = self._native_snapshot(set(cards), lambda: True, clock, render)
+        if proof is None:
+            return None
+        proof.close()
+        return {c: v[0] for c, v in proof.views.items()}, {c: v[1] for c, v in proof.views.items()}
+
+    def _native_snapshot(self, roots, take, clock, render=None):
         # Same installed resolver and explicit board as this port, but no initializing connection.
         from pathlib import Path
         import sys
@@ -196,7 +232,7 @@ class KanbanCli:
             from hermes_cli.kanban_db import kanban_db_path
             if self.env is not None:
                 return None  # no implicit substitution for a custom child environment
-            proof = acquire(kanban_db_path(board=self.board), roots, take, clock)
+            proof = acquire(kanban_db_path(board=self.board), roots, take, clock, render)
             if proof is not None:
                 proof.native_stable = lambda: stable() and before == [hashlib.sha256(p.read_bytes()).digest() for p in paths]
                 if not proof.valid():

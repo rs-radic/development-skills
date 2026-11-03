@@ -1,6 +1,6 @@
 # Structural progress and delivery recovery
 
-This reference describes source `193db65139abd11bae25186a45378849950fe52c`. It extends the existing [recovery contract](recovery.md), not operator authority. The same `recovery enable`/`disable` gate and read-only `recovery-check` command apply. There is no `progress enable` command, new configuration flag, automatic activation or universal recovery guarantee. The operator must first supply the approved project workflow/recovery contract, compatible Windows Hermes installation and capable non-worker coordinator.
+This reference describes source `32e1c6947ac39c87ec66bdc2bb3296fb950396b5`. It extends the existing [recovery contract](recovery.md), not operator authority. The same `recovery enable`/`disable` gate and read-only `recovery-check` command apply. There is no `progress enable` command, new configuration flag, automatic activation or universal recovery guarantee. The operator must first supply the approved project workflow/recovery contract, compatible Windows Hermes installation and capable non-worker coordinator.
 
 ## Structural and outer diagnostics
 
@@ -15,6 +15,10 @@ Missing native evidence remains **unknown**, never an empty or healthy graph. Th
 All progress ACKs go on the actual recovery carrier, not on a logical anchor. Only `CURRENT` admits diagnosis; `STALE` requires stopping and `UNAVAILABLE` requires stopping/re-observing. The coordinator still needs the existing operation-specific authority and fresh closure checks. Never clear an operator/security hold, bypass a dependency/ticket, complete a question, replace a graph, reset history, edit lifecycle SQL or repair integration code merely because a wake arrived.
 
 For a completed planner with an invalid handoff, the carrier describes a narrow supported same-request requeue: the authorized operator must freshly verify the request is still terminal, with no descendants or active owner. Preserve original plan bytes and malformed metadata in history. A fresh review request must bind the correct hash of those unchanged bytes, and a real independent reviewer must review again. The wake is not permission to rewrite history, invent review evidence or broaden the project's recovery scope.
+
+## Routine native observation
+
+Where supported, routine card collection uses bounded read-only native snapshots and the installed CLI serializers, rather than launching a CLI process for each card. Unavailable reads remain unknown. A failed prefetch may retry with per-card native snapshots; a custom child environment uses the existing CLI path. Snapshot reuse is limited to the observation method, so later effect-time reads stay fresh. This does not change write authority, enable recovery or claim live performance measurements.
 
 ## Verified approval waits and obsolete warnings
 
