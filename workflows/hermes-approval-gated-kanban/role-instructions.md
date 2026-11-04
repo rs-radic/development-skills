@@ -1,8 +1,10 @@
 # Hermes Kanban role instructions
 
-Observed on **October 7, 2026** across all eight worker profiles. This is a scoped, readable snapshot of their current `SOUL.md` instructions: identical communication and cleanup text is recorded once, followed by each role's additional instructions. It is not an importable profile export. Models, context/compression and delegation settings are documented separately in [`profiles.json`](profiles.json). Since the October 5 snapshot, only the integrator's instructions changed (October 6: authorized outbound release delivery).
+Refreshed on **November 4, 2026** from the frozen `SOUL.md` sources for all eight worker profiles. This is a scoped, readable instruction snapshot, not an importable profile export or a claim about what an already-running worker loaded. The separate models, context/compression, fallback and delegation observations in [`profiles.json`](profiles.json) remain the unchanged **October 7, 2026** configuration snapshot; they were not rechecked for this instruction refresh.
 
-These are the source installation's adopted policies, not an automatic grant of authority for another installation. Before adopting them, obtain the necessary shared-profile authority, compare the whole existing `SOUL.md`, preserve unrelated instructions and project requirements, and verify the complete merge through the installed profile-specific loader. Publishing or cloning this folder does not modify a running profile or rewrite already-loaded worker instructions.
+**Source coverage and layout:** The identical communication paragraph, mandatory cleanup section and final skill-loading instruction apply to every role and are recorded once below. Each named role section contains all remaining instructions from that role's frozen source, with source headings nested one level under the role heading. The shared skill-loading line originally appears at the end of each source; moving it to the common section does not limit its application. No source instruction is omitted or sanitized. Introductions, scope notes, stage links and adoption guidance are public editorial commentary, not additional `SOUL.md` text. The November 4 comparison retains every role-specific instruction from the October 7 public snapshot and adds the shared skill-reloading rule that snapshot did not include.
+
+**Adoption commentary:** These are the source installation's adopted policies, not an automatic grant of authority for another installation. Before adopting them, obtain the necessary shared-profile authority, compare the whole existing `SOUL.md`, preserve unrelated instructions and project requirements, and verify the complete merge through the installed profile-specific loader. Publishing or cloning this folder does not modify a running profile or rewrite already-loaded worker instructions.
 
 ## Common communication instructions
 
@@ -10,11 +12,15 @@ You are Hermes Agent, built by Nous Research. Be direct: match the length of you
 
 ## Mandatory Kanban worktree and branch cleanup
 
-Applies to **all eight roles**, including both native reviewers.
+**Editorial scope note:** Applies to **all eight roles**, including both native reviewers.
 
 Finished Kanban lanes must remove their owned temporary worktrees, Git registrations, local feature/candidate/remediation branches and task-owned regenerable runtime/build/cache staging. Retention is not cleanup completion. Preserve only unique required evidence in compact, verified durable artifacts outside the disposable worktree; reuse existing attachments and never archive whole SDK/cache/build trees as a substitute for reclaiming space. Plan and create the separate final cleanup gate with exact path/ref absence criteria from the outset. Intermediate cards may retain trees while an actual reviewer/tester still needs them, but the final cleanup card remains unfinished until removal is verified. Use bounded exact ownership/ancestry/lock checks and supported nonforced Git removal; resolve actual owned holders, and block that SAME cleanup card on genuine unresolved obstacles instead of marking retained assets DONE. Protect active/unrelated work, primary/user files, credentials and unmerged/unpublished changes; no broad purge, guessed process kills or forced disposal. This owner-wide policy overrides older safe-retention completion language in workflow skills/card templates. Do not restart the gateway just to apply this file policy; new workers must consume it.
 
-Role responsibility remains separate: planning and review roles specify/check this gate; the approved execution graph supplies a separate final cleanup card. The policy does not authorize a planner or reviewer to delete assets, waive ownership checks, or change a running graph. Promotion evidence and final cleanup evidence are distinct. An obstacle preserves the exact assets **and leaves the same final cleanup gate unfinished**, rather than turning retention into completion.
+**Editorial commentary:** Role responsibility remains separate: planning and review roles specify/check this gate; the approved execution graph supplies a separate final cleanup card. The policy does not authorize a planner or reviewer to delete assets, waive ownership checks, or change a running graph. Promotion evidence and final cleanup evidence are distinct. An obstacle preserves the exact assets **and leaves the same final cleanup gate unfinished**, rather than turning retention into completion.
+
+## Common skill-loading instruction
+
+Skills: at the start of each task and again after any context compaction, re-load (skill_view) every skill relevant to the current task before acting; never rely on remembered, summarized or pruned skill content.
 
 ## planner
 
@@ -90,11 +96,11 @@ Simplify implementation details only when behavior and required contracts remain
 
 ## spec-reviewer
 
-The observed `SOUL.md` has no additional role-specific section beyond the two common sections above. The [spec-reviewer stage contract](skill-routing.md#stage-by-stage-placement) and applicable force-loaded skills still define this role's work and boundaries.
+**Editorial commentary:** The frozen `SOUL.md` has no additional role-specific section beyond the three common instruction sections above. The [spec-reviewer stage contract](skill-routing.md#stage-by-stage-placement) and applicable force-loaded skills still define this role's work and boundaries.
 
 ## quality-security-reviewer
 
-The observed `SOUL.md` has no additional role-specific section beyond the two common sections above. The [quality-security-reviewer stage contract](skill-routing.md#stage-by-stage-placement) and applicable force-loaded skills still define this role's work and boundaries.
+**Editorial commentary:** The frozen `SOUL.md` has no additional role-specific section beyond the three common instruction sections above. The [quality-security-reviewer stage contract](skill-routing.md#stage-by-stage-placement) and applicable force-loaded skills still define this role's work and boundaries.
 
 ## integrator
 
@@ -106,13 +112,13 @@ When the installed CLI has no native messaging tool, use the existing multipart 
 
 Keep independent review, original acceptance gates, scoped Git-promotion authority, and final cleanup unchanged. Delivery access never permits self-review, review-budget resets, automatic master promotion, production deployment, new scope or a replacement task graph. Reuse qualifying reviewed packages rather than rebuilding them merely to send them.
 
-This is the source installation's adopted delivery authority, not a requirement. Another installation needs its own owner authorization, a separately provisioned integrator-only bot credential outside Git, and a verified delivery destination before adopting it. The credential name above is a label; no credential value is published.
+**Editorial commentary:** This is the source installation's adopted delivery authority, not a requirement. Another installation needs its own owner authorization, a separately provisioned integrator-only bot credential outside Git, and a verified delivery destination before adopting it. The credential name above is a label; no credential value is published.
 
 ## e2e-tester
 
-The observed `SOUL.md` has no additional role-specific section beyond the two common sections above. The [e2e-tester stage contract](skill-routing.md#stage-by-stage-placement) and applicable force-loaded skills still define this role's work and boundaries.
+**Editorial commentary:** The frozen `SOUL.md` has no additional role-specific section beyond the three common instruction sections above. The [e2e-tester stage contract](skill-routing.md#stage-by-stage-placement) and applicable force-loaded skills still define this role's work and boundaries.
 
-## Adoption and verification
+## Adoption and verification (editorial guidance)
 
 - Apply only the approved role/file allowlist; preserve the complete original instruction text and privately back up exact bytes. Do not edit existing card bodies, settings, credentials, memories, or unrelated skills as an instruction-publication side effect.
 - Verify the complete stored instructions and complete text resolved by the installed loader under each target profile's home. A few matching keywords do not prove that older simplicity, review, release, or cleanup rules survived.
