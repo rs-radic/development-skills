@@ -247,7 +247,8 @@ assert not output.exists(), "partial staging was left behind"
                          "templates/blocker_triage.md", "templates/question_protocol.md", "templates/recovery_card.md",
                          "clickup_intake/preworker.py", "clickup_intake/preworker_snapshot.py",
                          "clickup_intake/stalled.py", "templates/diagnostic_card.md", "templates/preworker_card.md",
-                         "clickup_intake/progress.py", "templates/progress_card.md"):
+                         "clickup_intake/progress.py", "templates/progress_card.md",
+                         "templates/assigned_recovery_card.md"):
             with self.subTest(missing=relative):
                 source = self.package / relative
                 content = source.read_bytes()
@@ -408,7 +409,7 @@ module["prepare"](settings, pathlib.Path(sys.argv[3]))
         expected_modules = {"__init__", "clickup_api", "clickup_effects", "config", "contracts", "engine",
                             "kanban_port", "main", "observe", "parse", "ports", "preworker",
                             "preworker_snapshot", "progress", "render", "rules", "stalled", "store", "ticket"}
-        expected_templates = {"approval_record", "blocker_triage", "diagnostic_card", "gate_card",
+        expected_templates = {"approval_record", "assigned_recovery_card", "blocker_triage", "diagnostic_card", "gate_card",
                               "orchestrator_card", "preworker_card", "progress_card", "question_protocol", "recovery_card",
                               "request_card", "ticket_recheck_paragraph"}
         expected_payload = {
@@ -418,10 +419,11 @@ module["prepare"](settings, pathlib.Path(sys.argv[3]))
         }
         self.assertEqual(set(payload), expected_payload)
         self.assertEqual(manifest["file_count"], len(expected_payload))
-        self.assertEqual(manifest["file_count"], 32)
+        self.assertEqual(manifest["file_count"], 33)
         self.assertIn("scripts/clickup_intake/progress.py", payload)
         self.assertIn("scripts/templates/progress_card.md", payload)
         self.assertIn("scripts/templates/recovery_card.md", payload)
+        self.assertIn("scripts/templates/assigned_recovery_card.md", payload)
         for name in ("preworker", "preworker_snapshot", "stalled"):
             self.assertIn("scripts/clickup_intake/" + name + ".py", payload)
         for name in ("diagnostic_card", "preworker_card"):
@@ -444,7 +446,7 @@ module["prepare"](settings, pathlib.Path(sys.argv[3]))
         result = self.prepare()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         manifest = json.loads((self.output / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["file_count"], 32)
+        self.assertEqual(manifest["file_count"], 33)
         self.assertFalse(any("unlisted_private" in item["path"] for item in manifest["files"]))
         self.assertFalse(any("unlisted_private" in path.name for path in self.output.rglob("*")))
 

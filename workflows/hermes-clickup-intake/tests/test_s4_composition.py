@@ -137,7 +137,7 @@ class FakeBoard:
         self.inj.point(("kb", name, cid) + sig)
 
     def mutations(self):
-        return [c for c in self.calls if c[0] not in ("show", "attachments", "subscriptions")]
+        return [c for c in self.calls if c[0] not in ("show", "attachments", "subscriptions", "list")]
 
     # -- KanbanPort
     def create(self, title, *, body_file, idempotency_key, assignee=None, skills=(), initial_status="blocked"):
@@ -178,6 +178,12 @@ class FakeBoard:
         out = {k: json.loads(json.dumps(c[k])) for k in ("task", "parents", "comments", "runs", "events")}
         out["children"] = [i for i, x in self.cards.items() if card in x["parents"]]
         return KanbanResult(Outcome.OK, out)
+
+    def list_tasks(self):
+        """``list --archived --json``: every task, archived included (native task fields; no idempotency key)."""
+        self.calls.append(("list", None))
+        return KanbanResult(Outcome.OK, [{k: v for k, v in c["task"].items() if k != "key"}
+                                         for c in self.cards.values()])
 
     def unblock(self, card):
         t = self.cards[card]["task"]

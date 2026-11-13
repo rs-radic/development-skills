@@ -111,16 +111,72 @@ RECOVERY_SUMMARY_MAX = 400
 RECOVERY_BODY_MAX = 16 * 1024  # r3 §8: the whole rendered carrier body, in UTF-8 bytes
 
 
+def _receipt_duty(p, answer):
+    """The receiver-written acceptance of a takeover/escalation carrier (``kanban_port.recovery_receipt``)."""
+    where = "this recovery carrier" if p.get("class") in ("progress_stall", "approval_staging") else f"W ({p['card']})"
+    return ("Accept ownership only after a CURRENT admission check: you, the operator who actually received this "
+            f"wake, post on {where} one comment whose first line is exactly `CLICKUP-RECOVERY-ACK v1 card={p['card']} "
+            f"run={p['run_id']} disposition=working` and whose second line is exactly `CLICKUP-RECOVERY-ACCEPT v1 "
+            f"incident={answer['diagnostic']} answer=g{answer['gen']} relay={answer['relay']} "
+            "carrier=<this carrier id>` with `<this carrier id>` replaced by this carrier card's id. Only that bound "
+            "receipt accepts it; an unbound, earlier or foreign ACK does not. A receipt is acceptance, not progress. ")
+
+
+def _answer_section(answer, p):
+    """An accepted, classified answer is the input this continuation wake exists to act on."""
+    if not answer:
+        return ""
+    if answer.get('correction'):
+        return ("\n\n## Required same-card correction — main operator only\n\n" + answer['correction'] +
+                "\n\nAccepted answer (unchanged):\n" + answer['resolution'])
+    if answer.get('assigned'):
+        return (f"\n\n## Accepted answer: incident={answer['diagnostic']} answer=g{answer['gen']} "
+                f"relay={answer['relay']}\n\n" + answer['resolution'])
+    if answer.get("escalation"):
+        return ("\n\n## Operator escalation\n\nThe accepted answer to the bound originating-task question (diagnostic "
+                f"{answer['diagnostic']}, relay {answer['relay']}, gen {answer['gen']}) was carried by 3 answer wakes "
+                "and one operator takeover wake of the main-chat coordinator without verified same-owner progress in "
+                "their bounded windows. This escalation is posted as a visible ping in the configured project channel and wakes you, "
+                "the main-chat operator; the intake reads back the sent ping from the notification cursor and holds "
+                "the task if it cannot. The "
+                "obligation stays open and owned by the operator: the stopped card remains blocked and the incident "
+                "unresolved until the same owner's authorized work verifiably proceeds through the procedure below, "
+                "or a new bound owner question is delivered for a genuinely new missing decision. " +
+                _receipt_duty(p, answer) + "The intake sends no "
+                "further wake for this answer and never repeats the answered question. Without verified progress "
+                "in the bounded window, one assigned integrator recovery task takes the same obligation through "
+                "the ordinary dispatcher and its unchanged worker permissions; no human release is required just "
+                "to launch it. The answer grants no new approval and bypasses no gate.\n\n" + answer["resolution"])
+    if answer.get("takeover"):
+        return ("\n\n## Operator takeover\n\nThe accepted answer to the bound originating-task question (diagnostic "
+                f"{answer['diagnostic']}, relay {answer['relay']}, gen {answer['gen']}) was carried by 3 answer wakes "
+                "without verified progress. This takeover wake asks you, the main-chat operator, to own the obligation "
+                "and make the same owner's authorized work verifiably proceed through the procedure below, or submit "
+                "a new bound owner question only for a genuinely new missing decision. " + _receipt_duty(p, answer) +
+                "Without verified progress in the bounded window the intake posts one "
+                "visible escalation in the configured project channel. The intake publishes no ClickUp question or notice. Never ask "
+                "a human to choose an operator or repeat the answered question. The answer grants no new approval and "
+                "bypasses no gate.\n\n" + answer["resolution"])
+    return ("\n\n## Accepted human answer\n\nAn addressed reply to the bound originating-task question (diagnostic "
+            f"{answer['diagnostic']}, relay {answer['relay']}, gen {answer['gen']}, answer wake {answer['wake']} of 3) was "
+            "classified answer_only and "
+            "accepted under unchanged authority. This wake exists to act on it now: continue the same owner's work "
+            "through the procedure below, or submit a new bound owner question only for a genuinely new missing "
+            "decision. The answer grants no new approval and bypasses no gate.\n\n" + answer["resolution"])
+
+
 def recovery_card_body(p):
     """Carrier body (r3 §6): binding, W's own blocked reason (clipped) and the fixed coordinator procedure.
     The reason is clipped to 4,000 characters and then, on a whole-character boundary, to the bytes the complete
     binding and procedure leave under the 16 KB UTF-8 body bound (r3 §8); nothing else is ever shortened."""
-    tpl = _template("progress_card.md" if p.get("class") == "progress_stall" else
+    tpl = _template("assigned_recovery_card.md" if p.get("assigned") else
+                    "progress_card.md" if p.get("class") == "progress_stall" else
                     "preworker_card.md" if p.get("class") == "approval_staging" else
                     "diagnostic_card.md" if p.get("class") == "diagnostic" else "recovery_card.md")
     fields = dict({k: p[k] for k in ("task", "card", "run_id", "event_kind", "event_created_s", "block_kind", "class",
                                      "reason_sha256", "approval_id", "rev", "plan_sha256", "attempt", "adopted")},
-                  source_status=p.get("source_status"), check_command=recovery_check_command(p["card"], p["run_id"]))
+                  source_status=p.get("source_status"), check_command=recovery_check_command(p["card"], p["run_id"]),
+                  answer=_answer_section(p.get("answer"), p))
     if p.get('class') == 'progress_stall':
         fields.update({k: json.dumps(p[k]) for k in ('approval_id', 'rev', 'plan_sha256')})
     room = RECOVERY_BODY_MAX - len(tpl.substitute(fields, reason="").encode("utf-8"))
@@ -131,6 +187,13 @@ def recovery_card_body(p):
 def recovery_summary(p, carrier):
     """Wake ``complete`` summary (r3 §5.1): the binding headline (the notifier's ``Result:`` line) plus the full
     binding on a second line, at most 400 characters in total."""
+    answer = p.get('answer') or {}
+    if answer.get('escalation'):
+        head = (f"CLICKUP-RECOVERY ESCALATION: {p['task']} {p['card']} run {p['run_id']} still stopped after accepted "
+                f"answer g{answer['gen']}, 3 wakes and operator takeover; operator must act: read card {carrier}.")
+        binding = (f"class={p['class']} reason_sha256={p['reason_sha256']} approval={json.dumps(p['approval_id'])} "
+                   f"revision={json.dumps(p['rev'])} diagnostic={answer['diagnostic']} relay={answer['relay']}")
+        return (head[:200] + "\n" + binding)[:RECOVERY_SUMMARY_MAX]
     if p.get('class') == 'progress_stall':
         return (f"CLICKUP-RECOVERY: diagnose workflow {p['task']} at {p['card']} run {p['run_id']}; "
                 f"read carrier {carrier}. approval={json.dumps(p['approval_id'])} "

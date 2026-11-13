@@ -1,6 +1,6 @@
 # Structural progress and delivery recovery
 
-This reference describes source `32e1c6947ac39c87ec66bdc2bb3296fb950396b5`. It extends the existing [recovery contract](recovery.md), not operator authority. The same `recovery enable`/`disable` gate and read-only `recovery-check` command apply. There is no `progress enable` command, new configuration flag, automatic activation or universal recovery guarantee. The operator must first supply the approved project workflow/recovery contract, compatible Windows Hermes installation and capable non-worker coordinator.
+This reference describes source `93db41adf64464802618c41348f17f3550c27acc`. It extends the existing [recovery contract](recovery.md), not operator authority. The same `recovery enable`/`disable` gate and read-only `recovery-check` command apply. There is no `progress enable` command, new configuration flag, automatic activation or universal recovery guarantee. The operator must first supply the approved project workflow/recovery contract, compatible Windows Hermes installation and capable non-worker coordinator.
 
 ## Structural and outer diagnostics
 
@@ -29,6 +29,8 @@ Old unbound workflow warnings are rechecked before emission and on delivered-not
 ## Completed-workflow retirement
 
 A workflow is retired only when current approval and reviewed plan evidence, the declared promotion/cleanup graph, all observed native completion states, and the delivered final status agree. Open questions, unfinished effects, live runs, unknown descendants or missing proof prevent retirement. A later independent obligation gets a new logical anchor after the completed incident; fingerprint changes within unfinished work do not reset budgets. Nested collection reuses discovered IDs only, reacquires current state, and reserves reads for fresh admission.
+
+The PASS source comes from the current approval's completed plan-attachment effect, whose source card and hash must match; without that binding, only the newest request is considered. Later request cards that only continued the answer conversation cannot replace that source. Every such listener must have all its relays classified `answer_only`, a verified parked wait, no current/open run and no worker PID. A still-running, unclassified or unreadable listener blocks retirement. The staged source's actual reviewer PASS must match the approved revision, hash and generation; neither the latest request nor a phase/status label substitutes for that evidence.
 
 ## Current dependency observation is not new authority
 
@@ -61,13 +63,17 @@ If an existing specialist/source incident already owns the task, the implementat
 
 Temporary ownership also has an exit lifecycle. Once its delivery obligation resolves, the original answer enters classification/answer handling, or positively verified newer approval supersedes the old owner, the role is retired to history and the original class/guarded lifecycle is restored. A superseded source owner can then be marked superseded; staging continues only through its normal approved path. Missing observations, stale admission alone or a merely claimed worker are not cleanup evidence. A previously diagnosed delivery fingerprint cannot repeatedly reacquire the role to evade the original lifecycle or budget.
 
-The existing three-wake and absolute 24-hour bounds remain. A supported handoff, changed fingerprint, later claim or replacement notice is not a new allowance. `cannot_act`, carrier completion, warnings and queued explanations are intermediate, not recovered work. Actual authorized capable-owner progress or a verified genuinely human-required question with a usable bound reply path must be distinguished from unresolved automation/delivery. A technical explanation must not ask the user to repeat an already supplied product decision.
+The original three-wake and absolute 24-hour bounds remain recorded. A supported handoff, changed fingerprint, later claim or replacement notice is not a new allowance. A classified, accepted answer has a separate finite continuation under that same incident: answer-bound wakes, operator takeover, verified visible escalation and, if still unresolved, one assigned integrator task. This does not reset the original accounting; see [accepted-answer continuation](recovery.md#accepted-answer-continuation-and-assigned-fallback).
+
+`CURRENT` is admission, visible-notification readback is delivery, and the actual receiving operator's incident/answer/relay/carrier-bound receipt is acceptance. None is actual same-owner progress. `cannot_act`, carrier completion, warnings, assignment and queued explanations are intermediate, not recovered work. Actual authorized capable-owner progress or a verified genuinely human-required question with a usable bound reply path must be distinguished from unresolved automation/delivery. A technical explanation must not ask the user to repeat an already supplied product decision.
 
 ## Source and evidence map
 
 - `progress.projection`, `outer`, `detect`, `step`, `verdict`: selection, grace, bounded continuation and fresh diagnostic admission.
 - `progress.continue_incident`, `delivery_current`, `retire_delivery`: one-owner continuation and temporary delivery-role lifecycle.
+- `progress.sources`, `answered_listener`, `completed_workflow`: staged PASS source and finished answer-only listener checks before workflow retirement.
+- `engine._answer_continuation`, `_assigned_recovery`; `kanban_port.notification_delivered`, `recovery_receipt`: finite answer continuation, same assigned owner, visible delivery and receiver acceptance as distinct evidence.
 - `engine.dependency_scope`, `dependency_members`; `main._observe_dependencies`, `_recovery_dependencies`: current required dependency observation and effect-time/public checks.
 - `engine._approved_plan_resolution`, `_closure_root`; `main._resume_blocker_notification`: narrow approved-plan incorporation and status-delivery repair.
-- `templates/progress_card.md`: rendered coordinator procedure, null authority and carrier ACKs.
+- `templates/progress_card.md`, `templates/assigned_recovery_card.md`: rendered coordinator/assigned-worker procedures, explicit operator-supplied authority and correctly placed ACKs.
 - New focused tests cover these contracts; their presence is not execution evidence. Current results, historical failures and NOT_RUN qualifications belong in [verification notes](verification.md) and [known test qualifications](known-test-failures.md).

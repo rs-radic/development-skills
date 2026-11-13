@@ -12,7 +12,7 @@ Owner of this card: clickup-intake (deterministic, no LLM). This carrier card on
 
 ## Blocked reason of run ${run_id} (clipped to 4,000 characters and to the 16 KB UTF-8 card-body bound)
 
-${reason}
+${reason}${answer}
 
 ## 1. Fail-closed admission (before anything else)
 

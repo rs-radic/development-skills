@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from . import kanban_port as kp
 from . import render, rules, stalled, preworker, progress
 from .config import Config
-from .contracts import BlockerPreconditions, EffectIntent, Preconditions
+from .contracts import BlockerPreconditions, EffectIntent, Preconditions, load_preconditions
 from .store import revoke_live_tickets
 
 ACTIVE = ("held", "recorded", "staged", "released", "started", "implemented", "ticketed")
@@ -61,6 +61,7 @@ class Observation:
     early_approvals: frozenset = frozenset()  # already reconciled before this scan's global card collection
     progress_scan: bool = False  # distinguishes a completed native scan from a progress-only pass
     dependency_members: dict = field(default_factory=dict)  # task -> current validated card/approval map
+    titled: dict = field(default_factory=dict)  # unresolved owner-create title -> its native tasks, archived included
 
 
 def _sha(s):
@@ -2230,6 +2231,7 @@ RECOVERY_DEFER_MIN = 180  # ACK working; and the handed-off grace before its ale
 RECOVERY_ABS_MIN = 24 * 60
 RECOVERY_CAP = 3  # incidents per (task, W, A*) that wake; the next one escalates without a wake
 RECOVERY_REASON_ALERT = 160
+ANSWER_STEPS = RECOVERY_ATTEMPTS + 2  # answer wakes, one operator takeover wake, one human-visible escalation
 _MIN_MS = 60_000
 _UNSENT = ("pending", "retry_wait")
 
@@ -2524,6 +2526,21 @@ def _recovery_step(ctx, tid, t, inc):
             inc = dict(ctx.c.execute("SELECT * FROM recoveries WHERE id=?", (inc["id"],)).fetchone())
     if _notice_pending(ctx, tid, inc):
         return  # delivery is unfinished; never manufacture another wake/notice key
+    if wait and wait['state'] == 'answered' and (outcome == 'handed_off' or inc['state'] == 'handed_off'):
+        # Release is not pickup. Keep the accepted-answer obligation on its bounded route;
+        # a ready source is diagnosis-only and never receives another source unblock.
+        if (handoff != inc['run_id'] or kp.card_status(show) != 'ready' or kp.open_run_ids(show)
+                or show['task'].get('worker_pid') is not None):
+            if inc['state'] == 'open' and ctx.now < inc['abs_ms']:
+                _recovery_update(ctx, inc, state='handed_off',
+                                 escalate_ms=min(at * 1000 + RECOVERY_DEFER_MIN * _MIN_MS, inc['abs_ms']))
+            return  # changed ownership or incomplete handoff proof is not permission to act
+        if inc['state'] == 'handed_off':
+            _recovery_update(ctx, inc, state='open')
+            inc = dict(inc, state='open')
+        _answer_continuation(ctx, tid, inc, dict(a), wait,
+                             dict(inc, reason=_recovery_reason(ctx, tid, inc), source_status='ready'), 0)
+        return
     if outcome == "handed_off" or inc["state"] == "handed_off":
         if ctx.now >= inc['abs_ms']:
             _escalate(ctx, tid, inc, "handed off, no worker started")
@@ -2548,6 +2565,12 @@ def _recovery_step(ctx, tid, t, inc):
     # A technical inability is intermediate: the same approved owner keeps the original finite wake budget.
     # It cannot retire the remaining attempts or become a completed recovery by publishing a canned notice.
     defer = ack["working_s"] * 1000 + RECOVERY_DEFER_MIN * _MIN_MS if ack["working_s"] is not None else 0
+    if wait and wait['state'] == 'answered':
+        found = (_diagnostic_found(ctx, tid, inc["card"], dict(a)) if inc["class"] == stalled.CLASS
+                 else kp.recovery_incident(show))
+        _answer_continuation(ctx, tid, inc, dict(a), wait, found if found and found['run_id'] == inc['run_id'] else None,
+                             defer)
+        return  # the accepted answer, not the spent attempts or expired deadline, owns the next action
     d, n = inc["detected_ms"], inc["attempts"]
     if ctx.now >= inc["abs_ms"]:  # §7.2: neither a working ACK nor an outstanding attempt defers past detect + 24 h
         _escalate(ctx, tid, inc, "not resumed after %d AI wakes" % n)
@@ -2569,17 +2592,236 @@ def _recovery_step(ctx, tid, t, inc):
         _recovery_update(ctx, inc, escalate_ms=due)
 
 
-def _attempt(ctx, tid, inc, a, found):
+def _answer_continuation(ctx, tid, inc, a, wait, found, defer):
+    """Finite answer wakes and operator takeover/escalation, then one real integrator recovery task.
+    Receipt, transport and native pickup are not progress. Only the caller's source proof settles;
+    genuine failures use native lifecycle and exact operator handoffs, never an elapsed-time source hold.
+    Preserve the original incident's spent budget/deadline and every admission/quiet/human-wait guard."""
+    c = wait.get('continuation')
+    n = c['wakes'] if c else 0
+    rows = [c['key'] + s for s in (':create', ':subscribe', ':wake', ':delivered')] if c else []
+    states = [ctx.state(k) for k in rows]
+    redo = 'failed' in states
+    if (not redo and n >= ANSWER_STEPS and 'cancelled_stale' in states and states[2] != 'done'
+            and not ctx.c.execute("SELECT 1 FROM outbox WHERE idem_key IN (%s) AND outcome='ABANDONED'"
+                                  % ",".join("?" * len(rows)), rows).fetchone()):
+        if c.get('refused', 0) >= RECOVERY_ATTEMPTS:
+            ctx.alert('rcv-answer-refused:%d:g%d' % (inc['id'], wait['gen']),
+                      'ClickUp recovery escalation refused for %s card %s run %d: the escalation of the accepted '
+                      'answer (relay %s gen %d) '
+                      'was refused unsent by the recovery send gate %d times; the incident stays open and the card '
+                      'stopped. The operator must inspect why recovery-check admission disagrees with the intake.'
+                      % (tid, inc['card'], inc['run_id'], wait.get('relay'), wait['gen'], c['refused'] + 1), tid)
+            return
+        c, redo = dict(c, refused=c.get('refused', 0) + 1), True  # never sent: queue the same escalation again
+    if redo:
+        n -= 1  # a failed step (held, then released) or a refused unsent escalation: deliver the same step again
+    elif c:
+        if n >= ANSWER_STEPS and states[3] != 'done':
+            return  # the escalation's visible ping is not yet read back (an unverified one takes the existing hold)
+        gap = c['last_ms'] + (RECOVERY_RETRY_MIN.get(n) or RECOVERY_DEFER_MIN) * _MIN_MS
+        if n > RECOVERY_ATTEMPTS:
+            defer = _receipt_defer(ctx, inc, wait, c)  # only the receiver's bound receipt accepts takeover/escalation
+            if defer is None:
+                return  # an unreadable receipt location is unknown, never "no receipt"
+        if ctx.now < min(max(gap, defer), max(c['first_ms'] + RECOVERY_ABS_MIN * _MIN_MS, gap)):
+            return  # the woken owner's progress window (a working ACK defers it, never past first wake + 24 h)
+        if n >= ANSWER_STEPS:
+            _assigned_recovery(ctx, tid, inc, wait)
+            return  # durable assigned responsibility; only the caller's source-progress proof settles the incident
+    if found is None:
+        return  # an incomplete or changed observation never authorizes a wake
+    step, retries = n + 1, (c or {}).get('retries', 0) + redo
+    key = _attempt(ctx, tid, inc, a, found, answer=dict(wait, wake=step, takeover=step == RECOVERY_ATTEMPTS + 1,
+                                                        escalation=step == ANSWER_STEPS, retry=retries if redo else 0))
+    wait['continuation'] = dict(c or {'first_ms': ctx.now}, key=key, wakes=step, last_ms=ctx.now, retries=retries)
+    _diagnostic_wait(ctx, inc['id'], wait)
+    if step == RECOVERY_ATTEMPTS + 1:
+        ctx.alert('rcv-answer-operator:%d:g%d' % (inc['id'], wait['gen']),
+                  'ClickUp recovery for %s card %s run %d: no verified progress after %d wakes carrying the accepted '
+                  'answer (relay %s gen %d). Operator takeover wake queued to the main-chat operator; without verified '
+                  'same-owner progress in its window one visible escalation in the configured project channel follows. No ClickUp '
+                  'question or notice is published; spent budgets and deadline are unchanged.'
+                  % (tid, inc['card'], inc['run_id'], RECOVERY_ATTEMPTS, wait.get('relay'), wait['gen']), tid)
+    elif step == ANSWER_STEPS:
+        ctx.alert('rcv-answer-escalation:%d:g%d' % (inc['id'], wait['gen']),
+                  'ClickUp recovery ESCALATION for %s card %s run %d: the accepted answer (relay %s gen %d) has no '
+                  'verified progress after %d answer wakes and the operator takeover. One escalation carrier is queued '
+                  'as a visible ping in the configured project channel plus operator wake; the sent ping is read back; the incident '
+                  'stays open and the card stopped until verified same-owner progress or a verified new owner '
+                  'question; without verified progress in its window one assigned integrator recovery task follows. '
+                  'Spent budgets and deadline unchanged.'
+                  % (tid, inc['card'], inc['run_id'], wait.get('relay'), wait['gen'], RECOVERY_ATTEMPTS), tid)
+
+
+def _assigned_recovery(ctx, tid, inc, wait):
+    """One dispatcher-owned integrator task per accepted answer, never gated by its stopped source."""
+    c = wait['continuation']
+    source = ctx.c.execute('SELECT * FROM outbox WHERE idem_key=?', (c['key'] + ':create',)).fetchone()
+    if not source:
+        return
+    payload = json.loads(source['body'])
+    params = dict(payload['params'], assigned=True,
+                  answer=dict(payload['params']['answer'], assigned=True))
+    stable = _rcv_key(tid, inc['card'], inc['run_id'], 0)[:-1] + 'answer-g%d' % wait['gen']
+    o = c.get('owner') or {'retries': 0, 'refused': 0}
+    key = stable + ('-r%d' % o['retries'] if o['retries'] else '') + '-owner'
+    create = o.get('create', key + ':create')  # once done, this row's result is the one native owner
+    owner = ctx.ref(create)
+    shown = ctx.show(owner)
+    title = 'CLICKUP-RECOVERY-OWNER v1 %s run=%d incident=%d answer=g%d' % (inc['card'], inc['run_id'], inc['id'],
+                                                                          wait['gen'])
+    redo = _unfinished(ctx, [create, key + ':subscribe', key + ':release'])
+    if redo:
+        if owner:
+            seen = None if shown is None else [shown]
+        else:  # an unfinished create may have applied, and Hermes create idempotency ignores archived tasks
+            seen = ctx.obs.titled.get(title)
+            seen = None if seen is None else [{'task': t} for t in seen]
+        if seen is None:
+            return  # unknown observation, never permission to step again
+        disposed = [d for d in seen if kp.card_status(d) in ('archived', 'triage')]
+        if disposed and len(disposed) == len(seen):  # a live owner is adopted by the same native idempotency key
+            ctx.alert('rcv-owner-disposed:%d:g%d' % (inc['id'], wait['gen']),
+                      'ClickUp recovery owner disposed for %s card %s run %d: the assigned integrator recovery task '
+                      '%s of the accepted answer (relay %s gen %d) was %s by an operator before its release; it is '
+                      'not replaced. The incident stays open and the card stopped.'
+                      % (tid, inc['card'], inc['run_id'], disposed[-1]['task']['id'], wait.get('relay'), wait['gen'],
+                         kp.card_status(disposed[-1])), tid)
+            return
+    if redo == 'refused' and o['refused'] >= RECOVERY_ATTEMPTS:
+        ctx.alert('rcv-owner-refused:%d:g%d' % (inc['id'], wait['gen']),
+                  'ClickUp recovery owner refused for %s card %s run %d: the assigned integrator recovery task of '
+                  'the accepted answer (relay %s gen %d) was refused unsent by the recovery send gate %d times; the '
+                  'incident stays open and the card stopped. The operator must inspect why recovery-check '
+                  'admission disagrees with the intake.'
+                  % (tid, inc['card'], inc['run_id'], wait.get('relay'), wait['gen'], o['refused'] + 1), tid)
+        return
+    if redo:  # an unfinished owner step is not consumed: step again for the same (or a not yet created) owner
+        o = dict(o, retries=o['retries'] + 1, refused=o['refused'] + (redo == 'refused'),
+                 **({'create': create} if owner else {}))
+        wait['continuation'] = c = dict(c, owner=o)
+        _diagnostic_wait(ctx, inc['id'], wait)
+        key = stable + '-r%d-owner' % o['retries']
+        create = o.get('create', key + ':create')
+    stable += '-owner'
+    pre = load_preconditions(json.loads(source['preconditions']))
+    if create == key + ':create':
+        _carrier_row(ctx, create, 'kb_create', dict(payload, role='recovery_owner', title=title, params=params,
+                     assignee='integrator', idempotency_key=stable + ':create'), pre)  # one native owner per answer
+    _carrier_row(ctx, key + ':subscribe', 'kb_subscribe', {'chat_id': ctx.cfg.discord_chat,
+                 'delivery_mode': 'notify+wake', 'carrier_from': create}, pre, (create,))
+    proof = ctx.obs.workers.get(owner)
+    if proof and proof['owner'] == 'integrator':
+        ctx.c.execute('INSERT OR REPLACE INTO meta(key,value) VALUES (?,?)',
+                      ('recovery_pickup:' + stable, json.dumps(proof, sort_keys=True)))
+    _carrier_row(ctx, key + ':release', 'kb_unblock', {'expect_status': 'blocked', 'params': params,
+                 'assigned_recovery': True, 'carrier_from': create}, pre, (key + ':subscribe',))
+
+
+    if kp.card_status(shown) == 'done' and not kp.open_run_ids(shown):
+        # DONE without source proof is not settlement. Fenced recovery owners cannot reopen DONE;
+        # route the exact same-card correction to the existing main operator, not a privileged worker.
+        text = ('Unresolved premature completion: recovery task %s, stopped source %s run %d, '
+                'incident=%d answer=g%d relay=%s. No verified source progress or current human-only wait. '
+                'Main operator: read back the exact integrator task, its current outcome and all ownership/gates; '
+                'after CURRENT admission, correct/re-enter THIS SAME recovery task using the supported native '
+                'dashboard update_task handler only when it is still idle DONE with no live run, worker, parents '
+                'or descendants. Preserve body, assignee, history and spent budgets. If those preconditions changed, '
+                'record the precise current blocker here instead. Never complete the original source, manufacture '
+                'a human decision, bypass worker guards or create replacement recovery tasks. Record exact '
+                'readbacks and verify actual original-owner progress. This handoff is not recovery success.' %
+                (owner, inc['card'], inc['run_id'], inc['id'], wait['gen'], wait['relay']))
+        row = ctx.c.execute('SELECT value FROM meta WHERE key=?', ('recovery_handoff:' + stable,)).fetchone()
+        h = json.loads(row[0]) if row else dict(correction=key + ':correction', corrections=0, carrier_key=None,
+                                                    retries=0, refused=0)
+        before = dict(h)
+        fix = _unfinished(ctx, [h['correction']])
+        redo = h['carrier_key'] and _unfinished(ctx, [h['carrier_key'] + s
+                                                      for s in (':create', ':subscribe', ':wake', ':delivered')])
+        if redo == 'dependency' and ctx.state(h['carrier_key'] + ':wake') == 'done':
+            # an operator-resent handoff was sent: read its visible ping back again, never send a second handoff
+            ctx.put(h['carrier_key'] + ':delivered', 'kb_subscribe', None,
+                    {'chat_id': ctx.cfg.discord_chat, 'delivered': True, 'delivery_mode': 'notify+wake',
+                     'carrier_from': h['carrier_key'] + ':create', 'card': None},
+                    Preconditions(task_id=tid), (h['carrier_key'] + ':wake',), rearm=True)
+            redo = None
+        if 'refused' in (fix, redo) and h['refused'] >= RECOVERY_ATTEMPTS:
+            ctx.alert('rcv-handoff-refused:%d:g%d' % (inc['id'], wait['gen']),
+                      'ClickUp recovery correction handoff refused for %s card %s run %d: the correction or operator '
+                      'handoff for recovery task %s was refused unsent by the recovery send gate %d times; the '
+                      'incident stays open and the card stopped. The operator must inspect why recovery-check '
+                      'admission disagrees with the intake.'
+                      % (tid, inc['card'], inc['run_id'], owner, h['refused'] + 1), tid)
+            fix = redo = None
+        if fix:  # an unfinished same-task correction is posted again on the same owner
+            h.update(corrections=h['corrections'] + 1, refused=h['refused'] + (fix == 'refused'))
+            h['correction'] = key + ':correction-r%d' % h['corrections']
+        _carrier_row(ctx, h['correction'], 'kb_comment', {'carrier_from': create, 'text': text}, pre)
+        if not h['carrier_key'] or redo:  # an unfinished operator handoff is delivered again
+            retry = h['retries'] + 1 if h['carrier_key'] else 0
+            answer = dict(wait, wake=ANSWER_STEPS + 1, takeover=False, escalation=True, retry=retry,
+                          correction=text)
+            h.update(retries=retry, refused=h['refused'] + (redo == 'refused'), owner=owner,
+                     carrier_key=_attempt(ctx, tid, inc, {'id': inc['approval_id'], 'rev': inc['approval_rev'],
+                                          'plan_sha256': inc['plan_sha256']}, params, answer=answer))
+            ctx.put(key + ':handoff', 'alert', 'operator', {'text': text}, Preconditions(task_id=tid))
+        if h != before:
+            ctx.c.execute('INSERT OR REPLACE INTO meta(key,value) VALUES (?,?)',
+                          ('recovery_handoff:' + stable, json.dumps(h, sort_keys=True)))
+
+
+def _unfinished(ctx, rows):
+    """How an unfinished recovery step continues: 'failed' after its bounded retries (it took the existing hold;
+    this pass runs only after its supported release); 'refused' when the send gate or precheck refused a row
+    unsent; 'dependency' when only rows cancelled behind an earlier one remain (e.g. after an operator resend).
+    None while a row is in flight, when all are done, or when an operator abandoned one."""
+    got = [ctx.c.execute('SELECT state, outcome FROM outbox WHERE idem_key=?', (k,)).fetchone() for k in rows]
+    states = [r[0] if r else None for r in got]
+    if any(r and r[1] == 'ABANDONED' for r in got) or set(states) & {'pending', 'sending', 'retry_wait',
+                                                                      'ambiguous', 'held_ambiguous'}:
+        return None
+    if 'failed' in states:
+        return 'failed'
+    if 'cancelled_stale' in states and states[-1] != 'done':
+        return 'refused' if any(r and r[0] == 'cancelled_stale' and r[1] != 'DEPENDENCY' for r in got) \
+            else 'dependency'
+    return None
+
+
+def _receipt_defer(ctx, inc, wait, c):
+    """The takeover window is extended only by the receiving operator's receipt bound to this incident, answer
+    generation, relay and exact carrier, posted where the class posts its ACKs; never by an unbound or earlier ACK."""
+    carrier = ctx.ref(c['key'] + ':create')
+    where = ctx.show(carrier) if inc['class'] in (progress.CLASS, preworker.CLASS) else ctx.show(inc['card'])
+    if not carrier:
+        return 0  # no takeover carrier exists to accept
+    if where is None:
+        return None  # unknown observation, never "no receipt"
+    receipt = kp.RECEIPT_LINE % (inc['id'], wait['gen'], wait.get('relay'), carrier)
+    at = kp.recovery_receipt(where, inc['card'], inc['run_id'], receipt, c['last_ms'] // 1000)
+    return at * 1000 + RECOVERY_DEFER_MIN * _MIN_MS if at is not None else 0
+
+
+def _attempt(ctx, tid, inc, a, found, answer=None):
     """r3 §5.1: wake attempt n = create (blocked, unassigned carrier) -> subscribe(wake) -> complete; earlier
-    attempts' unsent rows are retired first (§5.2: their carriers are archived silently)."""
-    n = inc["attempts"] + 1
+    attempts' unsent rows are retired first (§5.2: their carriers are archived silently). An accepted answer gets
+    its own answer-bound wake that neither spends nor refunds the incident's attempts."""
+    n = inc["attempts"] + (0 if answer else 1)
     _retire_attempts(ctx, tid, inc["card"], inc["run_id"])
-    k = _rcv_key(tid, inc["card"], inc["run_id"], n)
+    k = (_rcv_key(tid, inc["card"], inc["run_id"], n) if answer is None
+         else _rcv_key(tid, inc["card"], inc["run_id"], 0)[:-1] + "answer-g%d-%d" % (answer["gen"], answer["wake"])
+         + ("r%d" % answer["retry"] if answer["retry"] else ""))
     params = {"task": tid, "card": inc["card"], "run_id": inc["run_id"], "event_kind": inc["event_kind"],
               "event_created_s": inc["event_created_s"], "block_kind": inc["block_kind"], "class": inc["class"],
               "reason": found["reason"], "reason_sha256": inc["reason_sha256"], "approval_id": a["id"],
               "rev": a["rev"], "plan_sha256": a["plan_sha256"], "attempt": n, "adopted": inc["adopted"],
               "source_status": found["source_status"]}
+    if answer is not None:
+        params["answer"] = {"diagnostic": inc["id"], "relay": answer["relay"], "gen": answer["gen"],
+                            "wake": answer["wake"], "resolution": answer["resolution"],
+                            "takeover": answer["takeover"], "escalation": answer["escalation"],
+                            **({'correction': answer['correction']} if answer.get('correction') else {})}
     early = inc['class'] == preworker.CLASS
     pre = Preconditions(task_id=tid, phases=preworker.PHASES if early else AMENDMENT_PHASES,
                         approval_id=a["id"], approval_states=preworker.STATES + WATCHED_STATES if early else WATCHED_STATES)
@@ -2588,14 +2830,26 @@ def _attempt(ctx, tid, inc, a, found):
         pre = Preconditions(task_id=tid, phases=() if found['card'] == progress.outer_anchor(tid) else progress.PHASES,
                             approval_id=a['id'], input_gen=t['input_gen'], scope_gen=t['scope_gen'])
     _carrier_row(ctx, k + ":create", "kb_create", {
-        "role": "recovery", "title": "CLICKUP-RECOVERY v1 %s run=%d attempt=%d" % (inc["card"], inc["run_id"], n),
+        "role": "recovery", "title": "CLICKUP-RECOVERY v1 %s run=%d attempt=%d" % (inc["card"], inc["run_id"], n)
+                                     + (" answer=g%d wake=%d" % (answer["gen"], answer["wake"]) if answer else "")
+                                     + (" takeover" if answer and answer["takeover"] else "")
+                                     + (" escalation" if answer and answer["escalation"] else ""),
         "template": "recovery_card", "params": params, "assignee": None, "skills": [], "initial_status": "blocked",
         "idempotency_key": k + ":create"}, pre)
-    _carrier_row(ctx, k + ":subscribe", "kb_subscribe", {"chat_id": ctx.cfg.discord_chat, "delivery_mode": "wake",
+    visible = bool(answer and answer["escalation"])  # a visible ping in the configured project channel plus a wake of the operator
+    _carrier_row(ctx, k + ":subscribe", "kb_subscribe", {"chat_id": ctx.cfg.discord_chat,
+                                                          "delivery_mode": "notify+wake" if visible else "wake",
                                                           "carrier_from": k + ":create"}, pre, (k + ":create",))
     _carrier_row(ctx, k + ":wake", "kb_complete", {"template": "recovery_wake", "params": params,
                                                     "carrier_from": k + ":create"}, pre, (k + ":subscribe",))
-    _recovery_update(ctx, inc, attempts=n, next_ms=None)
+    if visible:  # a completed carrier is not delivery: read back the sent visible ping (read-only, never gated stale)
+        _carrier_row(ctx, k + ":delivered", "kb_subscribe", {"chat_id": ctx.cfg.discord_chat, "delivered": True,
+                                                              "delivery_mode": "notify+wake",
+                                                              "carrier_from": k + ":create"},
+                     Preconditions(task_id=tid), (k + ":wake",))
+    if answer is None:
+        _recovery_update(ctx, inc, attempts=n, next_ms=None)
+    return k
 
 
 def _carrier_row(ctx, key, kind, payload, pre, depends=()):
@@ -2610,6 +2864,8 @@ def _retire_attempts(ctx, tid, card, run):
     prefix = _rcv_key(tid, card, run, 0)[:-1]
     for key, ref, state in ctx.c.execute("SELECT idem_key, result_ref, state FROM outbox WHERE idem_key LIKE ?"
                                          " AND idem_key LIKE '%:create' ORDER BY rowid", (prefix + "%",)).fetchall():
+        if key.endswith('-owner:create'):
+            continue  # a dispatched recovery owner is never a disposable wake carrier
         k = key[:-len(":create")]
         ctx.c.execute("UPDATE outbox SET state='cancelled_stale', outcome='STALE' WHERE idem_key IN (?,?,?) AND"
                       " state IN (%s)" % _in(_UNSENT), (k + ":create", k + ":subscribe", k + ":wake"))
@@ -2632,8 +2888,6 @@ def _escalate(ctx, tid, inc, why, reason=None, delivery_hold=None, question=None
     general = inc['class'] == progress.CLASS
     takeover = question is None and delivery_hold is None and not general
     if takeover:
-        if wait and wait['state'] == 'answered':
-            return  # the human response follows normal authority checks; never refund wakes or ask it again
         observed_run = kp.latest_run_id(ctx.show(inc['card'])) or inc['run_id']
         question = dict(task=tid, card=inc['card'], run=observed_run, approval=inc['approval_id'],
                         revision=inc['approval_rev'], sha256=inc['plan_sha256'], fingerprint=inc['reason_sha256'],
@@ -2651,10 +2905,10 @@ def _escalate(ctx, tid, inc, why, reason=None, delivery_hold=None, question=None
     previous = None
     row = ctx.c.execute('SELECT rowid,* FROM outbox WHERE idem_key=?', (key,)).fetchone()
     technical_done = bool(question and row and row['state'] == 'done' and row['result_ref']
-                          and _diagnostic_wait(ctx, inc['id']) is None)
+                          and (wait is None or wait.get('key') != key))  # a delivered notice is not this question
     rebound = bool(takeover and wait and wait['state'] == 'superseded' and row and row['state'] == 'done'
                    and wait.get('question', {}).get('run') != question['run'])
-    continued = bool(general and wait and wait.get('key') == key and wait.get('root')
+    continued = bool((general or question or delivery_hold) and wait and wait.get('key') == key and wait.get('root')
                      and wait['state'] in ('answered', 'superseded') and row and row['state'] == 'done'
                      and progress.notice_refreshable(ctx, tid, inc))
     if _cancelled_notice(ctx, key) or technical_done or rebound or continued:
@@ -2698,6 +2952,9 @@ def _escalate(ctx, tid, inc, why, reason=None, delivery_hold=None, question=None
                 question['attempted'], question['decision'], question['next_action']))
         if inc['state'] == 'handed_off':
             _recovery_update(ctx, inc, state='open')
+        if continued:  # keep the answered question, its resolution and continuation as history
+            ctx.c.execute('INSERT OR IGNORE INTO meta(key,value) VALUES (?,?)',
+                          ('diagnostic_wait_history:%d:%s' % (inc['id'], wait['key']), json.dumps(wait, sort_keys=True)))
         _diagnostic_wait(ctx, inc['id'], {'state': 'publishing', 'question': question, 'ack_s': ack_s, 'key': key,
                                          'takeover': takeover,
                                          **({'authority': progress.question_authority(t, progress.context(ctx.c, tid))}

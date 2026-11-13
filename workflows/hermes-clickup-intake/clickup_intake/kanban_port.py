@@ -169,6 +169,10 @@ class KanbanCli:
     def show(self, card_id):
         return self._run(["show", card_id, "--json"], json_out=True)
 
+    def list_tasks(self):
+        """Every task of the board, archived included (``list --archived --json``)."""
+        return self._run(["list", "--archived", "--json"], json_out=True)
+
     def _preworker_snapshot(self, roots, take, clock):
         return self._native_snapshot(roots, take, clock)
 
@@ -554,6 +558,15 @@ def has_passive_subscription(subs, chat_id):
     return has_subscription(subs, chat_id, DELIVERY_MODE)
 
 
+def notification_delivered(subs, chat_id, mode):
+    """Transport readback of a completed carrier's passive+wake subscription (a new subscription starts with no
+    ping): the gateway recorded a successfully sent visible ping to the channel. This proves that visible delivery
+    only; never wake admission, operator acceptance, execution or progress."""
+    return has_subscription(subs, chat_id, mode) and any(
+        isinstance(s, dict) and s.get("delivery_mode") == mode and str(s.get("chat_id")) == str(chat_id)
+        and type(s.get("last_ping_event_id")) is int and s["last_ping_event_id"] > 0 for s in subs)
+
+
 # --------------------------------------------------------------------------- technical recovery (r3 §4.2, §6.1, §7.1)
 RECOVERY_KINDS = ("capability", "transient", "needs_input")
 TICKET_INVALID_PREFIX = "ClickUp approval ticket INVALID"  # owner/approval path (orchestrator requirement 4)
@@ -670,6 +683,19 @@ def recovery_ack(show, card, run_id, since_s):
     return out
 
 
+RECEIPT_LINE = "CLICKUP-RECOVERY-ACCEPT v1 incident=%d answer=g%d relay=%s carrier=%s"
+
+
+def recovery_receipt(show, card, run_id, receipt, since_s):
+    """The receiving main operator's bound acceptance of one carrier: a ``default``-authored comment created at/after
+    ``since_s`` whose first line is the exact working ACK and a later line exactly ``receipt``. Latest time or None."""
+    ack = "CLICKUP-RECOVERY-ACK v1 card=%s run=%s disposition=working" % (card, run_id)
+    at = [c["created_at"] for c in _comments(show) if c.get("author") == "default" and type(c.get("created_at")) is int
+          and c["created_at"] >= since_s and str(c.get("body", "")).splitlines()[:1] == [ack]
+          and receipt in str(c.get("body", "")).splitlines()[1:]]
+    return max(at) if at else None
+
+
 class RecoveryVerdict(NamedTuple):
     """``recovery-check`` result: CURRENT (exit 0), STALE (exit 3) or UNAVAILABLE (exit 2)."""
     verdict: str
@@ -683,7 +709,7 @@ class RecoveryVerdict(NamedTuple):
         return self.verdict + " " + self.text
 
 
-def recovery_verdict(snapshot, w_show, card, run):
+def recovery_verdict(snapshot, w_show, card, run, *, answer_handoff=False):
     """r3 §6.1 fail-closed admission from one read-only state snapshot (``store.load_recovery_snapshot`` plus the
     recomputed ``members``) and one fresh ``show`` of W. It can only stop the coordinator, never authorize."""
     from . import engine, rules  # engine imports this module
@@ -735,6 +761,22 @@ def recovery_verdict(snapshot, w_show, card, run):
     if wait.get('takeover') and run != inc['run_id'] and (open_run_ids(w_show)
             or (latest_run(w_show) or {}).get('worker_pid') is not None):
         return stale('open_run')
+    if answer_handoff and wait.get('state') == 'answered' and card_status(w_show) == 'ready':
+        # Only admission for answer-bound carrier/assigned-task effects, never source resume.
+        # Public recovery-check retains its stopped-source contract (the default is False).
+        from . import progress, stalled
+        now = snapshot.get('now_ms')
+        if (now is None or not rules.barrier_ok(t, 0, now, snapshot.get('scan_started_ms', now))
+                or now - (t['last_light_ms'] or 0) > 5 * 60_000):
+            return RecoveryVerdict('UNAVAILABLE', 'diagnostic_input_barrier')
+        if (run == inc['run_id'] == latest_run_id(w_show) and not open_run_ids(w_show)
+                and w_show['task'].get('worker_pid') is None
+                and stalled.handoff(t, a, inc, snapshot.get('shows') or {}, snapshot,
+                                    snapshot.get('attachments') or {}) == run
+                and not progress.prerequisite_status(card, snapshot, snapshot.get('shows') or {})):
+            return RecoveryVerdict('CURRENT', 'incident=%d card=%s run=%d answer_handoff=diagnosis_only'
+                                   % (inc['id'], card, run))
+        return stale('answer_handoff_changed')
     if inc["class"] == "diagnostic":
         from . import stalled
         now = snapshot.get("now_ms")
@@ -849,6 +891,11 @@ def run_kanban_effect(port, intent, *, prior_child=None, alive=child_alive, befo
         raise ValueError(f"not a Kanban effect: {intent.kind}")
     if prior_child is not None and alive(*prior_child):
         return EffectResult(RowState.SENDING)
+
+    if intent.kind == SUBSCRIBE and intent.payload.get("delivered"):  # read-only delivery verification, never a send
+        res = port.subscriptions(intent.target)
+        seen = res.outcome is Outcome.OK and notification_delivered(res.json, port.discord_chat, intent.payload["mode"])
+        return EffectResult(RowState.DONE if seen else RowState.RETRY_WAIT, res.json if seen else None)
     if intent.kind == CREATE:
         p = intent.payload
         res = port.create(p["title"], body_file=p["body_file"], idempotency_key=p["idempotency_key"],

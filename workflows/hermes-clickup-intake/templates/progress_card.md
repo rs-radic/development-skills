@@ -9,7 +9,7 @@ Context fingerprint: $reason_sha256
 Approval: $approval_id; revision: $rev; approved hash: $plan_sha256
 Attempt: $attempt of 3. Adopted: $adopted
 
-$reason
+$reason$answer
 
 Run the read-only admission command immediately before diagnosis and before each action:
 `$check_command`

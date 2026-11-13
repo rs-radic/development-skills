@@ -257,6 +257,10 @@ def step(ctx, tid, task, inc):
             if question:
                 engine._escalate(ctx, tid, inc, 'coordinator: owner', question=question, ack_s=ack['final_s'])
                 return
+    if wait and wait['state'] == 'answered':
+        if ctx.now - wait['answered_ms'] >= stalled.GRACE_MS:  # the normal stage path continues it first
+            engine._answer_continuation(ctx, tid, inc, a, wait, found, 0)
+        return  # the accepted answer, not the spent attempts or expired deadline, owns the next action
     if ctx.now >= inc['abs_ms'] or inc['attempts'] >= engine.RECOVERY_ATTEMPTS:
         return  # still unfinished: never manufacture a human question or a completed recovery
     due = inc['detected_ms'] + engine.RECOVERY_RETRY_MIN.get(inc['attempts'], 0) * engine._MIN_MS

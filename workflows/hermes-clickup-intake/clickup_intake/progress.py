@@ -493,10 +493,12 @@ def continuation_current(task, state, inc):
 
 def continue_incident(ctx, tid, task, inc):
     """Reuse an incapable specialist's diagnostic, never its source-operation authority."""
-    from . import engine
+    from . import engine, preworker
     if (not ctx.obs.progress_scan or engine.recovery_abandoned(ctx.c, inc)
             or ctx.now - inc['updated_ms'] < stalled.GRACE_MS):
         return
+    if inc['class'] == preworker.CLASS and (engine._diagnostic_wait(ctx, inc['id']) or {}).get('state') == 'answered':
+        return  # an accepted staging answer keeps its own continuation, resumed by its own step once observable
     state = dict(context(ctx.c, tid), handoff_unblock=ctx.cfg.handoff_unblock)
     if state.get('delivery_role'):
         return  # its own step revalidates the exact obligation; never convert it again
@@ -540,10 +542,41 @@ def continue_incident(ctx, tid, task, inc):
     step(ctx, tid, task, dict(ctx.c.execute('SELECT * FROM recoveries WHERE id=?', (inc['id'],)).fetchone()))
 
 
+def sources(state):
+    """Newest request card through the PASS source the latest approval staged, per its completed plan attach.
+
+    Later request cards only continued the conversation; without that bound row the newest request is the source.
+    """
+    requests = state['requests']
+    active = [a for a in state['approvals'] if a['state'] != 'revoked']
+    if active and active[-1]['accounts_gen'] is not None:
+        a = active[-1]
+        key = 'clickup-dp:%s:orch:r%d:g%d:attach:plan' % (a['task'], a['rev'], a['accounts_gen'])
+        for row in state['outbox']:
+            if row['idem_key'] == key and row['state'] == 'done':
+                try:
+                    body = json.loads(row['body'])
+                except (TypeError, ValueError):
+                    break
+                if body.get('sha256') == a['plan_sha256'] and body.get('source_card') in requests:
+                    return requests[:requests.index(body['source_card']) + 1]
+    return requests[:1]
+
+
+def answered_listener(card, w, state):
+    """A later request that only answered: every relay classified answer_only and parked with no live work."""
+    relays = [r for r in state['relays'] if r['card'] == card]
+    return bool(relays and all(r['state'] == 'classified' and r['classification'] == 'answer_only' for r in relays)
+                and isinstance(w, dict) and (w.get('task') or {}).get('id') == card
+                and isinstance(w.get('runs'), list) and kp.parked_wait_run_id(w) is not None
+                and all(k in w['task'] and w['task'][k] is None for k in ('current_run_id', 'worker_pid'))
+                and not kp.open_run_ids(w) and all(r.get('worker_pid') is None for r in w['runs']))
+
+
 def outer_roots(state):
     """Current owners, not historical blockers; observation grants no execution authority."""
     active = [a for a in state['approvals'] if a['state'] != 'revoked']
-    roots = set(state['requests'][:1])
+    roots = set(sources(state))
     if active:
         a = active[-1]
         roots.update(c for c in (a['gate_card'], a['orchestrator_card']) if c)
@@ -572,10 +605,12 @@ def completed_workflow(task, state, shows, attachments, observed):
             or (a['rev'], a['plan_sha256'], a['accounts_gen']) !=
                (task['published_rev'], task['published_sha256'], task['published_accounts_gen'])):
         return False
-    source = state['requests'][0]
+    *listeners, source = sources(state)
     ev = rules.pass_evidence(shows.get(source), attachments.get(source), task['clickup_task_id'])
     if not ev or (ev['rev'], ev['sha256'], ev['accounts_gen']) != (
             a['rev'], a['plan_sha256'], a['accounts_gen']):
+        return False
+    if not all(answered_listener(card, shows.get(card), state) for card in listeners):
         return False
     g = rules.gates_of(shows.get(a['orchestrator_card']), a['rev'], a['plan_sha256'])
     if (not g or not a['clickup_gates'] or g != json.loads(a['clickup_gates'])
@@ -583,6 +618,8 @@ def completed_workflow(task, state, shows, attachments, observed):
             or not a['promoted_sha'] or rules.promoted_sha(shows.get(g['promotion'])) != a['promoted_sha']):
         return False
     for card in observed:
+        if card in listeners:
+            continue
         w = shows[card]
         if (kp.card_status(w) not in (('done', 'archived') if card == a['gate_card'] else ('done',))
                 or any(k not in w['task'] or w['task'][k] is not None for k in ('current_run_id', 'worker_pid'))
@@ -630,7 +667,7 @@ def outer(task, state, shows, attachments, now, scan):
                    'Diagnose delivery only. Preserve the destination refusal and failure history; do not retry '
                    'the source operation, redirect a reply, clear an operator hold or resume native work. '
                    'Use only the supported delivery recovery after validating its current binding.')
-    pending, seen, observed = outer_roots(state), set(), []
+    pending, seen, observed, chain = outer_roots(state), set(), [], sources(state)
     unavailable = state.get('native_unavailable', False)
     while pending:
         card = pending.pop()
@@ -643,7 +680,7 @@ def outer(task, state, shows, attachments, now, scan):
             unavailable = True
             continue
         pending.update(w['parents'] + w['children'])
-        if card in state['requests'][:1] and kp.card_status(w) == 'done' and card not in attachments:
+        if card in chain and kp.card_status(w) == 'done' and card not in attachments:
             unavailable = True
         observed.append([card, kp.card_status(w), w['parents'], w['children'],
             [{k: r.get(k) for k in ('id', 'profile', 'status', 'outcome', 'metadata')} for r in w['runs']],
@@ -901,6 +938,10 @@ def step(ctx, tid, task, inc):
             if question:
                 engine._escalate(ctx, tid, inc, 'coordinator: owner', question=question, ack_s=ack['final_s'])
                 return
+    if wait and wait['state'] == 'answered':
+        engine._answer_continuation(ctx, tid, inc, dict(id=inc['approval_id'], rev=inc['approval_rev'],
+                                                        plan_sha256=inc['plan_sha256']), wait, found, defer)
+        return  # the accepted answer, not the spent attempts or expired deadline, owns the next action
     n, detected = inc['attempts'], inc['detected_ms']
     capped = ctx.c.execute('SELECT COUNT(*) FROM recoveries WHERE task=? AND card=? AND approval_id IS ?',
                           (tid, inc['card'], inc['approval_id'])).fetchone()[0] > engine.RECOVERY_CAP

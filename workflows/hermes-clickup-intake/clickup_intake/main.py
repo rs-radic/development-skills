@@ -716,7 +716,7 @@ class Glue:
             want[card] = role
         for key, task, ref in c.execute("SELECT idem_key, task, result_ref FROM outbox WHERE kind='kb_create'"
                                         " AND state='done' AND result_ref IS NOT NULL ORDER BY rowid"):
-            if ref and task not in terminal and ":rcv:" not in key:  # recovery carriers are never re-shown (r3 §4.4)
+            if ref and task not in terminal and (":rcv:" not in key or 'answer-g' in key and key.endswith('-owner:create')):
                 want.setdefault(ref, "request" if ":req:" in key else "other")
         if self._batch is not None and self._batch_read(set(want), prefetch=True) is False:
             self._batch = None  # custom child environment: the per-card CLI path
@@ -750,7 +750,40 @@ class Glue:
         self.obs = engine.Observation(scan_started_ms=self.now, comments=dict(self.comments), cards=cards,
                                       attachments=atts, confirmed=frozenset(self.confirmed), workers=workers,
                                       early_approvals=self.obs.early_approvals, progress_scan=True,
-                                      dependency_members=self.dependency_members)
+                                      dependency_members=self.dependency_members, titled=self._observe_titled())
+
+    def _observe_titled(self):
+        """Before an unheld task's unfinished assigned-owner create is redone without a known owner ref, the
+        native tasks bearing its exact title, archived included (the earlier attempt may have applied). Not read
+        for an abandoned, in-flight or already named owner; a failed read leaves it unknown."""
+        groups = {}
+        for key, state, body in self.c.execute(
+                "SELECT o.idem_key, o.state, o.body FROM outbox o JOIN tasks t ON t.clickup_task_id=o.task WHERE"
+                " o.kind='kb_create' AND o.idem_key LIKE '%:rcv:%-owner:create' AND t.terminal=0 AND"
+                " (t.hold_reason IS NULL OR t.hold_reason='') ORDER BY o.rowid"):
+            p = json.loads(body)
+            groups.setdefault(p['idempotency_key'], []).append((key, state, p))
+        titles = set()
+        for rows in groups.values():
+            key, _, p = rows[-1]
+            step, answer = key[:-len(':create')], p['params']['answer']
+            named = ['clickup-dp:alert:rcv-owner-%s:%d:g%d' % (end, answer['diagnostic'], answer['gen'])
+                     for end in ('disposed', 'refused')]
+            if ('done' not in [s for _, s, _ in rows]
+                    and engine._unfinished(self, [key, step + ':subscribe', step + ':release'])
+                    and self.c.execute('SELECT 1 FROM recoveries WHERE id=? AND state IN (%s)'
+                                       % engine._in(engine.RECOVERY_LIVE), (answer['diagnostic'],)).fetchone()
+                    and not self.c.execute('SELECT 1 FROM outbox WHERE idem_key IN (?,?)', named).fetchone()):
+                titles.add(p['title'])
+        return (self._titled(titles) or {}) if titles else {}
+
+    def _titled(self, titles):
+        """title -> this intake's native tasks bearing it, archived included; None when the list is unreadable."""
+        res = self.port.list_tasks()
+        if not _ok(res) or not isinstance(res.json, list):
+            return None
+        return {title: [t for t in res.json if isinstance(t, dict) and t.get('title') == title
+                         and t.get('created_by') == kp.AUTHOR] for title in titles}
 
     def _observe_progress(self, cards, atts):
         """Observe settled handoffs and post-completion work with the shared bounded native reader."""
@@ -762,10 +795,11 @@ class Glue:
             state = progress.context(self.c, tid)
             admitted = self.c.execute("SELECT 1 FROM recoveries WHERE task=? AND class=? AND state='open'",
                                       (tid, progress.CLASS)).fetchone() is not None
-            if not state['requests'] or (kp.card_status(cards.get(state['requests'][0])) not in ('done', 'blocked', 'triage')
-                                         and not admitted):
+            chain = progress.sources(state)
+            if not chain or (kp.card_status(cards.get(chain[-1])) not in ('done', 'blocked', 'triage')
+                             and not admitted):
                 continue
-            if state['requests'][0] in self._att_failed:
+            if any(card in self._att_failed for card in chain):
                 continue  # a failed source read must not be laundered through a second observation path
             kind, _ = progress.projection(task, state, cards, atts, self.now, self.obs.scan_started_ms, admitted=admitted)
             _, outer = progress.outer(task, state, cards, atts, self.now, self.obs.scan_started_ms)
@@ -1009,6 +1043,14 @@ class Glue:
         ACK. ``defer`` when W is unreadable or the task held; ``stale`` otherwise unless CURRENT."""
         q = p["params"]
         snap = recovery_snapshot(self.c, q["task"], q["card"], q["run_id"])
+        answer = q.get('answer')
+        if answer:
+            current = snap.get('diagnostic_wait') or {}
+            if (current.get('state') != 'answered' or current.get('gen') != answer['gen']
+                    or current.get('relay') != answer['relay']
+                    or (snap.get('incident') or {}).get('id') != answer['diagnostic']
+                    or current.get('resolution') != answer['resolution']):
+                return 'stale'  # operation-time immutable answer binding, including assigned-owner release
         if q.get('class') == 'progress_stall' or (snap.get('incident') or {}).get('class') == 'progress_stall':
             reader = self.preworker_reader(q['task'])
             if not self.diagnostic_input(q['task'], reader=reader):
@@ -1026,13 +1068,12 @@ class Glue:
             return 'go' if verdict.code == 0 else 'defer' if verdict.code == 2 or verdict.text == 'held' else 'stale'
         snap["members"] = engine.recovery_members(q["task"], snap["approvals"], snap["orch"])
         reader = self.preworker_reader(q['task'])
-        if ((snap.get("incident") or {}).get("class") == stalled.CLASS
-                and not self.diagnostic_input(q['task'], reader=reader)):
+        diagnostic = (snap.get("incident") or {}).get("class") == stalled.CLASS or bool(answer)
+        if diagnostic and not self.diagnostic_input(q['task'], reader=reader):
             return 'defer'
-        diagnostic = (snap.get("incident") or {}).get("class") == stalled.CLASS
         w = (None if getattr(self.port, '_preworker_snapshot', None) else
              reader.read('show', q['card'], fresh=True)) if diagnostic else self._show(q['card'])
-        if (snap.get("incident") or {}).get("class") == stalled.CLASS:
+        if diagnostic:
             _diagnostic_reads(snap, self.port, q["card"], w, reader)
             if not getattr(self.port, '_preworker_snapshot', None):
                 reader.invalidate([q['card']])
@@ -1050,7 +1091,7 @@ class Glue:
             if not _recovery_dependencies(snap, self.port, self.preworker_reader(q['task'])):
                 return 'defer'
             w = snap['shows'].get(q['card'])
-        verdict = kp.recovery_verdict(snap, w, q["card"], q["run_id"])
+        verdict = kp.recovery_verdict(snap, w, q["card"], q["run_id"], answer_handoff=bool(answer))
         if verdict.verdict == "UNAVAILABLE" or verdict.text == "held":
             return "defer"
         if verdict.code != 0:
@@ -1728,6 +1769,20 @@ class Glue:
             row = dict(row, target=self.row(p["carrier_from"])["result_ref"])
             self.update(key, target=row["target"])
         gate = self.send_gate(row, drop_wait=kind == "kb_unblock")
+        if gate == "go" and p.get("delivered"):  # read back a ping only while the incident is live
+            tid = json.loads(row["preconditions"])["task_id"]
+            live = self.c.execute("SELECT card, run_id FROM recoveries WHERE task=? AND state IN (%s)"
+                                  % engine._in(engine.RECOVERY_LIVE), (tid,)).fetchall()
+            if not any(key.startswith(engine._rcv_key(tid, card, run, 0)[:-1]) for card, run in live):
+                gate = "cancel"
+        if p.get('assigned_recovery') or (kind == 'kb_create' and p.get('role') == 'recovery_owner'):
+            gate = self.recovery_gate(row, p) if gate == 'go' else gate
+        if gate == 'go' and kind == 'kb_create' and p.get('role') == 'recovery_owner' and row['attempts']:
+            # an earlier attempt may have applied, and Hermes create idempotency ignores archived tasks: an owner
+            # that exists only archived/triage is not sent again (the engine names it); unreadable is not sent
+            seen = (self._titled([p['title']]) or {}).get(p['title'])
+            gate = ('defer' if seen is None else 'stale' if seen and all(
+                t.get('status') in ('archived', 'triage') for t in seen) else 'go')
         if p.get("template") == "recovery_wake":
             gate = self.recovery_gate(row, p) if gate == "go" else gate
             if gate in ("cancel", "stale"):  # never completed: archived silently (r3 §5.2)
@@ -1985,8 +2040,8 @@ class Glue:
             payload = {"summary": render.recovery_summary(p["params"], card), "metadata": None}
         elif kind == "kb_complete":
             payload = {"summary": p["summary"], "metadata": p.get("metadata")}
-        elif kind == "kb_subscribe" and p.get("delivery_mode") == "wake":
-            payload = {"mode": "wake"}
+        elif kind == "kb_subscribe" and p.get("delivery_mode") in ("wake", "notify+wake"):
+            payload = {"mode": p["delivery_mode"], **({"delivered": True} if p.get("delivered") else {})}
         else:
             payload = {}
         return EffectIntent(key, KB_KINDS[kind], card, payload, pre, ())
@@ -2596,7 +2651,7 @@ def _progress_collect(snap, reader):
         proof.close()
         return {}, {}, False
     atts = {}
-    for source in snap['requests'][:1]:
+    for source in progress.sources(snap):
         if source not in proof.shows:
             continue
         atts[source] = []

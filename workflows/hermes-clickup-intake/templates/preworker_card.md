@@ -8,7 +8,7 @@ Run this read-only admission check on wake and before every action. Nonzero mean
 
 Use the normal intake poll and its existing guarded stage/release path. The poll owns creating/reconciling the exact gate and orchestrator, attaching reviewed plan/approval/current context, registering them, and releasing the orchestrator. Do not perform those operations manually, alter the database, reset approvals/budgets, forge worker history, or directly resume an approval anchor. Do not change core, configuration, schedules, credentials, permissions or product scope. Actual native work remains with the original owners and existing admission/fence/review controls. A writer with a live process or a due retry is not a missing worker.
 
-${reason}
+${reason}${answer}
 
 There are only two successful outcomes: actual authorized capable-owner progress through the existing native lifecycle, or an exact genuinely human-only question delivered and read back on the original task with a bound reply and normal classification/continuation. A wake, assignment, working/cannot_act ACK, canned operator notice or queued question is not success. Keep the same obligation, original deadlines and spent attempts. Escalating a technical limitation does not authorize a new planning graph or repeat development approval.
 

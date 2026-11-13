@@ -1,6 +1,6 @@
 # CLICKUP-RECOVERY diagnostic v1: inspect ${card} run ${run_id}
 
-This unassigned carrier is completed only to wake the originating chat's main coordinating default profile. It is never dispatched. Do not mutate this carrier. ClickUp task ${task}; approval ${approval_id}, r${rev}, SHA-256 ${plan_sha256}; incident fingerprint ${reason_sha256}; event ${event_kind}@${event_created_s}; attempt ${attempt}/3.
+This unassigned carrier is completed only to wake the originating chat's main coordinating default profile. It is never dispatched. Do not mutate this carrier. ClickUp task ${task}; approval ${approval_id}, r${rev}, SHA-256 ${plan_sha256}; incident fingerprint ${reason_sha256}; event ${event_kind}@${event_created_s}; attempt ${attempt}/3.${answer}
 
 Diagnostic admission is NOT approval, release, repair authority or proof that every failure is recoverable.
 

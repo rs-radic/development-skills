@@ -660,3 +660,223 @@ class SharedReadBudgetCompletionTest(unittest.TestCase):
         self.assertEqual(after['state'], 'closed')
         for field in ('id', 'card', 'run_id', 'attempts', 'detected_ms', 'abs_ms', 'reason_sha256'):
             self.assertEqual(after[field], inc[field], field)
+
+
+class AnsweredListenerCompletionTest(unittest.TestCase):
+    """The approved PASS lives on an earlier request card; a later request only answered a question.
+
+    Real World.main scans with fake ports, like the live shape: request 2 answered a confirmation
+    question (answer_only) and parked CLICKUP_WAIT before plan r1 was approved and executed.
+    """
+    setUp = CompletedWorkflowTest.setUp
+    scans = CompletedWorkflowTest.scans
+    carriers = CompletedWorkflowTest.carriers
+    nested_cleanup = CompletedWorkflowTest.nested_cleanup
+
+    def listener_promoted(self):
+        import test_s4_composition as composition
+        life = self.life
+        life.pickup_to_business()
+        life.business_to_technical()
+        life.technical_to_published()
+        [self.source] = life.req_cards()
+        question = life.say(composition.REQ, 'Just to confirm, there are no code changes here?',
+                            mention=composition.BOT)
+        answered = []
+
+        def answer(card, ref, gen):
+            self.b.park(card, composition.out('answer', ref, 'Correct, plan r1 is unchanged.', reply_to=question),
+                        composition.classify(ref, gen, 'answer_only'))
+            answered.append(card)
+        self.w.step(lambda: bool(answered) and life.bot_q('plan r1 is unchanged') and bool(self.w.q(
+            "SELECT 1 FROM relays WHERE card=? AND state='classified'", answered[0])), world=life.planner(answer))
+        self.listener = answered[0]
+        life.approve_to_released()
+        life.orchestrate()
+        life.e2e_done_to_ticketed()
+        self.assertEqual(life.ticket_check(), (0, ['VALID epoch=1']))
+        life.promote()
+        [a] = self.w.q('SELECT * FROM approvals WHERE task=?', self.tid)
+        self.assertEqual(a['state'], 'promoted')
+        self.cleanup = json.loads(a['clickup_gates'])['cleanup']
+        self.assertNotEqual(self.b.cards[self.cleanup]['task']['status'], 'done')
+        self.assertNotEqual(self.listener, self.source)
+        self.assertEqual(self.b.cards[self.listener]['task']['status'], 'scheduled')
+        self.assertEqual(self.b.cards[self.source]['task']['status'], 'done')
+        self.assertEqual([r['card_id'] for r in self.w.q(
+            "SELECT card_id FROM cards WHERE task=? AND role='request' ORDER BY seq DESC", self.tid)],
+            [self.listener, self.source])
+        self.assertEqual([(r['state'], r['classification']) for r in self.w.q(
+            'SELECT * FROM relays WHERE card=?', self.listener)], [('classified', 'answer_only')])
+        return a
+
+    def listener_incident(self):
+        self.listener_promoted()
+        self.scans(2)
+        [inc] = self.w.q('SELECT * FROM recoveries')
+        self.assertEqual((inc['card'], inc['state']), (progress.outer_anchor(self.tid), 'open'))
+        return inc
+
+    def assert_closed_unchanged(self, before):
+        [after] = self.w.q('SELECT * FROM recoveries')
+        self.assertEqual(after['state'], 'closed', 'the completed approved workflow must retire the incident')
+        for field in ('id', 'card', 'run_id', 'attempts', 'detected_ms', 'abs_ms', 'reason_sha256'):
+            self.assertEqual(after[field], before[field], field)
+        self.assertNotEqual(self.w.main('recovery-check', '--card', before['card'], '--run', '0')[0], 0)
+        return after
+
+    def test_completed_workflow_with_answered_listener_stays_quiet(self):
+        self.listener_promoted()
+        self.nested_cleanup()  # finished descendants are observed only through the progress closure
+        self.b.finish(self.cleanup, 'implementor')
+        native = copy.deepcopy(self.b.cards)
+        self.scans(25)
+        self.assertEqual(self.w.q('SELECT * FROM recoveries'), [],
+                         'a later answer-only listener must not turn a completed workflow into a stall')
+        self.assertEqual(self.carriers(), [])
+        self.assertEqual(self.b.cards, native)
+
+    def test_incomplete_execution_with_answered_listener_remains_actionable(self):
+        inc = self.listener_incident()
+        self.assertEqual(self.b.cards[self.cleanup]['task']['status'], 'ready')
+        key = engine._rcv_key(self.tid, inc['card'], 0, 0)[:-1] + '%'
+        checks = []
+        for _ in range(8):
+            self.scans(1)
+            [current] = self.w.q('SELECT * FROM recoveries')
+            wakes = self.w.q("SELECT * FROM outbox WHERE idem_key LIKE ? AND idem_key LIKE '%:wake'", key)
+            checks.append(dict(now=self.w.clock(), admission=self.w.main('recovery-check', '--card', inc['card'],
+                               '--run', '0'), wakes=[w['state'] for w in wakes]))
+        self.assertEqual((current['id'], current['state'], current['abs_ms']), (inc['id'], 'open', inc['abs_ms']))
+        self.assertLessEqual(current['attempts'], engine.RECOVERY_ATTEMPTS)
+        for carrier in self.w.q("SELECT * FROM outbox WHERE idem_key LIKE ? AND kind='kb_create'", key):
+            self.assertNotIn('Native observations are unavailable', carrier['body'],
+                             'the approved source and its lineage must actually be observed')
+        self.assertTrue([c for c in checks if c['now'] < inc['abs_ms'] and c['admission'][0] == 0
+                         and 'done' in c['wakes']], checks)
+        self.assertNotEqual(self.b.cards[self.cleanup]['task']['status'], 'done')
+
+    def test_open_incident_retires_after_completion_without_refund_and_stays_quiet(self):
+        before = self.listener_incident()
+        self.w.clock.now_ms = before['detected_ms'] + 61 * 60000
+        self.scans(3)
+        [before] = self.w.q('SELECT * FROM recoveries')
+        self.assertEqual(before['state'], 'open')
+        self.assertGreaterEqual(before['attempts'], 2, 'retirement must preserve already-spent retries')
+        self.b.finish(self.cleanup, 'implementor')
+        native = copy.deepcopy(self.b.cards)
+        self.scans(3)
+        after = self.assert_closed_unchanged(before)
+        self.assertEqual(self.w.q('SELECT value FROM meta WHERE key=?', 'completed_workflow:' + self.tid),
+                         [{'value': str(before['id'])}])
+        carriers = self.carriers()
+        self.w.clock.now_ms = before['abs_ms'] + 60000
+        self.scans(25)  # every scan is a fresh process run, so this includes restarts
+        self.assertEqual(self.carriers(), carriers)
+        self.assertEqual(self.w.q('SELECT * FROM recoveries'), [after])
+        self.assertEqual(self.b.cards, native)
+
+    def test_unclassified_new_input_defers_retirement_until_answer_only(self):
+        import test_s4_composition as composition
+        before = self.listener_incident()
+        self.b.finish(self.cleanup, 'implementor')
+        self.life.say(composition.REQ, 'And the deadline stays the same?', mention=composition.BOT)
+        self.w.step(lambda: self.b.cards[self.listener]['task']['status'] == 'ready', seconds=601, limit=6)
+        self.scans(2)
+        [inc] = self.w.q('SELECT * FROM recoveries')
+        self.assertEqual(inc['state'], 'open', 'unclassified input is not a completed workflow')
+        self.assertEqual(self.w.q('SELECT * FROM meta WHERE key=?', 'completed_workflow:' + self.tid), [])
+        answered = []
+
+        def answer(card, ref, gen):
+            self.b.park(card, composition.classify(ref, gen, 'answer_only'))
+            answered.append(card)
+        self.life.planner(answer)()
+        self.assertEqual(answered, [self.listener])
+        self.scans(3)
+        [after] = self.w.q('SELECT * FROM recoveries')
+        self.assertEqual(after['state'], 'closed', 'a classified answer-only listener must allow retirement')
+        for field in ('id', 'card', 'run_id', 'detected_ms', 'abs_ms'):
+            self.assertEqual(after[field], before[field], field)
+        self.assertGreaterEqual(after['attempts'], before['attempts'])
+        self.assertNotEqual(self.w.main('recovery-check', '--card', before['card'], '--run', '0')[0], 0)
+
+    def test_unavailable_source_read_refuses_retirement_until_restored(self):
+        before = self.listener_incident()
+        self.b.finish(self.cleanup, 'implementor')
+        snapshot = self.b._preworker_snapshot
+        failed = []
+
+        def unavailable(roots, take, clock):
+            if self.source in roots:
+                failed.append(True)
+                return None
+            return snapshot(roots, take, clock)
+        with mock.patch.object(self.b, '_preworker_snapshot', side_effect=unavailable):
+            self.scans(3)
+            [inc] = self.w.q('SELECT * FROM recoveries')
+            self.assertEqual(inc['state'], 'open')
+            self.assertEqual(inc['abs_ms'], before['abs_ms'])
+            self.assertEqual(self.w.q('SELECT * FROM meta WHERE key=?', 'completed_workflow:' + self.tid), [])
+        self.assertTrue(failed, 'the original PASS source must actually be requested')
+        self.scans(3)
+        self.assertEqual(self.w.q('SELECT state FROM recoveries')[0]['state'], 'closed')
+
+    def test_completion_binds_approved_pass_and_requires_finished_answer_only_listener(self):
+        self.listener_promoted()
+        self.b.finish(self.cleanup, 'implementor')
+        self.scans(3)
+        store = Store(self.w.state_path, self.w.clock)
+        try:
+            task = dict(store.conn.execute('SELECT * FROM tasks').fetchone())
+            state = progress.context(store.conn, self.tid)
+        finally:
+            store.close()
+        roots = progress.outer_roots(state) | set(state['requests'])
+        proof = self.b._preworker_snapshot(roots, lambda: True, self.w.clock)
+        self.assertIsNotNone(proof)
+        shows = copy.deepcopy(proof.shows)
+        proof.close()
+        atts = {self.source: [dict(name='clickup-plan-r1.md', sha256=task['published_sha256'])]}
+        self.assertEqual(progress.outer(task, state, shows, atts, self.w.clock(), task['last_light_ms'])[0], 'complete')
+        [reply] = [r for r in state['outbox'] if r['kind'] == 'cu_reply' and ':out:' in r['idem_key']]
+        for guard in ('missing_pass', 'mismatched_pass', 'unbound_source', 'unknown_listener', 'material_listener',
+                      'unclassified_listener', 'listener_without_relay', 'active_listener', 'open_listener_run',
+                      'listener_worker_pid', 'blocked_listener', 'unfinished_listener', 'failed_reply',
+                      'pending_reply'):
+            with self.subTest(guard=guard):
+                t, s, native, attachments = copy.deepcopy((task, state, shows, atts))
+                relay = next(r for r in s['relays'] if r['card'] == self.listener)
+                listener = native[self.listener]
+                if guard == 'missing_pass':
+                    attachments.clear()
+                elif guard == 'mismatched_pass':
+                    attachments[self.source][0]['sha256'] = '0' * 64
+                elif guard == 'unbound_source':
+                    row = next(r for r in s['outbox'] if r['idem_key'].endswith(':attach:plan'))
+                    row['body'] = json.dumps(dict(json.loads(row['body']), source_card=self.listener))
+                elif guard == 'unknown_listener':
+                    native.pop(self.listener)
+                elif guard == 'material_listener':
+                    relay['classification'] = 'material'
+                elif guard == 'unclassified_listener':
+                    relay['state'] = 'delivered'
+                elif guard == 'listener_without_relay':
+                    s['relays'].remove(relay)
+                elif guard == 'active_listener':
+                    listener['task']['status'] = 'running'
+                elif guard == 'open_listener_run':
+                    listener['runs'][-1]['ended_at'] = None
+                elif guard == 'listener_worker_pid':
+                    listener['task']['worker_pid'] = 4242
+                elif guard == 'blocked_listener':
+                    listener['task']['status'] = 'blocked'
+                elif guard == 'unfinished_listener':
+                    listener['runs'][-1]['outcome'] = 'blocked'
+                else:
+                    row = next(r for r in s['outbox'] if r['idem_key'] == reply['idem_key'])
+                    row['state'] = 'failed' if guard == 'failed_reply' else 'pending'
+                kind, found = progress.outer(t, s, native, attachments, self.w.clock(), t['last_light_ms'])
+                self.assertNotEqual(kind, 'complete')
+                if guard == 'missing_pass':
+                    self.assertTrue(found['native_unavailable'], 'an unread PASS source is unknown, not absent')

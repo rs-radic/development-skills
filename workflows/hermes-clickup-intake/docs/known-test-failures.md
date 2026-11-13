@@ -1,8 +1,12 @@
 # Historical test qualifications and current refresh status
 
-The execution results and exact failure IDs below are **historical evidence for public revision `ba95426b6dd927f0c9ccbd22c28be6c28e5f2367`**, extracted from source `2a8fe198bf00aa719d6a7e53833799587172ad6d`. They are not results for the current source refresh at `32e1c6947ac39c87ec66bdc2bb3296fb950396b5`. The owner selected that earlier bounded publication with its documented source-test failures; that decision is not a blanket approval of new failures, extraction defects or unverified behavior. No original assertion was weakened for this refresh. Neither snapshot is advertised here as a green-suite release, production-ready installation or universal recovery.
+The execution results and exact failure IDs below are **historical evidence for public revision `ba95426b6dd927f0c9ccbd22c28be6c28e5f2367`**, extracted from source `2a8fe198bf00aa719d6a7e53833799587172ad6d`. They are not results for the current source refresh at `93db41adf64464802618c41348f17f3550c27acc`. The owner selected that earlier bounded publication with its documented source-test failures; that decision is not a blanket approval of new failures, extraction defects or unverified behavior. No original assertion was weakened for this refresh. Neither snapshot is advertised here as a green-suite release, production-ready installation or universal recovery.
 
 ## Latest follow-up
+
+Source `93db41adf64464802618c41348f17f3550c27acc` adds finite accepted-answer continuation, explicit takeover receipts, verified visible escalation, one assigned integrator fallback, and completed-workflow checks bound to the staged PASS source and finished answer-only listeners. Current bounded execution passed ten explicitly selected runtime cases and all 16 offline preparation cases, both exit 0 with no failures, errors or skips. This includes the extended 33-payload preparation closure and disabled no-argument entry. The other 150 tests in the four changed upstream modules and the wider suite were not rerun; no live-service or full-suite PASS is claimed. [Machine-readable results](test-results.json) and [verification notes](verification.md) keep fresh execution separate from the historical results below.
+
+## Previous native-batch follow-up
 
 Source `32e1c6947ac39c87ec66bdc2bb3296fb950396b5` adds bounded native snapshots for routine card observation. Five selected native-schema checks passed; the other two new-module cases and the wider suite were not rerun. Earlier failures and incomplete runs remain historical, not current PASS claims.
 

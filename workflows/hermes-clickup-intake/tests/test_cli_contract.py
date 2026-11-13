@@ -137,6 +137,17 @@ class HermesCliContractTest(unittest.TestCase):
         return res.json
 
     # ------------------------------------------------------------------ create / dispatch
+    def test_list_tasks_includes_an_archived_task_that_create_idempotency_ignores(self):
+        title, key = "CLICKUP-RECOVERY-OWNER v1 t_cli01 run=1 incident=1 answer=g1", "clickup-dp:86b7cli09:rcv:owner:create"
+        first = self.create(title, key)
+        self.assertEqual(self.port.archive(first["id"]).outcome, Outcome.OK)
+        res = self.port.list_tasks()
+        self.assertEqual(res.outcome, Outcome.OK, res.json)
+        [listed] = [t for t in res.json if t["title"] == title]
+        self.assertEqual((listed["id"], listed["status"], listed["created_by"]), (first["id"], "archived", "clickup-intake"))
+        again = self.create(title, key)
+        self.assertNotEqual(again["id"], first["id"], "Hermes create idempotency ignores archived tasks")
+
     def test_create_with_same_idempotency_key_returns_same_id(self):
         first = self.create("ClickUp 86b7cli01: approval gate r1", "clickup-dp:86b7cli01:gate:r1:g1",
                             initial_status="blocked")

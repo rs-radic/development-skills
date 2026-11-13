@@ -2,7 +2,7 @@
 
 Recovery wakes an operator for an exact stopped worker, a qualified stalled transition, pre-worker approval staging or structural/outer progress diagnosis within an **existing approved workflow**. It is not a generic retry engine, a new approval, or permission to bypass a worker guard. Question relay, amendment continuation and recovery have separate activation gates. Bounded attempts can remain unresolved; this is not a universal live-recovery guarantee. The [progress extension](progress-recovery.md) also distinguishes independent notification delivery failures from native worker progress, preserving one owner and the original budgets/deadline.
 
-Keep recovery **disabled until the operator adopts a project-specific recovery contract**. The public [carrier template](../templates/recovery_card.md) requires operator-supplied references to that contract, the approved plan/amendment, the project's workflow and its supported native recovery procedure. Supply the exact board, permitted operator context, target/path/byte bindings and ordering preconditions. The preparation tool does not discover or approve that authority, substitute a private project plan, or provision a coordinator. Unresolved references are a reason not to activate recovery.
+Keep recovery **disabled until the operator adopts a project-specific recovery contract**. The public [carrier template](../templates/recovery_card.md) and [assigned fallback template](../templates/assigned_recovery_card.md) require operator-supplied references to that contract, the approved plan/amendment, the project's workflow and its supported native recovery procedure. Supply the exact board, permitted operator context, target/path/byte bindings and ordering preconditions. The preparation tool does not discover or approve that authority, substitute a private project plan, or provision a coordinator. Unresolved references are a reason not to activate recovery.
 
 ## Activation and exact-incident adoption
 
@@ -117,7 +117,7 @@ The general content filter is retired, but these projections retain explicit `sk
 
 An ACK or a canned technical notice is **not a verified human wait**. The intake publishes a bound question, verifies the exact provider comment and stores its root/reply binding. A human replies in that question thread and mentions the bot; normal planner relay/classification and an unchanged-authority resolution process the answer. A local `publishing` flag, queue entry or native `blocked` label is only automation/delivery state. Missing delivery, cancelled/superseded notices and unavailable continuation remain unfinished. Neither a diagnostic answer nor its resolution completes a native question or resumes work.
 
-`engine._recovery_step` enforces:
+For original, pre-answer attempts, `engine._recovery_step` enforces:
 
 - At most **three wake attempts per incident**, first on detection, then due at detection +60 and +180 minutes; unresolved work normally escalates at +360 minutes.
 - A working ACK defers further wake/escalation to at least three hours after the latest valid working ACK, but never past the incident's **detection +24-hour ceiling**. This is not a rolling three-wakes-per-day allowance. Missed scans do not remove that ceiling.
@@ -126,6 +126,35 @@ An ACK or a canned technical notice is **not a verified human wait**. The intake
 - A later claimed run requires matching live process-generation and fresh-heartbeat evidence before it counts as capable-owner progress. `done`/`archived` is tracked as closed; neither it nor an assignment retroactively proves recovery execution. Changed authority can supersede an incident. Holds pause evaluation; no wall-clock response SLA is promised.
 
 Escalation queues an originating-task result, **not successful delivery**. Typed/stalled incidents may ask which existing authorized operator can take over or restore an unavailable recovery resource after bounded automation is exhausted; current binding, exact readback and usable reply routing still apply. Pre-worker staging does not manufacture this fallback: without actual progress or a valid coordinator question it can remain open with exhausted attempts. A technical `cannot_act`/`working` ACK, canned notice or dead claim is intermediate, not a third successful outcome. Preserve the original failure, obligation, deadlines and spent budgets. Successful recovery means actual authorized capable-owner progress or a verified genuinely human-required question with its bound reply path.
+
+## Accepted-answer continuation and assigned fallback
+
+An addressed reply must be classified `answer_only` and accepted under unchanged authority before this path applies. The accepted answer has its own finite continuation record; it neither spends nor refunds the original incident's attempts, nor rewrites its deadline/history. It can continue after the original deadline. Typed/stalled, structural-progress and pre-worker incidents share this path. Pre-worker staging first leaves the normal intake path its ten-minute grace; a ready source without verified pickup remains an unresolved obligation, not permission to unblock it repeatedly.
+
+The route is **up to three answer-bound wakes → operator takeover → one visible escalation → one assigned integrator recovery task** if required progress still has not occurred in the bounded windows. Each effect rechecks the exact incident, answer generation, relay, resolution, authority and current observations. Unknown reads defer; changed answers/authority refuse stale effects; holds remain binding. A working ACK may defer the next step within its bound, not indefinitely. Do not repeat the answered question or ask the human to select an operator merely because automation did not act.
+
+These are distinct evidence boundaries:
+
+| Evidence | What it proves |
+|---|---|
+| `CURRENT` | Admission for this incident only; not operation authority, delivery or pickup. |
+| Completed wake carrier/subscription | The native wake path advanced; not confirmed visible delivery or receiver acceptance. |
+| Matching subscription with positive `last_ping_event_id` | The gateway recorded the visible escalation sent to the configured channel; not acceptance or execution. Missing readback uses the existing delivery-failure hold/reconciliation path. |
+| Receiver-authored bound receipt | The actual main operator accepted this takeover/escalation; not source progress. |
+| Fresh matching source run/process and prerequisite evidence | Actual authorized same-owner progress. A new genuinely human-only question instead requires verified delivery and its bound reply path. |
+
+After `CURRENT`, the receiving `default` main operator accepts takeover/escalation with a comment whose first two lines are:
+
+```text
+CLICKUP-RECOVERY-ACK v1 card=<source-card-or-anchor> run=<source-run> disposition=working
+CLICKUP-RECOVERY-ACCEPT v1 incident=<incident-id> answer=g<generation> relay=<relay-id> carrier=<received-carrier-id>
+```
+
+Post on the source card for typed/stalled recovery, or on the actual recovery carrier for structural-progress/pre-worker anchors. The `default`-authored receipt must be created at or after the continuation step's recorded time and match its exact binding; old, unbound or foreign ACKs do not accept it. An unreadable receipt location is unknown, not proof of no acceptance. Even valid acceptance does not settle the obligation or prevent the later assigned fallback when progress is absent.
+
+The assigned fallback is a real dispatcher task assigned to `integrator`, with a `notify+wake` subscription and unchanged worker guards—not another completed carrier, a replacement work graph or an automatic grant of cross-card authority. It is not gated behind the stopped source. The operator must have supplied the [assigned recovery contract](../templates/assigned_recovery_card.md) before activation. The integrator diagnoses and reconciles only within its existing permission; worker-fenced actions require an exact same-task capability handoff to the authorized main operator, with `CURRENT`, targets, approved hashes, ordering and readbacks.
+
+Failed or refused create/release/handoff effects are not consumed as success. Supported release/resend paths preserve the same obligation and native owner, reconcile ambiguous creates using exact-title lookup including archived tasks, and bound repeated unsent refusals. An operator-abandoned or disposed owner is not silently replaced. A live matching integrator claim records pickup only. Genuine capability/provider failures stay on that same assigned task. Premature completion without source progress triggers a same-task operator correction, not recovery success or a new task. Elapsed time alone does not manufacture a source hold; admission and transport failures keep their existing handling.
 
 ## Disable, drain and rollback
 
