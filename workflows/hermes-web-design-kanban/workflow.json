@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "kind": "documentation-template",
+  "visible_stages": [
+    {
+      "name": "concept",
+      "exit_evidence": ["completed_concept_revision", "concept_approval"]
+    },
+    {
+      "name": "security/spec review",
+      "exit_evidence": ["spec_pass", "quality_security_pass", "shared_dev_deployed", "shared_dev_e2e_pass"]
+    },
+    {
+      "name": "technical approval",
+      "exit_evidence": ["release_approval", "task_delta_published", "existing_ci_deployed", "production_verified", "cleanup_verified"]
+    },
+    {
+      "name": "completed",
+      "exit_evidence": []
+    }
+  ],
+  "roles": {
+    "orchestrator": "Coordinate the same task and linked graph; no self-granted implementation, review or release authority.",
+    "implementor": "Implement and revise the concept in its owned worktree; request independent native same-card SPEC review.",
+    "spec-reviewer": "Independently review the exact frozen revision against scope and invariants, without editing it.",
+    "quality-security-reviewer": "Independently review correctness, quality and security after SPEC passes; do not implement fixes.",
+    "integrator": "Reconcile accepted changes, deploy shared DEV, and publish only the exact task delta after separate final authority.",
+    "e2e-tester": "Independently test the exact deployed shared DEV revision and verify the actual production result; no code fixes or promotion."
+  },
+  "approval_policy": {
+    "sets": ["concept", "release"],
+    "independently_configured": true,
+    "eligible_votes_required": 1,
+    "authenticated_platform_author_required": true,
+    "explicit_action_required": true,
+    "exact_revision_required": true,
+    "freshness_required": true,
+    "bot_or_forwarded_approval_allowed": false,
+    "status_change_authorizes_release": false,
+    "concept_grants_release": false
+  },
+  "lifecycle": {
+    "same_task": true,
+    "stable_preview": true,
+    "revision_request": "tagged_list_member",
+    "extra_human_plan_gate": false,
+    "native_same_card_spec": true,
+    "corrections": "same_task_and_existing_cards",
+    "review_order": ["spec", "quality_security", "shared_dev_deployment", "shared_dev_e2e", "release_approval"],
+    "release_scope": "task_delta_and_accepted_dependencies",
+    "cancellation_signal": "archive",
+    "unexpected_tracker_state": "non_destructive_hold",
+    "archive_rolls_back_production": false,
+    "completion_requires": ["production_verified", "cleanup_verified"]
+  }
+}

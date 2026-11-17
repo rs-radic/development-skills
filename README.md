@@ -12,3 +12,4 @@ Hermes-specific workflows:
 
 - [ClickUp planning intake for Hermes](workflows/hermes-clickup-intake/README.md) — Windows self-hosted ClickUp-to-Kanban planning, reviewed approvals, guarded promotion, reusable source and offline setup.
 - [Hermes approval-gated Kanban development](workflows/hermes-approval-gated-kanban/README.md) — reusable Hermes profiles, verified model routes, planning/review and delivery gates, templates, and a sanitized project example.
+- [Hermes concept-first web-design Kanban](workflows/hermes-web-design-kanban/README.md) — same-task concepts and previews, independent reviews, separate release approval, production verification, and exact cleanup; documentation/templates only.
