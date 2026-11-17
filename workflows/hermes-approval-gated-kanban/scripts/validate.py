@@ -22,6 +22,7 @@ REQUIRED = {
     "templates/orchestrator-card.md", "examples/partner-network-api/README.md",
     "skills/approval-gated-kanban-development/SKILL.md",
     "skills/plan-review-gate/SKILL.md", "scripts/validate.py",
+    "references/baseline-and-regression-readiness.md",
 }
 PRIVATE_MARKERS = (
     re.compile(rb"github_pat_[A-Za-z0-9_]{20,}"),

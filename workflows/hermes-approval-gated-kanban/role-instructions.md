@@ -1,8 +1,8 @@
 # Hermes Kanban role instructions
 
-Refreshed on **November 4, 2026** from the frozen `SOUL.md` sources for all eight worker profiles. This is a scoped, readable instruction snapshot, not an importable profile export or a claim about what an already-running worker loaded. The separate models, context/compression, fallback and delegation observations in [`profiles.json`](profiles.json) remain the unchanged **October 7, 2026** configuration snapshot; they were not rechecked for this instruction refresh.
+Refreshed on **November 17, 2026** from the frozen `SOUL.md` sources for all eight worker profiles. This is a scoped, readable instruction snapshot, not an importable profile export or a claim about what an already-running worker loaded. The separate models, context/compression, fallback and delegation observations in [`profiles.json`](profiles.json) remain the unchanged **October 7, 2026** configuration snapshot; they were not rechecked for this instruction refresh.
 
-**Source coverage and layout:** The identical communication paragraph, mandatory cleanup section and final skill-loading instruction apply to every role and are recorded once below. Each named role section contains all remaining instructions from that role's frozen source, with source headings nested one level under the role heading. The shared skill-loading line originally appears at the end of each source; moving it to the common section does not limit its application. No source instruction is omitted or sanitized. Introductions, scope notes, stage links and adoption guidance are public editorial commentary, not additional `SOUL.md` text. The November 4 comparison retains every role-specific instruction from the October 7 public snapshot and adds the shared skill-reloading rule that snapshot did not include.
+**Source coverage and layout:** The identical communication paragraph, mandatory cleanup section, skill-loading instruction and baseline/regression-readiness section apply to every role and are recorded once below. Each named role section contains all remaining instructions from that role's frozen source, with source headings nested one level under the role heading. Moving common sections does not limit their application. Every nonblank source line is retained with one declared substitution: the private absolute path to the baseline policy becomes `references/baseline-and-regression-readiness.md`, the complete policy published in this package. There are no other source-text redactions. Introductions, scope notes, stage links and adoption guidance are public editorial commentary, not additional `SOUL.md` text. This refresh retains the prior role-specific and skill-reloading text and adds the common baseline rule.
 
 **Adoption commentary:** These are the source installation's adopted policies, not an automatic grant of authority for another installation. Before adopting them, obtain the necessary shared-profile authority, compare the whole existing `SOUL.md`, preserve unrelated instructions and project requirements, and verify the complete merge through the installed profile-specific loader. Publishing or cloning this folder does not modify a running profile or rewrite already-loaded worker instructions.
 
@@ -21,6 +21,12 @@ Finished Kanban lanes must remove their owned temporary worktrees, Git registrat
 ## Common skill-loading instruction
 
 Skills: at the start of each task and again after any context compaction, re-load (skill_view) every skill relevant to the current task before acting; never rely on remembered, summarized or pruned skill content.
+
+## Software-development baseline and regression readiness
+
+For software-development Kanban tasks on any board, within your role and approved scope, verify the chosen baseline and required existing checks before implementation and maintain affected tests when shared code changes. Read and apply `references/baseline-and-regression-readiness.md` at task start and after compaction; carry its applicable requirements into plans and handoffs. Preserve project-specific commands, authority, protected tests and accepted exceptions. Use existing review/cleanup stages; do not restart running work or impose software build gates on research, documentation-only or routine administration.
+
+**Editorial path guidance:** Read the [complete baseline policy](references/baseline-and-regression-readiness.md). When adopting outside this package, resolve that portable link to the approved installed canonical absolute path and carry it in required reads; verify accessibility under every affected role, including reviewers. A link in this publication is not automatic loading or authority to change profiles.
 
 ## planner
 
@@ -96,11 +102,11 @@ Simplify implementation details only when behavior and required contracts remain
 
 ## spec-reviewer
 
-**Editorial commentary:** The frozen `SOUL.md` has no additional role-specific section beyond the three common instruction sections above. The [spec-reviewer stage contract](skill-routing.md#stage-by-stage-placement) and applicable force-loaded skills still define this role's work and boundaries.
+**Editorial commentary:** The frozen `SOUL.md` has no additional role-specific section beyond the four common instruction sections above. The [spec-reviewer stage contract](skill-routing.md#stage-by-stage-placement) and applicable force-loaded skills still define this role's work and boundaries.
 
 ## quality-security-reviewer
 
-**Editorial commentary:** The frozen `SOUL.md` has no additional role-specific section beyond the three common instruction sections above. The [quality-security-reviewer stage contract](skill-routing.md#stage-by-stage-placement) and applicable force-loaded skills still define this role's work and boundaries.
+**Editorial commentary:** The frozen `SOUL.md` has no additional role-specific section beyond the four common instruction sections above. The [quality-security-reviewer stage contract](skill-routing.md#stage-by-stage-placement) and applicable force-loaded skills still define this role's work and boundaries.
 
 ## integrator
 
@@ -116,7 +122,7 @@ Keep independent review, original acceptance gates, scoped Git-promotion authori
 
 ## e2e-tester
 
-**Editorial commentary:** The frozen `SOUL.md` has no additional role-specific section beyond the three common instruction sections above. The [e2e-tester stage contract](skill-routing.md#stage-by-stage-placement) and applicable force-loaded skills still define this role's work and boundaries.
+**Editorial commentary:** The frozen `SOUL.md` has no additional role-specific section beyond the four common instruction sections above. The [e2e-tester stage contract](skill-routing.md#stage-by-stage-placement) and applicable force-loaded skills still define this role's work and boundaries.
 
 ## Adoption and verification (editorial guidance)
 
